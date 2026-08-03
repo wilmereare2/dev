@@ -1,0 +1,103 @@
+// Phase 1 uses SQLite so Windows dev works with Node only (no Docker).
+// Production target: PostgreSQL via Neon or Supabase — change provider + DATABASE_URL.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Role values: ADMIN | EDITOR | MODERATOR | VIEWER | USER (validated in app layer)
+model User {
+  id            String         @id @default(cuid())
+  name          String?
+  email         String         @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  role          String         @default("USER")
+  accounts      Account[]
+  sessions      Session[]
+  bookmarks     Bookmark[]
+  watchHistory  WatchHistory[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([role])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+/// contentId is a Sanity document _id (CMS is source of truth for media).
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  contentId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId])
+  @@index([userId])
+}
+
+model WatchHistory {
+  id         String   @id @default(cuid())
+  userId     String
+  contentId  String
+  progressMs Int      @default(0)
+  watchedAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, watchedAt])
+  @@index([contentId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String?
+  entityId  String?
+  meta      String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId])
+}

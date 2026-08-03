@@ -1,0 +1,40 @@
+import type { NavItem } from "@/types";
+
+export const APP_NAME = "manuelaX";
+export const APP_TAGLINE =
+  "Premium 18+ creator platform — exclusive profiles, cinematic releases, curated discovery.";
+
+export const EMPTY_HERO = {
+  title: "Discover exclusive creators.",
+  subtitle:
+    "Premium creator content is coming soon. New creators are joining every week — follow launches, spotlights, and first releases here.",
+} as const;
+
+export const MAIN_NAV: NavItem[] = [
+  { href: "/explore", label: "Explore" },
+  { href: "/categories", label: "Categories" },
+  { href: "/trending", label: "Trending" },
+  { href: "/newest", label: "Newest" },
+  { href: "/blog", label: "Blog" },
+];
+
+export const FOOTER_LINKS = {
+  discover: [
+    { href: "/explore", label: "Explore" },
+    { href: "/categories", label: "Categories" },
+    { href: "/tags", label: "Tags" },
+    { href: "/trending", label: "Trending" },
+    { href: "/popular", label: "Popular" },
+  ],
+  company: [
+    { href: "/about", label: "About" },
+    { href: "/contact", label: "Contact" },
+    { href: "/faq", label: "FAQ" },
+    { href: "/blog", label: "Blog" },
+  ],
+  legal: [
+    { href: "/privacy", label: "Privacy" },
+    { href: "/terms", label: "Terms" },
+    { href: "/dmca", label: "DMCA" },
+  ],
+} as const;

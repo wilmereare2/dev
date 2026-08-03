@@ -1,0 +1,106 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ContentCard } from "@/components/content/content-card";
+import { SanityImage } from "@/components/media/sanity-image";
+import { fetchContentBySlug, fetchExploreContent } from "@/services/sanity/content";
+import { encodeRouteParam } from "@/lib/site/route-params";
+import { sanityImageUrl } from "@/lib/sanity/image";
+import { formatDuration } from "@/utils/format";
+
+type PageProps = { params: Promise<{ slug: string }> };
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const item = await fetchContentBySlug(slug);
+  if (!item) return { title: "Content" };
+  return {
+    title: item.title,
+    description: item.synopsis,
+  };
+}
+
+export default async function ContentDetailPage({ params }: PageProps) {
+  const { slug } = await params;
+  const item = await fetchContentBySlug(slug);
+  if (!item) notFound();
+
+  const thumb = sanityImageUrl(item.thumbnail, 1400);
+  const duration = formatDuration(item.durationSeconds);
+  const related = (await fetchExploreContent()).filter((c) => c.slug !== slug).slice(0, 4);
+
+  return (
+    <div className="pb-16">
+      <section className="relative border-b border-border/40">
+        <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="relative aspect-video overflow-hidden rounded-2xl border border-border/50 bg-black shadow-2xl">
+            {item.playbackUrl ? (
+              <video
+                className="h-full w-full object-contain"
+                controls
+                poster={thumb ?? undefined}
+                src={item.playbackUrl}
+              />
+            ) : thumb ? (
+              <SanityImage src={thumb} alt={item.title} fill className="object-cover" priority />
+            ) : (
+              <div className="flex h-full min-h-[240px] items-center justify-center text-muted-foreground">
+                Add a video URL or file in Sanity Studio
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">{item.title}</h1>
+            {item.creators?.length ? (
+              <p className="mt-2 flex flex-wrap gap-x-2 text-sm text-muted-foreground">
+                {item.creators.map((c, i) => (
+                  <span key={c._id}>
+                    {i > 0 ? <span className="text-border"> · </span> : null}
+                    <Link href={`/creator/${encodeRouteParam(c.slug)}`} className="text-accent hover:underline">
+                      {c.name}
+                    </Link>
+                  </span>
+                ))}
+              </p>
+            ) : null}
+          </div>
+          {duration ? (
+            <span className="rounded-lg border border-border bg-surface/60 px-3 py-1 text-sm">{duration}</span>
+          ) : null}
+        </div>
+        {item.synopsis ? (
+          <p className="mt-6 max-w-3xl text-base leading-relaxed text-muted-foreground">{item.synopsis}</p>
+        ) : null}
+        {item.categories?.length ? (
+          <div className="mt-6 flex flex-wrap gap-2">
+            {item.categories.map((cat) => (
+              <Link
+                key={cat.slug}
+                href={`/categories/${encodeRouteParam(cat.slug)}`}
+                className="rounded-full border border-border/60 bg-muted/50 px-3 py-1 text-xs font-medium hover:border-accent/50"
+              >
+                {cat.title}
+              </Link>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      {related.length ? (
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <h2 className="mb-4 font-display text-xl font-semibold">More like this</h2>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {related.map((r) => (
+              <ContentCard key={r._id} item={r} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
+}

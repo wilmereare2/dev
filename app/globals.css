@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+/* manuelaX — rose accent, blush light mode, cinematic dark */
+:root {
+  --background: #fff8fa;
+  --foreground: #111827;
+  --secondary: #4b5563;
+  --surface: #ffffff;
+  --muted: #fce7ef;
+  --muted-foreground: #4b5563;
+  --border: #e5e7eb;
+  --accent: #e11d48;
+  --accent-foreground: #ffffff;
+  --glow: rgba(225, 29, 72, 0.18);
+  --ring: #e11d48;
+}
+
+.dark {
+  --background: #030305;
+  --foreground: #f8f8fb;
+  --secondary: #a1a1b2;
+  --surface: #0e0e14;
+  --muted: #14141c;
+  --muted-foreground: #9b9bb0;
+  --border: #252532;
+  --accent: #f43f5e;
+  --accent-foreground: #fff1f2;
+  --glow: rgba(244, 63, 94, 0.24);
+  --ring: #fb7185;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-secondary: var(--secondary);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    background-image:
+      radial-gradient(ellipse 100% 60% at 50% -15%, var(--glow), transparent 50%),
+      linear-gradient(180deg, var(--background), color-mix(in oklab, var(--background) 92%, var(--surface)));
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--accent) 35%, transparent);
+  }
+}
