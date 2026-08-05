@@ -7,6 +7,7 @@ const contentCardFields = `
   synopsis,
   durationSeconds,
   featured,
+  isPremium,
   thumbnail,
   publishedAt,
   "creators": creators[]->name
@@ -42,6 +43,11 @@ export const HOME_PAGE_QUERY = `{
     name,
     "slug": slug.current,
     avatar
+  },
+  "stats": {
+    "videoCount": count(*[_type == "content"]),
+    "creatorCount": count(*[_type == "creator"]),
+    "categoryCount": count(*[_type == "category"])
   }
 }`;
 

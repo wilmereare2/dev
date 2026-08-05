@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { APP_NAME, APP_TAGLINE, FOOTER_LINKS } from "@/lib/constants";
+import { TrustBar } from "@/components/layout/trust-bar";
 
 export function Footer({ compact = false }: { compact?: boolean }) {
   const year = new Date().getFullYear();
@@ -29,6 +30,8 @@ export function Footer({ compact = false }: { compact?: boolean }) {
         <FooterColumn title="Company" links={FOOTER_LINKS.company} />
         <FooterColumn title="Legal" links={FOOTER_LINKS.legal} />
       </div>
+
+      <TrustBar compact className="border-t-0" />
 
       <div className="border-t border-border/40">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">

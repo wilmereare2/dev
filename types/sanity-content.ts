@@ -8,6 +8,7 @@ export type SanityContentCard = {
   synopsis?: string;
   durationSeconds?: number;
   featured?: boolean;
+  isPremium?: boolean;
   thumbnail?: SanityImageSource;
   publishedAt?: string;
   creators?: string[];
@@ -44,4 +45,9 @@ export type SanityHomePayload = {
   trending: SanityContentCard[];
   categories: SanityCategoryCard[];
   creators: SanityCreatorCard[];
+  stats?: {
+    videoCount: number;
+    creatorCount: number;
+    categoryCount: number;
+  };
 };

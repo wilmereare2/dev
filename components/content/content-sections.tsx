@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SanityImage } from "@/components/media/sanity-image";
 import { sanityImageUrl } from "@/lib/sanity/image";
 import { encodeRouteParam } from "@/lib/site/route-params";
+import type { LaunchCategoryDefinition } from "@/lib/site/launch-categories";
 import type { SanityCategoryCard, SanityCreatorCard } from "@/types/sanity-content";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +42,7 @@ export function CategoryPill({
     <Link
       href={`/categories/${encodeRouteParam(category.slug)}`}
       className={cn(
-        "group flex min-w-[140px] flex-col overflow-hidden rounded-xl border border-border/50 bg-surface/50 transition hover:border-accent/50",
+        "group flex min-w-[140px] flex-col overflow-hidden rounded-xl border border-border/50 bg-surface/50 transition hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-lg hover:shadow-accent/10",
         className,
       )}
     >
@@ -51,6 +52,36 @@ export function CategoryPill({
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
         <span className="absolute bottom-2 left-2 text-sm font-semibold text-white">{category.title}</span>
+      </div>
+    </Link>
+  );
+}
+
+export function LaunchCategoryPill({
+  category,
+  className,
+  comingSoon = false,
+}: {
+  category: LaunchCategoryDefinition;
+  className?: string;
+  comingSoon?: boolean;
+}) {
+  return (
+    <Link
+      href={comingSoon ? "/explore" : `/categories/${encodeRouteParam(category.slug)}`}
+      className={cn(
+        "group flex min-w-[132px] shrink-0 flex-col overflow-hidden rounded-xl border border-border/50 bg-surface/50 transition hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-lg hover:shadow-accent/10",
+        className,
+      )}
+    >
+      <div className={cn("relative flex h-20 w-full items-end bg-gradient-to-br p-3", category.tone)}>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        <span className="relative text-sm font-semibold text-white">{category.title}</span>
+        {comingSoon ? (
+          <span className="absolute right-2 top-2 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90">
+            Soon
+          </span>
+        ) : null}
       </div>
     </Link>
   );

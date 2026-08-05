@@ -2,13 +2,21 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Play, Sparkles } from "lucide-react";
 import { ContentCard, ContentCardSkeleton } from "@/components/content/content-card";
-import { CategoryPill, CreatorChip, SectionHeader } from "@/components/content/content-sections";
+import {
+  CategoryPill,
+  CreatorChip,
+  LaunchCategoryPill,
+  SectionHeader,
+} from "@/components/content/content-sections";
+import { HeroTrustStrip } from "@/components/home/hero-trust-strip";
+import { TrustBar } from "@/components/layout/trust-bar";
 import { HomeLaunchSections } from "@/features/home/home-launch-sections";
 import { Button } from "@/components/ui/button";
 import { SanityImage } from "@/components/media/sanity-image";
-import type { SanityHomePayload } from "@/types/sanity-content";
+import { LAUNCH_CATEGORY_PILLS, type LaunchCategoryDefinition } from "@/lib/site/launch-categories";
+import type { SanityCategoryCard, SanityHomePayload } from "@/types/sanity-content";
 import { sanityImageUrl } from "@/lib/sanity/image";
 
 type HomeViewProps = {
@@ -20,6 +28,13 @@ type HomeViewProps = {
     emptyHeroSubtitle: string;
   };
 };
+
+function buildCategoryRow(categories: SanityCategoryCard[]): Array<SanityCategoryCard | LaunchCategoryDefinition> {
+  const cmsSlugs = new Set(categories.map((category) => category.slug));
+  const fillers = LAUNCH_CATEGORY_PILLS.filter((pill) => !cmsSlugs.has(pill.slug));
+  const merged = [...categories, ...fillers];
+  return merged.slice(0, 8);
+}
 
 export function HomeView({ data, defaults }: HomeViewProps) {
   const hasContent = data.latest.length > 0;
@@ -33,25 +48,25 @@ export function HomeView({ data, defaults }: HomeViewProps) {
   const heroImage =
     sanityImageUrl(featured?.thumbnail, 1600) ??
     sanityImageUrl(data.settings?.seo?.ogImage, 1600);
+  const videoCount = data.stats?.videoCount ?? data.latest.length;
+  const creatorCount = data.stats?.creatorCount ?? data.creators.length;
+  const categoryRow = buildCategoryRow(data.categories);
+  const cmsSlugs = new Set(data.categories.map((category) => category.slug));
 
   return (
     <div className="pb-10">
-      {/* Hero — compact before content; cinematic when catalog exists */}
-      <section
-        className={`relative overflow-hidden border-b border-border/60 ${
-          hasContent ? "min-h-0" : "min-h-0"
-        }`}
-      >
+      <section className="relative overflow-hidden border-b border-border/60">
         <div className="absolute inset-0">
           <SanityImage
             src={heroImage}
             alt=""
             fill
             priority
-            className="object-cover opacity-40"
+            className="object-cover opacity-55"
             fallbackClassName="opacity-100"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/80 to-background/50" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/88 to-background/45" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
         </div>
 
         <div
@@ -86,20 +101,34 @@ export function HomeView({ data, defaults }: HomeViewProps) {
             >
               {heroSubtitle}
             </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 }}
+            >
+              <HeroTrustStrip
+                creators={data.creators}
+                videoCount={videoCount}
+                creatorCount={creatorCount}
+              />
+            </motion.div>
+
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
               className={`mt-6 flex flex-wrap gap-3 ${hasContent ? "" : "justify-center lg:justify-start"}`}
             >
-              <Button asChild size="lg">
-                <Link href="/explore">
+              <Button asChild size="lg" variant="premium">
+                <Link href="/explore" className="group">
+                  <Play className="size-4 fill-current" />
                   {hasContent ? "Browse library" : "Preview explore"}
-                  <ArrowRight className="size-4" />
+                  <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
                 </Link>
               </Button>
               <Button asChild size="lg" variant="secondary">
-                <Link href="/contact">Creator applications</Link>
+                <Link href="/contact">Become a creator</Link>
               </Button>
             </motion.div>
           </div>
@@ -117,30 +146,34 @@ export function HomeView({ data, defaults }: HomeViewProps) {
         </div>
       </section>
 
-      {/* Pre-launch body — replaces empty void */}
+      <TrustBar />
+
       {!hasContent ? (
         <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
           <HomeLaunchSections />
         </section>
       ) : null}
 
-      {/* Categories */}
-      {(hasContent || data.categories.length > 0) && (
-        <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <SectionHeader title="Categories" href="/categories" />
-          {data.categories.length ? (
-            <div className="flex gap-3 overflow-x-auto pb-1">
-              {data.categories.map((cat) => (
-                <CategoryPill key={cat._id} category={cat} className="shrink-0" />
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Categories appear as editors publish in Studio.</p>
-          )}
-        </section>
-      )}
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <SectionHeader title="Categories" href="/categories" />
+        <div className="flex gap-3 overflow-x-auto pb-1">
+          {categoryRow.map((entry) => {
+            if ("_id" in entry) {
+              return <CategoryPill key={entry._id} category={entry} className="shrink-0" />;
+            }
 
-      {/* Latest grid */}
+            return (
+              <LaunchCategoryPill
+                key={entry.slug}
+                category={entry}
+                className="shrink-0"
+                comingSoon={!cmsSlugs.has(entry.slug)}
+              />
+            );
+          })}
+        </div>
+      </section>
+
       <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <SectionHeader
           title={hasContent ? "Latest releases" : "Upcoming releases"}
@@ -165,7 +198,6 @@ export function HomeView({ data, defaults }: HomeViewProps) {
         </div>
       </section>
 
-      {/* Creators */}
       {(hasContent || data.creators.length > 0) && (
         <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <SectionHeader title="Creators" href="/explore" linkLabel="Explore" />

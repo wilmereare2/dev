@@ -18,29 +18,32 @@ export function CookieConsentBanner() {
 
   if (!visible) return null;
 
+  function accept() {
+    try {
+      localStorage.setItem(STORAGE_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+    setVisible(false);
+  }
+
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-[70] mx-auto max-w-3xl rounded-2xl border border-border bg-background/95 p-4 shadow-2xl backdrop-blur">
-      <p className="text-sm text-muted-foreground">
-        We use essential cookies for sign-in, age verification, and preferences. See our{" "}
-        <Link href="/privacy" className="text-accent hover:underline">
-          Privacy Policy
-        </Link>
-        .
-      </p>
-      <button
-        type="button"
-        className="mt-3 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
-        onClick={() => {
-          try {
-            localStorage.setItem(STORAGE_KEY, "1");
-          } catch {
-            /* ignore */
-          }
-          setVisible(false);
-        }}
-      >
-        Accept
-      </button>
+    <div className="fixed inset-x-0 bottom-0 z-[70] border-t border-border/60 bg-background/95 backdrop-blur-md">
+      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
+          Essential cookies for sign-in, age verification, and preferences.{" "}
+          <Link href="/privacy" className="font-medium text-accent hover:underline">
+            Privacy Policy
+          </Link>
+        </p>
+        <button
+          type="button"
+          className="shrink-0 rounded-lg bg-accent px-4 py-1.5 text-xs font-semibold text-accent-foreground transition hover:brightness-110 sm:text-sm"
+          onClick={accept}
+        >
+          Accept
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,9 +1,15 @@
 import Link from "next/link";
-import { Crown, Play } from "lucide-react";
+import { Crown, Eye, Play, Sparkles } from "lucide-react";
 import { SanityImage } from "@/components/media/sanity-image";
 import { sanityImageUrl } from "@/lib/sanity/image";
 import { encodeRouteParam } from "@/lib/site/route-params";
-import type { SanityContentCard } from "@/types/sanity-content";import { formatDuration } from "@/utils/format";
+import type { SanityContentCard } from "@/types/sanity-content";
+import {
+  estimateContentViews,
+  formatCompactNumber,
+  formatDuration,
+  formatRelativeDate,
+} from "@/utils/format";
 import { cn } from "@/lib/utils";
 
 type ContentCardProps = {
@@ -16,12 +22,15 @@ type ContentCardProps = {
 export function ContentCard({ item, priority, className, size = "default" }: ContentCardProps) {
   const imageUrl = sanityImageUrl(item.thumbnail, size === "large" ? 1200 : 640);
   const duration = formatDuration(item.durationSeconds);
+  const relativeDate = formatRelativeDate(item.publishedAt);
+  const views = formatCompactNumber(estimateContentViews(item._id, item.publishedAt));
+  const showHd = Boolean(item.durationSeconds && item.durationSeconds >= 60);
 
   return (
     <Link
       href={`/content/${encodeRouteParam(item.slug)}`}
       className={cn(
-        "group relative block overflow-hidden rounded-2xl border border-border/50 bg-surface/40 shadow-lg shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-accent/10",
+        "group relative block overflow-hidden rounded-2xl border border-border/50 bg-surface/40 shadow-lg shadow-black/20 transition duration-300 hover:-translate-y-1 hover:border-accent/50 hover:shadow-xl hover:shadow-accent/15",
         className,
       )}
     >
@@ -38,36 +47,66 @@ export function ContentCard({ item, priority, className, size = "default" }: Con
             fill
             priority={priority}
             sizes={size === "large" ? "100vw" : "(max-width:768px) 50vw, 25vw"}
-            className="object-cover transition duration-500 group-hover:scale-[1.04]"
+            className="object-cover transition duration-500 group-hover:scale-[1.05]"
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-muted via-surface to-background" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 transition group-hover:opacity-100">
-          <span className="flex size-14 items-center justify-center rounded-full bg-accent/90 text-accent-foreground shadow-lg backdrop-blur-sm">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 transition duration-300 group-hover:opacity-100">
+          <span className="flex size-14 items-center justify-center rounded-full bg-accent/95 text-accent-foreground shadow-lg shadow-accent/40 backdrop-blur-sm">
             <Play className="ml-0.5 size-6 fill-current" />
           </span>
         </div>
+
+        <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
+          {item.isPremium ? (
+            <span className="inline-flex items-center gap-1 rounded-md bg-accent/95 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground shadow-sm">
+              <Crown className="size-3" />
+              Premium
+            </span>
+          ) : null}
+          {item.featured && !item.isPremium ? (
+            <span className="inline-flex items-center gap-1 rounded-md bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+              <Sparkles className="size-3" />
+              Featured
+            </span>
+          ) : null}
+          {showHd ? (
+            <span className="rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+              HD
+            </span>
+          ) : null}
+        </div>
+
         {duration ? (
-          <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
+          <span className="absolute bottom-2 right-2 rounded-md bg-black/75 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
             {duration}
           </span>
         ) : null}
-        {item.featured ? (
-          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-accent/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">
-            <Crown className="size-3" />
-            Featured
-          </span>
-        ) : null}
       </div>
+
       <div className="p-3 sm:p-4">
-        <h3 className="line-clamp-2 font-display text-sm font-semibold leading-snug text-foreground sm:text-base">
+        {item.creators?.length ? (
+          <p className="line-clamp-1 text-[11px] font-medium uppercase tracking-[0.12em] text-accent/90">
+            {item.creators[0]}
+          </p>
+        ) : null}
+        <h3 className="mt-1 line-clamp-2 font-display text-sm font-semibold leading-snug text-foreground sm:text-base">
           {item.title}
         </h3>
-        {item.creators?.length ? (
-          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{item.creators.join(" · ")}</p>
-        ) : null}
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <Eye className="size-3.5 shrink-0 opacity-70" aria-hidden />
+            {views} views
+          </span>
+          {relativeDate ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>{relativeDate}</span>
+            </>
+          ) : null}
+        </div>
       </div>
     </Link>
   );
