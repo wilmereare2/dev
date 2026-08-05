@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Figtree, Sora } from "next/font/google";
+import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { PwaRegister } from "@/components/providers/pwa-register";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 import "./globals.css";
 
@@ -39,6 +41,11 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: APP_NAME,
+  },
 };
 
 export default function RootLayout({
@@ -50,7 +57,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${display.variable} ${body.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          {children}
+          <AuthSessionProvider>
+            <PwaRegister />
+            {children}
+          </AuthSessionProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -1,5 +1,4 @@
 import { SiteShell } from "@/components/layout/site-shell";
-import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { fetchHomePageData } from "@/services/sanity/home";
 import { buildMainNav } from "@/lib/site/nav";
 
@@ -12,14 +11,12 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const ageGateText = data.settings?.ageGateText || DEFAULT_AGE;
 
   return (
-    <AuthSessionProvider>
-      <SiteShell
-        ageGateText={ageGateText}
-        navItems={buildMainNav(contentReady)}
-        compactFooter={!contentReady}
-      >
-        {children}
-      </SiteShell>
-    </AuthSessionProvider>
+    <SiteShell
+      ageGateText={ageGateText}
+      navItems={buildMainNav(contentReady)}
+      compactFooter={!contentReady}
+    >
+      {children}
+    </SiteShell>
   );
 }
