@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     }
 
     let thumbnailUrl: string | undefined;
-    let mediaUrl = String(formData.get("mediaUrl") ?? "").trim() || undefined;
+    const mediaUrl = String(formData.get("mediaUrl") ?? "").trim() || undefined;
     let fileSizeBytes: number | undefined;
 
     const thumbnail = formData.get("thumbnail");
