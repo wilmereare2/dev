@@ -47,7 +47,7 @@ export default async function PromotionsPage() {
         <div className="mt-10">
           <h2 className="font-display text-xl font-semibold">Coupon campaigns</h2>
           <p className="mt-1 text-sm text-muted-foreground">{promotions.length} live offers</p>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-6 grid items-stretch gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {promotions.map((promotion) => (
               <PromotionCard key={promotion.id} promotion={promotion} />
             ))}
@@ -61,7 +61,7 @@ export default async function PromotionsPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             {memberPosts.length} published uploads from creators
           </p>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-6 grid items-stretch gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {memberPosts.map((post) => (
               <MemberPostCard key={post.id} post={post} />
             ))}

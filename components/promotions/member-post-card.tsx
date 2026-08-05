@@ -8,7 +8,7 @@ export type PublicMemberPost = ReturnType<typeof mapPublicMemberPost>;
 
 export function MemberPostCard({ post }: { post: PublicMemberPost }) {
   return (
-    <article className="overflow-hidden rounded-2xl border border-border/60 bg-surface/60 shadow-sm transition hover:border-accent/40">
+    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-surface/60 shadow-sm transition hover:border-accent/40">
       {post.thumbnailUrl ? (
         <div className="relative aspect-[16/9] bg-muted">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -26,7 +26,7 @@ export function MemberPostCard({ post }: { post: PublicMemberPost }) {
         </div>
       )}
 
-      <div className="space-y-3 p-5">
+      <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex items-start gap-3">
           <UserAvatar name={post.creator.name} email={null} image={post.creator.image} size="sm" />
           <div className="min-w-0 flex-1">
@@ -52,7 +52,7 @@ export function MemberPostCard({ post }: { post: PublicMemberPost }) {
           ) : null}
         </div>
 
-        <Button asChild variant="premium" size="sm">
+        <Button asChild variant="premium" size="sm" className="mt-auto w-full sm:w-auto">
           <Link href={`/posts/${post.id}`}>View post</Link>
         </Button>
       </div>

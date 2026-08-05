@@ -25,7 +25,7 @@ export function PromotionCard({ promotion }: { promotion: PublicPromotion }) {
         : "Member";
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-border/60 bg-surface/60 shadow-sm transition hover:border-accent/40">
+    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-surface/60 shadow-sm transition hover:border-accent/40">
       {promotion.bannerUrl ? (
         <div className="relative aspect-[16/9] bg-muted">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -46,7 +46,7 @@ export function PromotionCard({ promotion }: { promotion: PublicPromotion }) {
         </div>
       )}
 
-      <div className="space-y-3 p-5">
+      <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex items-start gap-3">
           {promotion.owner?.type === "creator" ? (
             <UserAvatar
@@ -62,7 +62,9 @@ export function PromotionCard({ promotion }: { promotion: PublicPromotion }) {
           </div>
         </div>
 
-        {promotion.body ? <p className="text-sm leading-relaxed text-muted-foreground">{promotion.body}</p> : null}
+        {promotion.body ? (
+          <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">{promotion.body}</p>
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           {promotion.couponCode ? (
@@ -73,18 +75,20 @@ export function PromotionCard({ promotion }: { promotion: PublicPromotion }) {
           {promotion.expiresAt ? <span>Expires {formatExpires(promotion.expiresAt)}</span> : null}
         </div>
 
-        {promotion.externalUrl ? (
-          <Button asChild variant="premium" size="sm">
-            <a href={promotion.externalUrl} target="_blank" rel="noreferrer">
-              View offer
-              <ExternalLink className="size-3.5" />
-            </a>
-          </Button>
-        ) : promotion.owner?.type === "creator" && promotion.owner.slug ? (
-          <Button asChild variant="secondary" size="sm">
-            <Link href={`/creator/${promotion.owner.slug}`}>View creator</Link>
-          </Button>
-        ) : null}
+        <div className="mt-auto">
+          {promotion.externalUrl ? (
+            <Button asChild variant="premium" size="sm">
+              <a href={promotion.externalUrl} target="_blank" rel="noreferrer">
+                View offer
+                <ExternalLink className="size-3.5" />
+              </a>
+            </Button>
+          ) : promotion.owner?.type === "creator" && promotion.owner.slug ? (
+            <Button asChild variant="secondary" size="sm">
+              <Link href={`/creator/${promotion.owner.slug}`}>View creator</Link>
+            </Button>
+          ) : null}
+        </div>
       </div>
     </article>
   );
