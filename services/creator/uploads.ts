@@ -59,6 +59,74 @@ export async function listPendingUploads(limit = 50) {
   return items.map((item) => ({ ...mapUpload(item)!, creator: item.creator }));
 }
 
+const publicPostInclude = {
+  creator: {
+    select: {
+      id: true,
+      name: true,
+      image: true,
+      creatorProfile: { select: { displayName: true, sanityCreatorSlug: true } },
+    },
+  },
+} as const;
+
+export async function listPublishedMemberPosts(limit = 48) {
+  const items = await prisma.creatorUpload.findMany({
+    where: {
+      status: "published",
+      visibility: "public",
+    },
+    orderBy: { publishedAt: "desc" },
+    take: Math.min(Math.max(limit, 1), 100),
+    include: publicPostInclude,
+  });
+  return items.map((item) => mapPublicMemberPost(item));
+}
+
+export async function getPublicMemberPost(id: string) {
+  const item = await prisma.creatorUpload.findFirst({
+    where: {
+      id,
+      status: "published",
+      visibility: { in: ["public", "followers", "subscribers"] },
+    },
+    include: publicPostInclude,
+  });
+  if (!item) return null;
+  return mapPublicMemberPost(item);
+}
+
+type PublishedMemberPostRecord = NonNullable<
+  Awaited<
+    ReturnType<
+      typeof prisma.creatorUpload.findFirst<{ include: typeof publicPostInclude }>
+    >
+  >
+>;
+
+export function mapPublicMemberPost(record: PublishedMemberPostRecord) {
+  const mapped = mapUpload(record)!;
+  return {
+    id: mapped.id,
+    title: mapped.title,
+    description: mapped.description,
+    mediaType: mapped.mediaType,
+    thumbnailUrl: mapped.thumbnailUrl,
+    mediaUrl: mapped.mediaUrl,
+    isPremium: mapped.isPremium,
+    ppvPriceCents: mapped.ppvPriceCents,
+    categories: mapped.categories,
+    tags: mapped.tags,
+    publishedAt: record.publishedAt?.toISOString() ?? mapped.updatedAt.toISOString(),
+    creator: {
+      id: record.creator.id,
+      name: record.creator.creatorProfile?.displayName ?? record.creator.name,
+      image: record.creator.image,
+      slug: record.creator.creatorProfile?.sanityCreatorSlug ?? null,
+    },
+  };
+}
+
 export async function createCreatorUpload(creatorUserId: string, input: CreateUploadInput) {
   const scan = scanContentForModeration({
     title: input.title,
