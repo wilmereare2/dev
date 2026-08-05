@@ -1,7 +1,12 @@
-import { StubRoutePage, stubMetadata } from "@/features/site/stub-route-page";
+import type { Metadata } from "next";
+import { LegalPage } from "@/features/legal/legal-page";
+import { aboutContent } from "@/lib/legal/content";
 
-export const metadata = stubMetadata("about");
+export const metadata: Metadata = {
+  title: aboutContent.title,
+  description: aboutContent.description,
+};
 
 export default function AboutPage() {
-  return <StubRoutePage slug="about" />;
+  return <LegalPage {...aboutContent} showContact />;
 }

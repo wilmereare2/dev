@@ -16,6 +16,8 @@ export async function fetchExploreContent(): Promise<SanityContentCard[]> {
 export type ContentDetail = Omit<SanityContentCard, "creators"> & {
   videoUrl?: string;
   playbackUrl?: string;
+  streamAssetId?: string;
+  isPremium?: boolean;
   categories?: { title: string; slug: string }[];
   tags?: { title: string; slug: string }[];
   creators?: { _id: string; name: string; slug: string; avatar?: unknown }[];

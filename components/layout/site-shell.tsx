@@ -1,6 +1,7 @@
 import { Footer } from "@/components/layout/footer";
 import { Navbar } from "@/components/layout/navbar";
 import { AgeGateBanner } from "@/components/layout/age-gate-banner";
+import { CookieConsentBanner } from "@/components/layout/cookie-consent-banner";
 import type { NavItem } from "@/types";
 
 type SiteShellProps = {
@@ -20,6 +21,7 @@ export function SiteShell({ children, ageGateText, navItems, compactFooter }: Si
       {ageGateText ? <AgeGateBanner message={ageGateText} /> : null}
       <Navbar navItems={navItems} />
       <main className="relative flex-1">{children}</main>
+      <CookieConsentBanner />
       <Footer compact={compactFooter} />
     </div>
   );

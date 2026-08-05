@@ -1,7 +1,12 @@
-import { StubRoutePage, stubMetadata } from "@/features/site/stub-route-page";
+import type { Metadata } from "next";
+import { LegalPage } from "@/features/legal/legal-page";
+import { privacyContent } from "@/lib/legal/content";
 
-export const metadata = stubMetadata("privacy");
+export const metadata: Metadata = {
+  title: privacyContent.title,
+  description: privacyContent.description,
+};
 
 export default function PrivacyPage() {
-  return <StubRoutePage slug="privacy" />;
+  return <LegalPage {...privacyContent} showContact />;
 }

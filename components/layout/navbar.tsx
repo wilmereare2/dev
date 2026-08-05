@@ -4,9 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, Search, User, X } from "lucide-react";
+import { Menu, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { MobileUserLinks, UserMenu } from "@/components/layout/user-menu";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "@/types";
 
@@ -65,12 +66,7 @@ export function Navbar({ navItems }: NavbarProps) {
             </Link>
           </Button>
           <ThemeToggle />
-          <Button asChild variant="secondary" size="sm" className="hidden sm:inline-flex">
-            <Link href="/account">
-              <User className="size-4" />
-              Account
-            </Link>
-          </Button>
+          <UserMenu />
           <Button
             variant="ghost"
             size="icon"
@@ -110,13 +106,7 @@ export function Navbar({ navItems }: NavbarProps) {
                   ) : null}
                 </Link>
               ))}
-              <Link
-                href="/account"
-                onClick={() => setOpen(false)}
-                className="block rounded-lg px-3 py-2.5 text-sm font-medium text-accent"
-              >
-                Account
-              </Link>
+              <MobileUserLinks onNavigate={() => setOpen(false)} />
             </div>
           </motion.nav>
         ) : null}

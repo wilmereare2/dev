@@ -89,6 +89,67 @@ export const content = defineType({
       initialValue: false,
     }),
     defineField({
+      name: "isPremium",
+      title: "Premium only",
+      type: "boolean",
+      initialValue: false,
+      description: "Requires an active subscription to play.",
+    }),
+    defineField({
+      name: "status",
+      title: "Workflow status",
+      type: "string",
+      options: {
+        list: [
+          { title: "Draft", value: "draft" },
+          { title: "Pending review", value: "pending_review" },
+          { title: "Approved", value: "approved" },
+          { title: "Published", value: "published" },
+          { title: "Rejected", value: "rejected" },
+          { title: "Flagged", value: "flagged" },
+          { title: "Removed", value: "removed" },
+        ],
+      },
+      initialValue: "published",
+    }),
+    defineField({
+      name: "ownerUserId",
+      title: "Owner user ID",
+      type: "string",
+      description: "Platform user ID of the verified creator who owns this upload.",
+    }),
+    defineField({
+      name: "visibility",
+      title: "Visibility",
+      type: "string",
+      options: {
+        list: [
+          { title: "Public", value: "public" },
+          { title: "Followers", value: "followers" },
+          { title: "Subscribers", value: "subscribers" },
+          { title: "Private", value: "private" },
+        ],
+      },
+      initialValue: "public",
+    }),
+    defineField({
+      name: "ppvPriceCents",
+      title: "PPV price (cents)",
+      type: "number",
+      validation: (rule) => rule.min(0),
+    }),
+    defineField({
+      name: "scheduledAt",
+      title: "Scheduled publish",
+      type: "datetime",
+    }),
+    defineField({
+      name: "streamAssetId",
+      title: "Stream asset ID",
+      type: "string",
+      description: "Mux or Cloudflare Stream playback ID for signed delivery.",
+    }),
+    defineField({
       name: "publishedAt",
       title: "Published at",
       type: "datetime",

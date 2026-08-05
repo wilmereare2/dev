@@ -59,9 +59,50 @@ export const CONTENT_BY_SLUG_QUERY = `*[_type == "content" && slug.current == $s
   "creators": creators[]->{ _id, name, "slug": slug.current, avatar },
   "categories": categories[]->{ title, "slug": slug.current },
   "tags": tags[]->{ title, "slug": slug.current },
+  "isPremium": coalesce(isPremium, false),
+  "streamAssetId": streamAssetId,
   seo
 }`;
 
 export const EXPLORE_CONTENT_QUERY = `*[_type == "content"] | order(publishedAt desc)[0...48] {
+  ${contentCardFields}
+}`;
+
+export const NEWEST_CONTENT_QUERY = `*[_type == "content"] | order(publishedAt desc)[0...48] {
+  ${contentCardFields}
+}`;
+
+export const POPULAR_CONTENT_QUERY = `*[_type == "content"] | order(featured desc, publishedAt desc)[0...48] {
+  ${contentCardFields}
+}`;
+
+export const TRENDING_CONTENT_QUERY = `*[_type == "content"] | order(featured desc, publishedAt desc)[0...24] {
+  ${contentCardFields}
+}`;
+
+export const SEARCH_CONTENT_QUERY = `*[_type == "content" && (
+  title match $term + "*" ||
+  synopsis match $term + "*" ||
+  count(creators[]->name[match $term + "*"]) > 0
+)] | order(publishedAt desc)[0...48] {
+  ${contentCardFields}
+}`;
+
+export const CATEGORIES_INDEX_QUERY = `*[_type == "category"] | order(title asc) {
+  _id,
+  title,
+  "slug": slug.current,
+  description,
+  coverImage
+}`;
+
+export const TAGS_INDEX_QUERY = `*[_type == "tag"] | order(title asc) {
+  _id,
+  title,
+  "slug": slug.current,
+  description
+}`;
+
+export const CONTENT_BY_IDS_QUERY = `*[_type == "content" && _id in $ids] {
   ${contentCardFields}
 }`;

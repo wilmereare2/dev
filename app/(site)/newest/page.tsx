@@ -1,7 +1,19 @@
-import { StubRoutePage, stubMetadata } from "@/features/site/stub-route-page";
+import type { Metadata } from "next";
+import { CatalogGridPage } from "@/components/catalog/catalog-grid-page";
+import { fetchNewestContent } from "@/services/sanity/catalog";
 
-export const metadata = stubMetadata("newest");
+export const metadata: Metadata = {
+  title: "Newest",
+  description: "Latest content on manuelaX.",
+};
 
-export default function NewestPage() {
-  return <StubRoutePage slug="newest" />;
+export default async function NewestPage() {
+  const items = await fetchNewestContent();
+  return (
+    <CatalogGridPage
+      title="Newest"
+      description={`${items.length} latest uploads`}
+      items={items}
+    />
+  );
 }

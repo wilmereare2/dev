@@ -1,6 +1,14 @@
 import type { Role } from "@/types";
 
-const ROLES: readonly Role[] = ["ADMIN", "EDITOR", "MODERATOR", "VIEWER", "USER"];
+const ROLES: readonly Role[] = [
+  "ADMIN",
+  "EDITOR",
+  "MODERATOR",
+  "VIEWER",
+  "USER",
+  "CREATOR",
+  "BUSINESS",
+];
 
 export function parseRole(value: unknown): Role | undefined {
   if (typeof value !== "string") return undefined;

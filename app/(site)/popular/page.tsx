@@ -1,7 +1,19 @@
-import { StubRoutePage, stubMetadata } from "@/features/site/stub-route-page";
+import type { Metadata } from "next";
+import { CatalogGridPage } from "@/components/catalog/catalog-grid-page";
+import { fetchPopularContent } from "@/services/sanity/catalog";
 
-export const metadata = stubMetadata("popular");
+export const metadata: Metadata = {
+  title: "Popular",
+  description: "Popular content on manuelaX.",
+};
 
-export default function PopularPage() {
-  return <StubRoutePage slug="popular" />;
+export default async function PopularPage() {
+  const items = await fetchPopularContent();
+  return (
+    <CatalogGridPage
+      title="Popular"
+      description={`${items.length} popular titles`}
+      items={items}
+    />
+  );
 }

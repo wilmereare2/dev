@@ -2,8 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContentCard } from "@/components/content/content-card";
+import { ContentActions } from "@/components/content/content-actions";
+import { ContentPlayer } from "@/components/content/content-player";
+import { ReportContentForm } from "@/features/content/report-content-form";
+import { ContentComments } from "@/features/content/content-comments";
 import { SanityImage } from "@/components/media/sanity-image";
+import { auth } from "@/lib/auth/auth";
+import { userHasActiveSubscription } from "@/lib/auth/entitlements";
 import { fetchContentBySlug, fetchExploreContent } from "@/services/sanity/content";
+import { listWatchHistory } from "@/services/user/library";
 import { encodeRouteParam } from "@/lib/site/route-params";
 import { sanityImageUrl } from "@/lib/sanity/image";
 import { formatDuration } from "@/utils/format";
@@ -25,6 +32,15 @@ export default async function ContentDetailPage({ params }: PageProps) {
   const item = await fetchContentBySlug(slug);
   if (!item) notFound();
 
+  const session = await auth();
+  const userId = session?.user?.id;
+  const hasSubscription = userId ? await userHasActiveSubscription(userId) : false;
+  let initialProgressMs = 0;
+  if (userId) {
+    const history = await listWatchHistory(userId, 100);
+    initialProgressMs = history.find((entry) => entry.contentId === item._id)?.progressMs ?? 0;
+  }
+
   const thumb = sanityImageUrl(item.thumbnail, 1400);
   const duration = formatDuration(item.durationSeconds);
   const related = (await fetchExploreContent()).filter((c) => c.slug !== slug).slice(0, 4);
@@ -34,12 +50,16 @@ export default async function ContentDetailPage({ params }: PageProps) {
       <section className="relative border-b border-border/40">
         <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="relative aspect-video overflow-hidden rounded-2xl border border-border/50 bg-black shadow-2xl">
-            {item.playbackUrl ? (
-              <video
-                className="h-full w-full object-contain"
-                controls
+            {item.playbackUrl || item.streamAssetId ? (
+              <ContentPlayer
+                contentId={item._id}
+                slug={item.slug}
+                playbackUrl={item.playbackUrl}
                 poster={thumb ?? undefined}
-                src={item.playbackUrl}
+                signedIn={Boolean(userId)}
+                initialProgressMs={initialProgressMs}
+                isPremium={Boolean((item as { isPremium?: boolean }).isPremium)}
+                hasSubscription={hasSubscription}
               />
             ) : thumb ? (
               <SanityImage src={thumb} alt={item.title} fill className="object-cover" priority />
@@ -76,6 +96,16 @@ export default async function ContentDetailPage({ params }: PageProps) {
         {item.synopsis ? (
           <p className="mt-6 max-w-3xl text-base leading-relaxed text-muted-foreground">{item.synopsis}</p>
         ) : null}
+        <div className="mt-6">
+          <ContentActions contentId={item._id} signedIn={Boolean(userId)} />
+        </div>
+        <div className="mt-8 rounded-2xl border border-border bg-surface/60 p-5">
+          <h2 className="text-sm font-semibold">Report content</h2>
+          <div className="mt-4">
+            <ReportContentForm contentId={item._id} signedIn={Boolean(userId)} />
+          </div>
+        </div>
+        <ContentComments contentId={item._id} />
         {item.categories?.length ? (
           <div className="mt-6 flex flex-wrap gap-2">
             {item.categories.map((cat) => (

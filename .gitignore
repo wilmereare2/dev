@@ -54,3 +54,4 @@ dist
 .vscode
 
 .vercel
+.env*

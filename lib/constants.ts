@@ -15,7 +15,8 @@ export const MAIN_NAV: NavItem[] = [
   { href: "/categories", label: "Categories" },
   { href: "/trending", label: "Trending" },
   { href: "/newest", label: "Newest" },
-  { href: "/blog", label: "Blog" },
+  { href: "/library", label: "Library" },
+  { href: "/subscriptions", label: "Subscriptions" },
 ];
 
 export const FOOTER_LINKS = {
@@ -30,7 +31,7 @@ export const FOOTER_LINKS = {
     { href: "/about", label: "About" },
     { href: "/contact", label: "Contact" },
     { href: "/faq", label: "FAQ" },
-    { href: "/blog", label: "Blog" },
+    { href: "/settings/profile", label: "Settings" },
   ],
   legal: [
     { href: "/privacy", label: "Privacy" },

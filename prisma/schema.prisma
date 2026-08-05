@@ -1,15 +1,15 @@
-// Phase 1 uses SQLite so Windows dev works with Node only (no Docker).
-// Production target: PostgreSQL via Neon or Supabase — change provider + DATABASE_URL.
+// PostgreSQL (Neon/Supabase) — production + local dev via DATABASE_URL.
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-// Role values: ADMIN | EDITOR | MODERATOR | VIEWER | USER (validated in app layer)
+// Role values: ADMIN | EDITOR | MODERATOR | VIEWER | USER | CREATOR
 model User {
   id            String         @id @default(cuid())
   name          String?
@@ -20,8 +20,36 @@ model User {
   role          String         @default("USER")
   accounts      Account[]
   sessions      Session[]
+  settings      UserSettings?
+  twoFactor     TwoFactorAuth?
   bookmarks     Bookmark[]
+  watchLater    WatchLater[]
   watchHistory  WatchHistory[]
+  creatorFollows CreatorFollow[]
+  contentLikes  ContentLike[]
+  collections   Collection[]
+  subscriptions Subscription[]
+  payments      PaymentRecord[]
+  notifications Notification[]
+  reports       ContentReport[] @relation("Reporter")
+  tickets       SupportTicket[]
+  termsAccepted TermsAcceptance[]
+  blockedUsers  BlockedUser[]   @relation("Blocker")
+  blockedBy     BlockedUser[]   @relation("Blocked")
+  comments      Comment[]
+  referralsMade Referral[]      @relation("ReferralsMade")
+  referralReceived Referral?    @relation("ReferralReceived")
+  creatorProfile   CreatorProfile?
+  businessMembers  BusinessMember[]
+  ownedBusinessAccounts BusinessAccount[] @relation("BusinessOwner")
+  creatorUploads   CreatorUpload[] @relation("UploadCreator")
+  promotionalPosts PromotionalPost[]
+  creatorSubscriptionsAsCreator CreatorSubscription[] @relation("CreatorSubCreator")
+  creatorSubscriptionsAsSubscriber CreatorSubscription[] @relation("CreatorSubSubscriber")
+  contentPurchases ContentPurchase[]
+  tipsSent         Tip[] @relation("TipFrom")
+  tipsReceived     Tip[] @relation("TipTo")
+  moderationActions ContentModerationLog[] @relation("ModerationActor")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -65,8 +93,58 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model UserSettings {
+  userId              String    @id
+  bio                 String?
+  locale              String    @default("en")
+  showActivity        Boolean   @default(true)
+  anonymousMode       Boolean   @default(false)
+  hideSubscriptions   Boolean   @default(false)
+  emailNotifications  Boolean   @default(true)
+  pushNotifications   Boolean   @default(true)
+  marketingEmails     Boolean   @default(false)
+  uploadAlerts        Boolean   @default(true)
+  liveAlerts          Boolean   @default(true)
+  promoAlerts         Boolean   @default(false)
+  dateOfBirth         DateTime?
+  ageVerifiedAt       DateTime?
+  ageVerificationMethod String?
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TwoFactorAuth {
+  userId      String  @id
+  secret      String
+  enabled     Boolean @default(false)
+  backupCodes String?
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TermsAcceptance {
+  id         String   @id @default(cuid())
+  userId     String
+  termsVersion String @default("2026-01")
+  privacyVersion String @default("2026-01")
+  acceptedAt DateTime @default(now())
+  ipAddress  String?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 /// contentId is a Sanity document _id (CMS is source of truth for media).
 model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  contentId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId])
+  @@index([userId])
+}
+
+model WatchLater {
   id        String   @id @default(cuid())
   userId    String
   contentId String
@@ -89,6 +167,165 @@ model WatchHistory {
   @@index([contentId])
 }
 
+model CreatorFollow {
+  id        String   @id @default(cuid())
+  userId    String
+  creatorId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, creatorId])
+  @@index([userId])
+  @@index([creatorId])
+}
+
+model ContentLike {
+  id        String   @id @default(cuid())
+  userId    String
+  contentId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId])
+  @@index([userId])
+}
+
+model Collection {
+  id          String           @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items       CollectionItem[]
+
+  @@index([userId])
+}
+
+model CollectionItem {
+  id           String     @id @default(cuid())
+  collectionId String
+  contentId    String
+  sortOrder    Int        @default(0)
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, contentId])
+  @@index([collectionId])
+}
+
+model SubscriptionPlan {
+  id          String         @id @default(cuid())
+  slug        String         @unique
+  name        String
+  description String?
+  interval    String
+  priceCents  Int
+  currency    String         @default("usd")
+  trialDays   Int            @default(0)
+  active      Boolean        @default(true)
+  sortOrder   Int            @default(0)
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                   String           @id @default(cuid())
+  userId               String
+  planId               String
+  status               String           @default("inactive")
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean          @default(false)
+  canceledAt           DateTime?
+  provider             String           @default("ccbill")
+  providerSubscriptionId String?
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                 SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+model PaymentRecord {
+  id           String   @id @default(cuid())
+  userId       String
+  amountCents  Int
+  currency     String   @default("usd")
+  status       String
+  provider     String   @default("ccbill")
+  providerRef  String?
+  description  String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+model ContentReport {
+  id          String   @id @default(cuid())
+  reporterId  String
+  contentId   String?
+  targetUserId String?
+  reason      String
+  details     String?
+  status      String   @default("open")
+  createdAt   DateTime @default(now())
+  reporter    User     @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String?
+  email     String
+  subject   String
+  message   String
+  status    String   @default("open")
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+}
+
+model BlockedUser {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String
+  contentId String
+  body      String
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([contentId, approved])
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   actorId   String?
@@ -100,4 +337,189 @@ model AuditLog {
 
   @@index([createdAt])
   @@index([actorId])
+}
+
+model Referral {
+  id             String   @id @default(cuid())
+  referrerId     String
+  referredUserId String?  @unique
+  code           String   @unique
+  rewardCents    Int      @default(0)
+  createdAt      DateTime @default(now())
+  referrer       User     @relation("ReferralsMade", fields: [referrerId], references: [id], onDelete: Cascade)
+  referred       User?    @relation("ReferralReceived", fields: [referredUserId], references: [id], onDelete: SetNull)
+
+  @@index([referrerId])
+}
+
+/// Links a platform User (CREATOR role) to Sanity creator document + verification.
+model CreatorProfile {
+  userId               String    @id
+  sanityCreatorId      String?   @unique
+  sanityCreatorSlug    String?   @unique
+  displayName          String?
+  bio                  String?
+  verificationStatus   String    @default("pending")
+  verifiedAt           DateTime?
+  subscriptionPriceCents Int?
+  suspendedAt          DateTime?
+  suspensionReason     String?
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([verificationStatus])
+}
+
+/// Studio / agency managing multiple creators.
+model BusinessAccount {
+  id              String           @id @default(cuid())
+  name            String
+  slug            String           @unique
+  description     String?
+  bannerUrl       String?
+  verifiedAt      DateTime?
+  affiliateUrl    String?
+  owner           User?            @relation("BusinessOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  ownerUserId     String?
+  members         BusinessMember[]
+  promotionalPosts PromotionalPost[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model BusinessMember {
+  id         String          @id @default(cuid())
+  businessId String
+  userId     String
+  role       String          @default("manager")
+  business   BusinessAccount @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([userId])
+}
+
+/// Creator upload workflow — syncs to Sanity on approval.
+model CreatorUpload {
+  id                String   @id @default(cuid())
+  creatorUserId     String
+  sanityContentId   String?  @unique
+  title             String
+  description       String?
+  mediaType         String   @default("video")
+  status            String   @default("draft")
+  visibility        String   @default("public")
+  thumbnailUrl      String?
+  mediaUrl          String?
+  galleryImages     String?
+  tags              String?
+  categories        String?
+  scheduledAt       DateTime?
+  publishedAt       DateTime?
+  isPremium         Boolean  @default(false)
+  ppvPriceCents     Int?
+  fileSizeBytes     Int?
+  durationSeconds   Int?
+  resolution        String?
+  viewCount         Int      @default(0)
+  likeCount         Int      @default(0)
+  purchaseCount     Int      @default(0)
+  favoriteCount     Int      @default(0)
+  moderationNotes   String?
+  aiModerationScore Float?
+  aiModerationFlags String?
+  reviewedById      String?
+  reviewedAt        DateTime?
+  submittedAt       DateTime?
+  creator           User     @relation("UploadCreator", fields: [creatorUserId], references: [id], onDelete: Cascade)
+  moderationLogs    ContentModerationLog[]
+  purchases         ContentPurchase[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([creatorUserId, status])
+  @@index([status, submittedAt])
+}
+
+model PromotionalPost {
+  id                String           @id @default(cuid())
+  creatorUserId     String?
+  businessId        String?
+  title             String
+  body              String?
+  bannerUrl         String?
+  teaserVideoUrl    String?
+  couponCode        String?
+  discountPercent   Int?
+  externalUrl       String?
+  featuredContentId String?
+  expiresAt         DateTime?
+  status            String           @default("draft")
+  creator           User?            @relation(fields: [creatorUserId], references: [id], onDelete: Cascade)
+  business          BusinessAccount? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([creatorUserId, status])
+  @@index([businessId])
+}
+
+model CreatorSubscription {
+  id                 String    @id @default(cuid())
+  subscriberId       String
+  creatorUserId      String
+  status             String    @default("active")
+  priceCents         Int
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  subscriber         User      @relation("CreatorSubSubscriber", fields: [subscriberId], references: [id], onDelete: Cascade)
+  creator            User      @relation("CreatorSubCreator", fields: [creatorUserId], references: [id], onDelete: Cascade)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([subscriberId, creatorUserId])
+  @@index([creatorUserId, status])
+}
+
+model ContentPurchase {
+  id          String         @id @default(cuid())
+  userId      String
+  uploadId    String?
+  contentId   String?
+  amountCents Int
+  type        String         @default("ppv")
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  upload      CreatorUpload? @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now())
+
+  @@index([userId])
+  @@index([uploadId])
+  @@index([contentId])
+}
+
+model Tip {
+  id              String   @id @default(cuid())
+  fromUserId      String
+  toCreatorUserId String
+  amountCents     Int
+  message         String?
+  fromUser        User     @relation("TipFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toCreator       User     @relation("TipTo", fields: [toCreatorUserId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@index([toCreatorUserId, createdAt])
+}
+
+model ContentModerationLog {
+  id        String         @id @default(cuid())
+  uploadId  String
+  actorId   String?
+  action    String
+  reason    String?
+  upload    CreatorUpload  @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  actor     User?          @relation("ModerationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt DateTime       @default(now())
+
+  @@index([uploadId, createdAt])
 }

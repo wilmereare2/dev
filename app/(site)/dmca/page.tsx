@@ -1,7 +1,12 @@
-import { StubRoutePage, stubMetadata } from "@/features/site/stub-route-page";
+import type { Metadata } from "next";
+import { LegalPage } from "@/features/legal/legal-page";
+import { dmcaContent } from "@/lib/legal/content";
 
-export const metadata = stubMetadata("dmca");
+export const metadata: Metadata = {
+  title: dmcaContent.title,
+  description: dmcaContent.description,
+};
 
 export default function DmcaPage() {
-  return <StubRoutePage slug="dmca" />;
+  return <LegalPage {...dmcaContent} showContact />;
 }

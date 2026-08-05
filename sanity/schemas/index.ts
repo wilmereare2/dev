@@ -5,4 +5,6 @@ import { seo } from "./seo";
 import { siteSettings } from "./siteSettings";
 import { tag } from "./tag";
 
-export const schemaTypes = [seo, siteSettings, category, tag, creator, content];
+import { promotionalPost } from "./promotionalPost";
+
+export const schemaTypes = [seo, siteSettings, category, tag, creator, content, promotionalPost];

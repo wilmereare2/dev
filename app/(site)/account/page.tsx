@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth/auth";
 import { AccountPanel } from "@/features/auth/account-panel";
@@ -11,5 +12,11 @@ export const metadata: Metadata = {
 
 export default async function AccountPage() {
   const session = await auth();
-  return <AccountPanel session={session} />;
+  const googleAuthEnabled = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
+
+  return (
+    <Suspense fallback={null}>
+      <AccountPanel session={session} googleAuthEnabled={googleAuthEnabled} />
+    </Suspense>
+  );
 }
