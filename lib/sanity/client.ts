@@ -16,7 +16,19 @@ const baseConfig: ClientConfig = {
   stega: { enabled: false },
 };
 
-export const sanityClient = sanityConfigured ? createClient(baseConfig) : null;
+function buildSanityClient() {
+  if (!sanityConfigured) return null;
+  try {
+    return createClient(baseConfig);
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[sanity] Failed to initialize client:", error);
+    }
+    return null;
+  }
+}
+
+export const sanityClient = buildSanityClient();
 
 /**
  * Runs a Sanity fetch without throwing — returns fallback when offline or blocked.
