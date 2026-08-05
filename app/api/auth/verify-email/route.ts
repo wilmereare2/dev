@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { sendVerificationEmailForUser, verifyEmailToken } from "@/lib/auth/verification";
+import { verifyEmailToken } from "@/lib/auth/verification";
 
 const querySchema = z.object({
   email: z.string().email(),

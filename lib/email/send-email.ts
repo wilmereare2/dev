@@ -18,14 +18,11 @@ export async function sendEmail(input: SendEmailInput) {
   const transport = createTransport();
 
   if (!transport) {
-    if (process.env.NODE_ENV === "development") {
-      console.info(
-        `[email] To: ${input.to}\nSubject: ${input.subject}\n\n${input.text}\n`,
-      );
-      return { ok: true as const, dev: true as const };
-    }
-
-    throw new Error("EMAIL_SERVER is not configured.");
+    console.warn("[email] EMAIL_SERVER is not configured; message was not delivered.");
+    console.info(
+      `[email] To: ${input.to}\nSubject: ${input.subject}\n\n${input.text}\n`,
+    );
+    return { ok: true as const, dev: true as const };
   }
 
   await transport.sendMail({

@@ -32,6 +32,8 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
+  const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
+  const [verificationEmailSent, setVerificationEmailSent] = useState<boolean | null>(null);
   const [wantsToCreate, setWantsToCreate] = useState(false);
   const passwordResetComplete = searchParams.get("reset") === "1";
 
@@ -39,6 +41,8 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
     if (searchParams.get("verified") === "1") {
       setNotice("Email verified. You can sign in now.");
       setPendingVerificationEmail(null);
+      setVerificationUrl(null);
+      setVerificationEmailSent(null);
       setMode("signin");
     }
 
@@ -75,14 +79,23 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: targetEmail }),
       });
-      const payload = (await response.json()) as { error?: string; message?: string };
+      const payload = (await response.json()) as {
+        error?: string;
+        message?: string;
+        verifyUrl?: string;
+        emailSent?: boolean;
+      };
 
       if (!response.ok) {
         setError(payload.error ?? "Could not resend verification email.");
         return;
       }
 
-      setNotice(`Verification email sent to ${targetEmail}.`);
+      setNotice(payload.message ?? `Verification email sent to ${targetEmail}.`);
+      setVerificationEmailSent(payload.emailSent ?? false);
+      if (payload.verifyUrl) {
+        setVerificationUrl(payload.verifyUrl);
+      }
     } catch {
       setError("Could not resend verification email.");
     } finally {
@@ -146,9 +159,19 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
           Check your inbox
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-          We sent a verification link to{" "}
-          <span className="font-medium text-foreground">{pendingVerificationEmail}</span>. Open it to
-          activate your account, then sign in.
+          {verificationEmailSent === false ? (
+            <>
+              Email delivery is not configured yet, so we could not send a message to{" "}
+              <span className="font-medium text-foreground">{pendingVerificationEmail}</span>. Use
+              the verification link below to activate your account, then sign in.
+            </>
+          ) : (
+            <>
+              We sent a verification link to{" "}
+              <span className="font-medium text-foreground">{pendingVerificationEmail}</span>. Open
+              it to activate your account, then sign in.
+            </>
+          )}
         </p>
 
         <div className="mt-8 space-y-4 rounded-2xl border border-border/60 bg-surface/60 p-6 backdrop-blur-sm">
@@ -163,10 +186,28 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
             </p>
           ) : null}
 
-          <p className="text-sm text-muted-foreground">
-            In local development, the verification link is printed in your terminal if email is not
-            configured.
-          </p>
+          {verificationUrl ? (
+            <div className="space-y-2 rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm">
+              <p className="font-medium text-foreground">Verify your account</p>
+              <p className="text-muted-foreground">
+                Configure <code className="text-xs">EMAIL_SERVER</code> on your host to deliver real
+                messages. Until then, use this one-time link:
+              </p>
+              <p>
+                <Link href={verificationUrl} className="font-medium text-accent underline underline-offset-2">
+                  Open verification link
+                </Link>
+              </p>
+            </div>
+          ) : verificationEmailSent ? (
+            <p className="text-sm text-muted-foreground">
+              Did not receive it? Check spam, or click resend below.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Click resend below to generate a fresh verification link.
+            </p>
+          )}
 
           <div className="flex flex-wrap gap-3">
             <Button
@@ -182,6 +223,8 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
               variant="outline"
               onClick={() => {
                 setPendingVerificationEmail(null);
+                setVerificationUrl(null);
+                setVerificationEmailSent(null);
                 setMode("signin");
                 setEmail(pendingVerificationEmail);
               }}
@@ -222,6 +265,8 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
           error?: string;
           email?: string;
           devAutoVerified?: boolean;
+          verifyUrl?: string;
+          emailSent?: boolean;
           message?: string;
         };
         if (!response.ok) {
@@ -238,6 +283,11 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
         }
 
         setPendingVerificationEmail(registeredEmail);
+        setVerificationUrl(payload.verifyUrl ?? null);
+        setVerificationEmailSent(payload.emailSent ?? null);
+        if (payload.message) {
+          setNotice(payload.message);
+        }
         return;
       }
 

@@ -62,8 +62,20 @@ export async function sendVerificationEmailForUser(email: string, appUrl?: strin
   }
 
   const token = await createEmailVerificationToken(identifier);
-  const { sendVerificationEmail } = await import("@/lib/email/send-verification-email");
-  await sendVerificationEmail({ email: identifier, token, name: user.name, appUrl });
+  const { buildVerificationUrl, sendVerificationEmail } = await import(
+    "@/lib/email/send-verification-email"
+  );
+  const verifyUrl = buildVerificationUrl(identifier, token, appUrl);
+  const emailResult = await sendVerificationEmail({
+    email: identifier,
+    token,
+    name: user.name,
+    appUrl,
+  });
 
-  return { ok: true as const };
+  return {
+    ok: true as const,
+    sent: !("dev" in emailResult && emailResult.dev),
+    verifyUrl: "dev" in emailResult && emailResult.dev ? verifyUrl : undefined,
+  };
 }

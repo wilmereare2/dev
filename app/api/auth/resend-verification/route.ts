@@ -32,7 +32,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      message: "Verification email sent.",
+      message: result.sent
+        ? "Verification email sent."
+        : "Email delivery is not configured. Use the verification link below.",
+      verifyUrl: result.verifyUrl,
+      emailSent: result.sent,
     });
   } catch {
     return NextResponse.json(

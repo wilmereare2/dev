@@ -42,9 +42,13 @@ export async function POST(request: Request) {
       ok: true,
       email: result.email,
       devAutoVerified: result.devAutoVerified,
+      verifyUrl: result.verifyUrl,
+      emailSent: result.emailSent,
       message: result.devAutoVerified
         ? "Account created. You can sign in now."
-        : "Check your email for a verification link before signing in.",
+        : result.emailSent
+          ? "Check your email for a verification link before signing in."
+          : "Account created. Use the verification link below to activate your account.",
     });
   } catch (error) {
     if (process.env.NODE_ENV === "development") {

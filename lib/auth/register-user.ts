@@ -32,11 +32,23 @@ export async function registerUser(input: RegisterInput, appUrl?: string) {
     },
   });
 
+  let verifyUrl: string | undefined;
+  let emailSent = false;
+
   if (!devAutoVerified) {
-    await sendVerificationEmailForUser(email, appUrl);
+    const sendResult = await sendVerificationEmailForUser(email, appUrl);
+    verifyUrl = sendResult.ok ? sendResult.verifyUrl : undefined;
+    emailSent = sendResult.ok ? sendResult.sent : false;
   } else {
     console.info(`[dev] Auto-verified ${email}. Sign in is enabled immediately.`);
   }
 
-  return { ok: true as const, email, devAutoVerified, userId: created.id };
+  return {
+    ok: true as const,
+    email,
+    devAutoVerified,
+    userId: created.id,
+    verifyUrl,
+    emailSent,
+  };
 }
