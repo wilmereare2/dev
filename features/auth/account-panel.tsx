@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut } from "next-auth/react";
 import { clearAgeVerificationCookie } from "@/features/compliance/verify-age-form";
+import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { Loader2, Mail, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -105,60 +106,67 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
 
   if (session?.user) {
     return (
-      <section className="mx-auto max-w-lg px-4 py-20 sm:px-6 lg:px-8">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Account</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Signed in as {session.user.email}</p>
-        <div className="mt-8 rounded-2xl border border-border/60 bg-surface/60 p-6 backdrop-blur-sm">
-          <p className="text-sm text-muted-foreground">
-            Role:{" "}
-            <span className="font-medium text-foreground">{session.user.role ?? "USER"}</span>
-          </p>
-          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Manage your library, settings, and subscription from your account hub.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Button asChild>
-              <Link href="/create">Create & upload</Link>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href="/library">Library</Link>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href="/settings/profile">Settings</Link>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href="/subscriptions">Subscriptions</Link>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href="/">Back to home</Link>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={async () => {
-                await clearAgeVerificationCookie();
-                await signOut({ callbackUrl: "/account" });
-              }}
-            >
-              Sign out
-            </Button>
+      <AuthSplitLayout>
+        <div className="rounded-2xl border border-border/60 bg-surface/70 p-6 shadow-xl backdrop-blur-md sm:p-8">
+          <div className="flex items-center gap-2 text-accent">
+            <Shield className="size-4" aria-hidden />
+            <p className="font-display text-xs font-semibold uppercase tracking-[0.22em]">Account</p>
+          </div>
+          <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight sm:text-3xl">Welcome back</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Signed in as {session.user.email}</p>
+          <div className="mt-6 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Role:{" "}
+              <span className="font-medium text-foreground">{session.user.role ?? "USER"}</span>
+            </p>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Manage your library, settings, and subscription from your account hub.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button asChild>
+                <Link href="/create">Create & upload</Link>
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href="/library">Library</Link>
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href="/settings/profile">Settings</Link>
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href="/subscriptions">Subscriptions</Link>
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href="/">Back to home</Link>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={async () => {
+                  await clearAgeVerificationCookie();
+                  await signOut({ callbackUrl: "/account" });
+                }}
+              >
+                Sign out
+              </Button>
+            </div>
           </div>
         </div>
-      </section>
+      </AuthSplitLayout>
     );
   }
 
   if (pendingVerificationEmail) {
     return (
-      <section className="mx-auto max-w-lg px-4 py-20 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-2 text-accent">
-          <Mail className="size-4" aria-hidden />
-          <p className="font-display text-xs font-semibold uppercase tracking-[0.22em]">Verify email</p>
-        </div>
-        <h1 className="mt-4 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-          Check your inbox
-        </h1>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+      <AuthSplitLayout>
+        <div className="rounded-2xl border border-border/60 bg-surface/70 p-6 shadow-xl backdrop-blur-md sm:p-8">
+          <div className="flex items-center gap-2 text-accent">
+            <Mail className="size-4" aria-hidden />
+            <p className="font-display text-xs font-semibold uppercase tracking-[0.22em]">Verify email</p>
+          </div>
+          <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+            Check your inbox
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
           {verificationEmailSent === false ? (
             <>
               Email delivery is not configured yet, so we could not send a message to{" "}
@@ -174,7 +182,7 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
           )}
         </p>
 
-        <div className="mt-8 space-y-4 rounded-2xl border border-border/60 bg-surface/60 p-6 backdrop-blur-sm">
+        <div className="mt-6 space-y-4">
           {notice ? (
             <p className="rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-accent">
               {notice}
@@ -233,7 +241,8 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
             </Button>
           </div>
         </div>
-      </section>
+        </div>
+      </AuthSplitLayout>
     );
   }
 
@@ -375,12 +384,13 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
   }
 
   return (
-    <section className="mx-auto max-w-lg px-4 py-20 sm:px-6 lg:px-8">
+    <AuthSplitLayout>
+      <div className="rounded-2xl border border-border/60 bg-surface/70 p-6 shadow-xl backdrop-blur-md sm:p-8">
       <div className="flex items-center gap-2 text-accent">
         <Shield className="size-4" aria-hidden />
         <p className="font-display text-xs font-semibold uppercase tracking-[0.22em]">Account</p>
       </div>
-      <h1 className="mt-4 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+      <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
         {mode === "signin" ? "Sign in" : "Create account"}
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
@@ -423,7 +433,7 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
       </div>
 
       <form
-        className="mt-6 space-y-4 rounded-2xl border border-border/60 bg-surface/60 p-6 backdrop-blur-sm"
+        className="mt-6 space-y-4"
         onSubmit={handleSubmit}
       >
         {mode === "register" ? (
@@ -537,7 +547,7 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
           </p>
         ) : null}
 
-        <Button type="submit" disabled={pending} className="w-full">
+        <Button type="submit" disabled={pending} className="w-full" variant={mode === "signin" ? "premium" : "default"}>
           {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
           {pending
             ? mode === "signin"
@@ -562,7 +572,8 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
           </Button>
         </div>
       ) : null}
-    </section>
+      </div>
+    </AuthSplitLayout>
   );
 }
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Shield } from "lucide-react";
+import { AuthMarketingPanel } from "@/components/auth/auth-marketing-panel";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 type ComplianceGateShellProps = {
@@ -15,11 +16,11 @@ export function ComplianceGateShell({ children }: ComplianceGateShellProps) {
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-accent/5 via-transparent to-background"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-accent/8 via-transparent to-indigo-500/5"
       />
 
       <header className="relative z-10 border-b border-border/40 bg-background/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="font-display text-xl font-bold tracking-tight sm:text-2xl">
             manuela<span className="text-accent">X</span>
           </Link>
@@ -27,8 +28,12 @@ export function ComplianceGateShell({ children }: ComplianceGateShellProps) {
         </div>
       </header>
 
-      <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-10 sm:px-6">
-        {children}
+      <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)] lg:items-center lg:gap-14">
+          <AuthMarketingPanel variant="verify" compact className="lg:hidden" />
+          <AuthMarketingPanel variant="verify" className="hidden lg:block" />
+          <div className="w-full lg:justify-self-end">{children}</div>
+        </div>
       </main>
 
       <footer className="relative z-10 border-t border-border/40 bg-background/50 px-4 py-5 text-center backdrop-blur-sm sm:px-6">

@@ -17,6 +17,8 @@ const PUBLIC_PREFIXES = [
   "/faq",
   "/about",
   "/dmca",
+  "/pricing",
+  "/messages",
 ];
 
 function isPublicPath(pathname: string) {

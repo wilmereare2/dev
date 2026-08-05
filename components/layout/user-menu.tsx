@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
-import { Bookmark, LogOut, PenSquare, Settings, Shield, User } from "lucide-react";
+import { Bookmark, LogOut, MessageSquare, PenSquare, Settings, Shield, User } from "lucide-react";
 import { UserAvatar } from "@/components/user/user-avatar";
 import { clearAgeVerificationCookie } from "@/features/compliance/verify-age-form";
 import { cn } from "@/lib/utils";
@@ -78,6 +78,9 @@ export function UserMenu() {
             </MenuLink>
             <MenuLink href="/library" icon={Bookmark} onClick={() => setOpen(false)}>
               Library
+            </MenuLink>
+            <MenuLink href="/messages" icon={MessageSquare} onClick={() => setOpen(false)}>
+              Messages
             </MenuLink>
             <MenuLink href="/settings/profile" icon={Settings} onClick={() => setOpen(false)}>
               Settings
@@ -161,6 +164,9 @@ export function MobileUserLinks({ onNavigate }: { onNavigate?: () => void }) {
       </Link>
       <Link href="/library" onClick={onNavigate} className="block rounded-lg px-3 py-2.5 text-sm">
         Library
+      </Link>
+      <Link href="/messages" onClick={onNavigate} className="block rounded-lg px-3 py-2.5 text-sm">
+        Messages
       </Link>
       <Link href="/settings/profile" onClick={onNavigate} className="block rounded-lg px-3 py-2.5 text-sm">
         Settings

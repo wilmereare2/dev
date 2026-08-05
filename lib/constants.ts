@@ -16,8 +16,16 @@ export const MAIN_NAV: NavItem[] = [
   { href: "/trending", label: "Trending" },
   { href: "/newest", label: "Newest" },
   { href: "/library", label: "Library" },
-  { href: "/subscriptions", label: "Subscriptions" },
+  { href: "/pricing", label: "Pricing" },
 ];
+
+export const SOCIAL_LINKS = [
+  { href: "https://x.com", label: "X" },
+  { href: "https://instagram.com", label: "Instagram" },
+  { href: "https://discord.com", label: "Discord" },
+] as const;
+
+export const PAYMENT_BADGES = ["Visa", "Mastercard", "Amex", "SSL Secure"] as const;
 
 export const FOOTER_LINKS = {
   discover: [
@@ -26,6 +34,7 @@ export const FOOTER_LINKS = {
     { href: "/tags", label: "Tags" },
     { href: "/trending", label: "Trending" },
     { href: "/popular", label: "Popular" },
+    { href: "/pricing", label: "Pricing" },
   ],
   company: [
     { href: "/about", label: "About" },
