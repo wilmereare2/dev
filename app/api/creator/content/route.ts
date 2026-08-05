@@ -77,19 +77,45 @@ export async function POST(request: Request) {
     const media = formData.get("media");
     if (media instanceof File && media.size > 0) {
       const kind = media.type.startsWith("video/") ? "video" : media.type.startsWith("audio/") ? "audio" : "image";
+
+      if (mediaType === "photo" && kind !== "image") {
+        return NextResponse.json(
+          { error: "Content type is Photo but the file is not an image. Switch to Video or choose an image file." },
+          { status: 400 },
+        );
+      }
+
       const valid = validateCreatorFile(media, kind);
       if (!valid.ok) return NextResponse.json({ error: valid.error }, { status: 400 });
-      if (kind === "image") {
-        const buffer = Buffer.from(await media.arrayBuffer());
-        thumbnailUrl = bufferToDataUrl(buffer, media.type);
+
+      if (kind === "video" || kind === "audio") {
+        if (!mediaUrl) {
+          return NextResponse.json(
+            {
+              error:
+                "Video and audio files cannot be uploaded directly. Paste a Media URL (MP4, Mux, CDN link) and save again.",
+            },
+            { status: 400 },
+          );
+        }
+        fileSizeBytes = (fileSizeBytes ?? 0) + media.size;
       } else {
         const buffer = Buffer.from(await media.arrayBuffer());
-        mediaUrl = bufferToDataUrl(buffer, media.type);
+        thumbnailUrl = bufferToDataUrl(buffer, media.type);
+        fileSizeBytes = (fileSizeBytes ?? 0) + media.size;
       }
-      fileSizeBytes = (fileSizeBytes ?? 0) + media.size;
     }
 
-    const upload = await createCreatorUpload(auth.userId, {
+    if (mediaType !== "text" && !thumbnailUrl && !mediaUrl) {
+      return NextResponse.json(
+        { error: "Add a media URL or upload an image file for this content type." },
+        { status: 400 },
+      );
+    }
+
+    let upload;
+    try {
+      upload = await createCreatorUpload(auth.userId, {
       title,
       description,
       mediaType,
@@ -105,7 +131,14 @@ export async function POST(request: Request) {
       ppvPriceCents: formData.get("ppvPriceCents") ? Number(formData.get("ppvPriceCents")) : null,
       fileSizeBytes,
       durationSeconds: formData.get("durationSeconds") ? Number(formData.get("durationSeconds")) : undefined,
-    });
+      });
+    } catch (error) {
+      console.error("[creator/content] create upload failed", error);
+      return NextResponse.json(
+        { error: "Could not save draft. If you attached a large video, use Media URL instead." },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({ upload: mapUpload(upload) }, { status: 201 });
   }

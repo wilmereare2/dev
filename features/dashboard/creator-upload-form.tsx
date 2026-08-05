@@ -52,15 +52,42 @@ export function CreatorUploadForm({ categories, redirectPrefix = "/creator-dashb
       return;
     }
 
-    if (mediaType !== "text" && !formData.get("media") && !formData.get("mediaUrl") && !formData.get("thumbnail")) {
+    const mediaFile = formData.get("media");
+    const mediaUrl = String(formData.get("mediaUrl") ?? "").trim();
+
+    if (mediaType !== "text" && !(mediaFile instanceof File && mediaFile.size > 0) && !mediaUrl && !formData.get("thumbnail")) {
       setError("Add a file, media URL, or thumbnail for this upload type.");
       setPending(false);
       return;
     }
 
+    if (mediaFile instanceof File && mediaFile.size > 0) {
+      if (mediaType === "photo" && mediaFile.type.startsWith("video/")) {
+        setError("Content type is Photo but you selected a video file. Change type to Video or pick an image.");
+        setPending(false);
+        return;
+      }
+      if ((mediaFile.type.startsWith("video/") || mediaFile.type.startsWith("audio/")) && !mediaUrl) {
+        setError("Videos and audio need a Media URL (MP4, Mux, CDN). Paste the link below — file upload is for images only.");
+        setPending(false);
+        return;
+      }
+    }
+
     try {
       const response = await fetch("/api/creator/content", { method: "POST", body: formData });
-      const payload = (await response.json()) as { error?: string; code?: string; href?: string; upload?: { id: string } };
+      const raw = await response.text();
+      let payload = {} as { error?: string; code?: string; href?: string; upload?: { id: string } };
+      try {
+        payload = JSON.parse(raw) as typeof payload;
+      } catch {
+        setError(
+          response.status === 413
+            ? "File is too large for the server. Use Media URL for videos instead of attaching the file."
+            : "Upload failed. Try again or use a media URL for large videos.",
+        );
+        return;
+      }
 
       if (!response.ok) {
         if (payload.code === "CREATOR_REQUIRED" && payload.href) {
@@ -74,7 +101,7 @@ export function CreatorUploadForm({ categories, redirectPrefix = "/creator-dashb
 
       router.push(`/creator-dashboard/content/${payload.upload?.id}`);
     } catch {
-      setError("Upload failed. Check your database connection and try again.");
+      setError("Network error while saving. Check your connection and try again.");
     } finally {
       setPending(false);
     }
@@ -156,11 +183,14 @@ export function CreatorUploadForm({ categories, redirectPrefix = "/creator-dashb
             <input name="thumbnail" type="file" accept="image/*" className="mt-2 block w-full text-sm" />
           </div>
           <div>
-            <label className="text-sm font-medium">Media file (optional if URL below)</label>
-            <input name="media" type="file" accept="video/*,audio/*,image/*" className="mt-2 block w-full text-sm" />
+            <label className="text-sm font-medium">Media file (images only — max 5 MB)</label>
+            <input name="media" type="file" accept="image/*" className="mt-2 block w-full text-sm" />
+            <p className="mt-1 text-xs text-muted-foreground">
+              For video or audio, use Media URL below instead of attaching a file.
+            </p>
           </div>
           <div>
-            <label className="text-sm font-medium">Media URL (MP4, CDN, Mux — recommended for large videos)</label>
+            <label className="text-sm font-medium">Media URL (required for video/audio — MP4, CDN, Mux)</label>
             <input name="mediaUrl" type="url" placeholder="https://" className={inputClass} />
           </div>
         </>

@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { hashPassword } from "@/lib/auth/password";
+import { isDesignatedAdminEmail } from "@/lib/auth/admin-email";
+import { provisionAdministrator } from "@/lib/auth/provision-admin";
 import { sendVerificationEmailForUser } from "@/lib/auth/verification";
 
 type RegisterInput = {
@@ -20,17 +22,22 @@ export async function registerUser(input: RegisterInput, appUrl?: string) {
   }
 
   const devAutoVerified = process.env.NODE_ENV === "development";
+  const assignAdmin = isDesignatedAdminEmail(email);
 
   const created = await prisma.user.create({
     data: {
       email,
       name: input.name?.trim() || null,
       passwordHash: await hashPassword(input.password),
-      role: "USER",
-      emailVerified: devAutoVerified ? new Date() : null,
+      role: assignAdmin ? "ADMIN" : "USER",
+      emailVerified: devAutoVerified || assignAdmin ? new Date() : null,
       settings: { create: {} },
     },
   });
+
+  if (assignAdmin) {
+    await provisionAdministrator(created.id);
+  }
 
   let verifyUrl: string | undefined;
   let emailSent = false;

@@ -148,6 +148,19 @@ export function HomeView({ data, defaults }: HomeViewProps) {
 
       <TrustBar />
 
+      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <SectionHeader title="Member promotions" href="/promotions" />
+        <Link
+          href="/promotions"
+          className="mt-4 block rounded-2xl border border-accent/25 bg-gradient-to-r from-accent/10 via-surface/50 to-surface/50 p-5 transition hover:border-accent/45 sm:p-6"
+        >
+          <p className="font-display text-lg font-semibold sm:text-xl">Deals &amp; offers channel</p>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Browse moderator-approved coupons, discounts, and campaigns from creators and businesses.
+          </p>
+        </Link>
+      </section>
+
       {!hasContent ? (
         <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
           <HomeLaunchSections />

@@ -8,6 +8,7 @@ type SearchSuggestion = {
 };
 
 const QUICK_LINKS: SearchSuggestion[] = [
+  { id: "page-promotions", label: "Member promotions", href: "/promotions", kind: "page" },
   { id: "page-trending", label: "Trending", href: "/trending", kind: "page" },
   { id: "page-newest", label: "Newest releases", href: "/newest", kind: "page" },
   { id: "page-pricing", label: "Pricing & membership", href: "/pricing", kind: "page" },

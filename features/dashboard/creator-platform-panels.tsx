@@ -119,7 +119,7 @@ export function CreatorPromotionsPanel() {
       setTitle("");
       setBody("");
       setCouponCode("");
-      setMessage("Promotion published.");
+      setMessage("Promotion submitted for moderation review.");
       await load();
     }
   }
@@ -157,7 +157,7 @@ export function CreatorPromotionsPanel() {
           />
         </div>
         {message ? <p className="text-sm text-accent">{message}</p> : null}
-        <Button type="submit">Publish promotion</Button>
+        <Button type="submit">Submit promotion</Button>
       </form>
 
       <div className="space-y-3">

@@ -4,6 +4,8 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { z } from "zod";
 import { parseRole } from "@/lib/auth/roles";
+import { ensureDesignatedAdminAccess } from "@/lib/auth/provision-admin";
+import { isDesignatedAdminEmail } from "@/lib/auth/admin-email";
 import { verifyPassword } from "@/lib/auth/password";
 import { resolveDbUserId } from "@/lib/auth/resolve-db-user";
 import { avatarSessionUrl } from "@/lib/user/avatar";
@@ -81,10 +83,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async createUser({ user }) {
       if (!user.id) return;
       await prisma.userSettings.create({ data: { userId: user.id } });
+
+      if (isDesignatedAdminEmail(user.email)) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { role: "ADMIN", emailVerified: new Date() },
+        });
+        await ensureDesignatedAdminAccess(user.id, user.email);
+      }
     },
   },
   callbacks: {
     async signIn({ user, account }) {
+      if (user.id && user.email) {
+        await ensureDesignatedAdminAccess(user.id, user.email);
+      }
+
       if (account?.provider === "google" && user.id) {
         await prisma.user.update({
           where: { id: user.id },
@@ -96,7 +110,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user, trigger, session }) {
       if (user?.id) {
         token.sub = user.id;
-        token.role = parseRole(user.role) ?? "USER";
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { role: true },
+          });
+          token.role = parseRole(dbUser?.role) ?? parseRole(user.role) ?? "USER";
+        } catch {
+          token.role = parseRole(user.role) ?? "USER";
+        }
         token.name = user.name ?? token.name;
         if (user.image && !user.image.startsWith("data:")) {
           token.picture = user.image;

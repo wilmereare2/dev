@@ -13,6 +13,7 @@ export const EMPTY_HERO = {
 export const MAIN_NAV: NavItem[] = [
   { href: "/explore", label: "Explore" },
   { href: "/categories", label: "Categories" },
+  { href: "/promotions", label: "Promotions" },
   { href: "/trending", label: "Trending" },
   { href: "/newest", label: "Newest" },
   { href: "/library", label: "Library" },
@@ -31,6 +32,7 @@ export const FOOTER_LINKS = {
   discover: [
     { href: "/explore", label: "Explore" },
     { href: "/categories", label: "Categories" },
+    { href: "/promotions", label: "Promotions" },
     { href: "/tags", label: "Tags" },
     { href: "/trending", label: "Trending" },
     { href: "/popular", label: "Popular" },

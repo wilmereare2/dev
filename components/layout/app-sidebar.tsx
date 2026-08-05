@@ -12,6 +12,8 @@ import {
   History,
   Home,
   LayoutGrid,
+  MessageSquare,
+  Tag,
   TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,8 +22,10 @@ const STORAGE_KEY = "manuelax-sidebar-collapsed";
 
 const LINKS = [
   { href: "/", label: "Home", icon: Home },
+  { href: "/messages", label: "Chat", icon: MessageSquare },
   { href: "/explore", label: "Explore", icon: Compass },
   { href: "/categories", label: "Categories", icon: LayoutGrid },
+  { href: "/promotions", label: "Promotions", icon: Tag },
   { href: "/trending", label: "Trending", icon: TrendingUp },
   { href: "/library", label: "Library", icon: Bookmark },
   { href: "/pricing", label: "Pricing", icon: Crown },
@@ -115,7 +119,8 @@ export function AppSidebar({ className }: AppSidebarProps) {
 
 export function shouldShowAppSidebar(pathname: string) {
   if (pathname === "/verify-age") return false;
-  if (pathname.startsWith("/account")) return false;
+  if (pathname.startsWith("/account/forgot-password")) return false;
+  if (pathname.startsWith("/account/reset-password")) return false;
   if (pathname.startsWith("/studio")) return false;
   return true;
 }

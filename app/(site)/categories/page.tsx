@@ -29,6 +29,20 @@ export default async function CategoriesPage() {
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Categories</h1>
       <p className="mt-2 text-secondary">{categories.length} categories</p>
+
+      <Link
+        href="/promotions"
+        className="mt-8 block overflow-hidden rounded-2xl border border-accent/30 bg-gradient-to-r from-accent/15 via-surface/60 to-surface/60 p-6 transition hover:border-accent/50"
+      >
+        <p className="font-display text-xs font-semibold uppercase tracking-[0.22em] text-accent">
+          Member promotions
+        </p>
+        <h2 className="mt-2 font-display text-2xl font-semibold">Deals &amp; offers channel</h2>
+        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+          Browse approved coupons, discounts, and campaigns posted by creators and businesses.
+        </p>
+      </Link>
+
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {categories.map((category) => {
           const imageUrl = sanityImageUrl(category.coverImage, 800);

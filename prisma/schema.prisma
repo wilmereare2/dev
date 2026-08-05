@@ -50,6 +50,7 @@ model User {
   tipsSent         Tip[] @relation("TipFrom")
   tipsReceived     Tip[] @relation("TipTo")
   moderationActions ContentModerationLog[] @relation("ModerationActor")
+  chatMessages     ChatMessage[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -522,4 +523,38 @@ model ContentModerationLog {
   createdAt DateTime       @default(now())
 
   @@index([uploadId, createdAt])
+}
+
+model ChatChannel {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  name        String
+  description String?
+  adminOnly   Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  messages    ChatMessage[]
+}
+
+model AdminManagementCategory {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  href        String
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  channelId String
+  userId    String
+  body      String
+  createdAt DateTime    @default(now())
+  channel   ChatChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([channelId, createdAt])
+  @@index([userId, createdAt])
 }

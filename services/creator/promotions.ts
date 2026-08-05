@@ -40,7 +40,7 @@ export async function createPromotion(input: {
       externalUrl: input.externalUrl ?? null,
       featuredContentId: input.featuredContentId ?? null,
       expiresAt: input.expiresAt ?? null,
-      status: "published",
+      status: "pending_review",
     },
   });
 }
@@ -88,17 +88,52 @@ export async function deletePromotion(id: string, owner: { creatorUserId?: strin
   return true;
 }
 
-export async function listActivePromotions(limit = 20) {
+export async function listActivePromotions(limit = 48) {
   return prisma.promotionalPost.findMany({
     where: {
       status: "published",
       OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
     },
-    orderBy: { createdAt: "desc" },
-    take: limit,
+    orderBy: { updatedAt: "desc" },
+    take: Math.min(Math.max(limit, 1), 100),
     include: {
-      creator: { select: { id: true, name: true, image: true } },
+      creator: {
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          creatorProfile: { select: { sanityCreatorSlug: true, displayName: true } },
+        },
+      },
       business: { select: { id: true, name: true, slug: true, bannerUrl: true } },
     },
   });
+}
+
+export function mapPublicPromotion(
+  record: Awaited<ReturnType<typeof listActivePromotions>>[number],
+) {
+  return {
+    id: record.id,
+    title: record.title,
+    body: record.body,
+    bannerUrl: record.bannerUrl ?? record.business?.bannerUrl ?? null,
+    teaserVideoUrl: record.teaserVideoUrl,
+    couponCode: record.couponCode,
+    discountPercent: record.discountPercent,
+    externalUrl: record.externalUrl,
+    expiresAt: record.expiresAt?.toISOString() ?? null,
+    publishedAt: record.updatedAt.toISOString(),
+    owner: record.creator
+      ? {
+          type: "creator" as const,
+          id: record.creator.id,
+          name: record.creator.creatorProfile?.displayName ?? record.creator.name,
+          image: record.creator.image,
+          slug: record.creator.creatorProfile?.sanityCreatorSlug ?? null,
+        }
+      : record.business
+        ? { type: "business" as const, id: record.business.id, name: record.business.name, slug: record.business.slug }
+        : null,
+  };
 }
