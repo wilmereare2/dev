@@ -56,6 +56,9 @@ model User {
   directConversationsLow  DirectConversation[] @relation("DirectConvLow")
   directConversationsHigh DirectConversation[] @relation("DirectConvHigh")
   directMessagesSent      DirectMessage[]
+  memberGroupsCreated     MemberGroup[]        @relation("GroupCreator")
+  memberGroupMemberships  MemberGroupMember[]
+  groupMessagesSent       GroupMessage[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -604,5 +607,46 @@ model DirectMessage {
 
   @@index([conversationId, createdAt])
   @@index([conversationId, readAt])
+  @@index([senderId, createdAt])
+}
+
+model MemberGroup {
+  id          String              @id @default(cuid())
+  name        String
+  description String?
+  createdById String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  createdBy   User                @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  members     MemberGroupMember[]
+  messages    GroupMessage[]
+
+  @@index([createdById])
+  @@index([updatedAt])
+}
+
+model MemberGroupMember {
+  id       String      @id @default(cuid())
+  groupId  String
+  userId   String
+  role     String      @default("member")
+  joinedAt DateTime    @default(now())
+  group    MemberGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+}
+
+model GroupMessage {
+  id        String      @id @default(cuid())
+  groupId   String
+  senderId  String
+  body      String
+  createdAt DateTime    @default(now())
+  group     MemberGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sender    User        @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
   @@index([senderId, createdAt])
 }

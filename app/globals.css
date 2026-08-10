@@ -15,6 +15,7 @@
   --ring: #e11d48;
   --site-nav-height: 4rem;
   --site-header-offset: 4rem;
+  --site-bottom-offset: 0px;
 }
 
 .dark {
@@ -61,9 +62,10 @@
     background-image:
       radial-gradient(ellipse 100% 60% at 50% -15%, var(--glow), transparent 50%),
       linear-gradient(180deg, var(--background), color-mix(in oklab, var(--background) 92%, var(--surface)));
-    min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
     max-width: 100%;
+    padding-bottom: calc(var(--site-bottom-offset) + env(safe-area-inset-bottom, 0px));
   }
 
   ::selection {

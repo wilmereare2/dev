@@ -65,7 +65,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
   return (
     <aside
       className={cn(
-        "sticky top-[calc(var(--site-header-offset)+1rem)] hidden h-[calc(100vh-var(--site-header-offset)-2rem)] shrink-0 self-start xl:block",
+        "sticky top-[calc(var(--site-header-offset)+1rem)] hidden h-[calc(100dvh-var(--site-header-offset)-var(--site-bottom-offset)-2rem)] shrink-0 self-start xl:block",
         collapsed ? "w-[72px]" : "w-56",
         className,
       )}

@@ -36,3 +36,20 @@ export type MemberSummaryPayload = {
   role: string;
   known?: boolean;
 };
+
+export type GroupMessagePayload = {
+  id: string;
+  body: string;
+  createdAt: string;
+  sender: ChatUserPayload;
+};
+
+export type MemberGroupPayload = {
+  id: string;
+  name: string;
+  description: string | null;
+  updatedAt: string;
+  memberCount: number;
+  createdById: string;
+  lastMessage: GroupMessagePayload | null;
+};

@@ -9,7 +9,7 @@ type ComplianceGateShellProps = {
 
 export function ComplianceGateShell({ children }: ComplianceGateShellProps) {
   return (
-    <div className="relative flex min-h-screen flex-col">
+    <div className="relative flex min-h-dvh flex-col">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--glow)_0%,_transparent_55%)]"

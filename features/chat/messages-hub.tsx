@@ -9,6 +9,7 @@ import {
   MessageSquarePlus,
   MessagesSquare,
   Send,
+  UserPlus,
   Users,
   Wifi,
   WifiOff,
@@ -17,11 +18,14 @@ import { UserAvatar } from "@/components/user/user-avatar";
 import { Button } from "@/components/ui/button";
 import { ChatMessageBubble } from "@/features/chat/chat-message-bubble";
 import { ConversationActionsMenu } from "@/features/chat/conversation-actions-menu";
+import { CreateGroupDialog } from "@/features/chat/create-group-dialog";
 import { NewMessageDialog } from "@/features/chat/new-message-dialog";
 import type {
   ChatMessagePayload,
   DirectConversationPayload,
   DirectMessagePayload,
+  GroupMessagePayload,
+  MemberGroupPayload,
 } from "@/lib/chat/constants";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +35,8 @@ type MessagesHubProps = {
 
 type ActiveThread =
   | { kind: "community" }
-  | { kind: "direct"; conversationId: string };
+  | { kind: "direct"; conversationId: string }
+  | { kind: "group"; groupId: string };
 
 function formatTime(iso: string) {
   return new Intl.DateTimeFormat(undefined, {
@@ -50,6 +55,16 @@ export function MessagesHub({ session }: MessagesHubProps) {
   const [activeThread, setActiveThread] = useState<ActiveThread>({ kind: "community" });
   const [mobileShowThread, setMobileShowThread] = useState(false);
   const [showNewMessage, setShowNewMessage] = useState(false);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+
+  const [groups, setGroups] = useState<MemberGroupPayload[]>([]);
+  const [groupMessages, setGroupMessages] = useState<GroupMessagePayload[]>([]);
+  const [groupDraft, setGroupDraft] = useState("");
+  const [groupError, setGroupError] = useState<string | null>(null);
+  const [groupLoading, setGroupLoading] = useState(false);
+  const [groupPending, setGroupPending] = useState(false);
+  const groupLastIdRef = useRef<string | null>(null);
+  const groupScrollRef = useRef<HTMLDivElement>(null);
 
   const [communityMessages, setCommunityMessages] = useState<ChatMessagePayload[]>([]);
   const [communityDraft, setCommunityDraft] = useState("");
@@ -75,6 +90,11 @@ export function MessagesHub({ session }: MessagesHubProps) {
     if (activeThread.kind !== "direct") return null;
     return conversations.find((conversation) => conversation.id === activeThread.conversationId) ?? null;
   }, [activeThread, conversations]);
+
+  const selectedGroup = useMemo(() => {
+    if (activeThread.kind !== "group") return null;
+    return groups.find((group) => group.id === activeThread.groupId) ?? null;
+  }, [activeThread, groups]);
 
   const mergeCommunityMessages = useCallback((incoming: ChatMessagePayload[]) => {
     if (!incoming.length) return;
@@ -123,6 +143,28 @@ export function MessagesHub({ session }: MessagesHubProps) {
     const node = directScrollRef.current;
     if (!node) return;
     node.scrollTop = node.scrollHeight;
+  }, []);
+
+  const scrollGroupToBottom = useCallback(() => {
+    const node = groupScrollRef.current;
+    if (!node) return;
+    node.scrollTop = node.scrollHeight;
+  }, []);
+
+  const mergeGroupMessages = useCallback((incoming: GroupMessagePayload[]) => {
+    if (!incoming.length) return;
+    setGroupMessages((current) => {
+      const known = new Set(current.map((message) => message.id));
+      const next = [...current];
+      for (const message of incoming) {
+        if (!known.has(message.id)) {
+          next.push(message);
+          known.add(message.id);
+        }
+      }
+      groupLastIdRef.current = next[next.length - 1]?.id ?? groupLastIdRef.current;
+      return next;
+    });
   }, []);
 
   useEffect(() => {
@@ -277,7 +319,28 @@ export function MessagesHub({ session }: MessagesHubProps) {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadGroups() {
+      try {
+        const response = await fetch("/api/chat/groups");
+        const payload = (await response.json()) as { groups?: MemberGroupPayload[] };
+        if (!response.ok || cancelled) return;
+        setGroups(payload.groups ?? []);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    loadGroups();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const activeConversationId = activeThread.kind === "direct" ? activeThread.conversationId : null;
+  const activeGroupId = activeThread.kind === "group" ? activeThread.groupId : null;
 
   useEffect(() => {
     if (!activeConversationId) {
@@ -336,6 +399,60 @@ export function MessagesHub({ session }: MessagesHubProps) {
     return () => window.clearInterval(poll);
   }, [activeConversationId, mergeDirectMessages, scrollDirectToBottom]);
 
+  useEffect(() => {
+    if (!activeGroupId) {
+      setGroupMessages([]);
+      groupLastIdRef.current = null;
+      return;
+    }
+
+    let cancelled = false;
+    setGroupLoading(true);
+    setGroupError(null);
+
+    fetch(`/api/chat/groups/${activeGroupId}/messages`)
+      .then((response) => response.json())
+      .then((payload: { messages?: GroupMessagePayload[]; error?: string }) => {
+        if (cancelled) return;
+        if (payload.error) {
+          setGroupError(payload.error);
+          return;
+        }
+        const messages = payload.messages ?? [];
+        setGroupMessages(messages);
+        groupLastIdRef.current = messages[messages.length - 1]?.id ?? null;
+        window.requestAnimationFrame(scrollGroupToBottom);
+      })
+      .catch(() => {
+        if (!cancelled) setGroupError("Could not load group messages.");
+      })
+      .finally(() => {
+        if (!cancelled) setGroupLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeGroupId, scrollGroupToBottom]);
+
+  useEffect(() => {
+    if (!activeGroupId) return;
+
+    const poll = window.setInterval(() => {
+      fetch(`/api/chat/groups/${activeGroupId}/messages`)
+        .then((response) => response.json())
+        .then((payload: { messages?: GroupMessagePayload[] }) => {
+          const messages = payload.messages ?? [];
+          setGroupMessages(messages);
+          groupLastIdRef.current = messages[messages.length - 1]?.id ?? null;
+          window.requestAnimationFrame(scrollGroupToBottom);
+        })
+        .catch(() => undefined);
+    }, 5000);
+
+    return () => window.clearInterval(poll);
+  }, [activeGroupId, scrollGroupToBottom]);
+
   const onlineLabel = useMemo(() => {
     const unique = new Set(communityMessages.map((message) => message.user.id));
     unique.add(session.user.id);
@@ -350,6 +467,59 @@ export function MessagesHub({ session }: MessagesHubProps) {
   function openDirect(conversationId: string) {
     setActiveThread({ kind: "direct", conversationId });
     setMobileShowThread(true);
+  }
+
+  function openGroup(groupId: string) {
+    setActiveThread({ kind: "group", groupId });
+    setMobileShowThread(true);
+  }
+
+  async function handleGroupSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (activeThread.kind !== "group") return;
+
+    const body = groupDraft.trim();
+    if (!body || groupPending) return;
+
+    setGroupPending(true);
+    setGroupError(null);
+
+    try {
+      const response = await fetch(`/api/chat/groups/${activeThread.groupId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      });
+      const payload = (await response.json()) as { message?: GroupMessagePayload; error?: string };
+
+      if (!response.ok) {
+        setGroupError(payload.error ?? "Could not send message.");
+        return;
+      }
+
+      if (payload.message) {
+        mergeGroupMessages([payload.message]);
+        setGroupDraft("");
+        window.requestAnimationFrame(scrollGroupToBottom);
+        setGroups((current) =>
+          current
+            .map((group) =>
+              group.id === activeThread.groupId
+                ? {
+                    ...group,
+                    updatedAt: payload.message!.createdAt,
+                    lastMessage: payload.message!,
+                  }
+                : group,
+            )
+            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+        );
+      }
+    } catch {
+      setGroupError("Could not send message.");
+    } finally {
+      setGroupPending(false);
+    }
   }
 
   async function handleCommunitySubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -504,19 +674,23 @@ export function MessagesHub({ session }: MessagesHubProps) {
   const threadTitle =
     activeThread.kind === "community"
       ? "Community lounge"
-      : (selectedConversation?.peer.name ?? "Private message");
+      : activeThread.kind === "group"
+        ? (selectedGroup?.name ?? "Group chat")
+        : (selectedConversation?.peer.name ?? "Private message");
 
   const threadSubtitle =
     activeThread.kind === "community"
       ? communityLive
         ? `Live · ${onlineLabel}`
         : "Reconnecting…"
-      : "Private message";
+      : activeThread.kind === "group"
+        ? `${selectedGroup?.memberCount ?? 0} members`
+        : "Private message";
 
   return (
     <>
-      <section className="mx-auto flex min-h-[calc(100dvh-var(--site-header-offset)-3rem)] max-h-[calc(100dvh-var(--site-header-offset)-3rem)] max-w-6xl flex-col px-3 py-4 sm:px-4 lg:px-6">
-        <div className="flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-surface/40 shadow-xl">
+      <section className="mx-auto max-w-6xl px-3 py-4 sm:px-4 lg:px-6">
+        <div className="flex min-h-[min(720px,calc(100dvh-var(--site-header-offset)-var(--site-bottom-offset)-4rem))] flex-col overflow-hidden rounded-2xl border border-border bg-surface/40 shadow-xl">
           <aside
             className={cn(
               "flex w-full shrink-0 flex-col border-r border-border/60 bg-background/40 md:w-[320px]",
@@ -527,12 +701,24 @@ export function MessagesHub({ session }: MessagesHubProps) {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h1 className="font-display text-xl font-semibold tracking-tight">Messages</h1>
-                  <p className="text-xs text-muted-foreground">Community & private chats</p>
+                  <p className="text-xs text-muted-foreground">Community, groups & private chats</p>
                 </div>
-                <Button type="button" size="sm" variant="premium" onClick={() => setShowNewMessage(true)}>
-                  <MessageSquarePlus className="size-4" aria-hidden />
-                  New
-                </Button>
+                <div className="flex shrink-0 gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setShowCreateGroup(true)}
+                    aria-label="Create group"
+                  >
+                    <UserPlus className="size-4" aria-hidden />
+                    <span className="hidden sm:inline">Group</span>
+                  </Button>
+                  <Button type="button" size="sm" variant="premium" onClick={() => setShowNewMessage(true)}>
+                    <MessageSquarePlus className="size-4" aria-hidden />
+                    New
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -561,6 +747,54 @@ export function MessagesHub({ session }: MessagesHubProps) {
                   </p>
                 </div>
               </button>
+
+              {groups.length > 0 ? (
+                <div className="border-b border-border/40 px-4 py-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Groups</p>
+                </div>
+              ) : null}
+
+              {groups.length > 0 ? (
+                <ul>
+                  {groups.map((group) => (
+                    <li key={group.id}>
+                      <button
+                        type="button"
+                        onClick={() => openGroup(group.id)}
+                        className={cn(
+                          "flex w-full items-center gap-3 border-b border-border/40 px-4 py-3 text-left transition hover:bg-muted/30",
+                          activeThread.kind === "group" &&
+                            activeThread.groupId === group.id &&
+                            "bg-accent/10",
+                        )}
+                      >
+                        <div className="flex size-10 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-400">
+                          <Users className="size-5" aria-hidden />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="truncate text-sm font-medium">{group.name}</p>
+                            {group.lastMessage ? (
+                              <time className="shrink-0 text-[11px] text-muted-foreground">
+                                {formatTime(group.lastMessage.createdAt)}
+                              </time>
+                            ) : null}
+                          </div>
+                          <p className="mt-1 truncate text-xs text-muted-foreground">
+                            {group.lastMessage?.body ?? `${group.memberCount} members`}
+                          </p>
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              <div className="border-b border-border/40 px-4 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Private
+                </p>
+              </div>
 
               {conversations.length === 0 ? (
                 <p className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -650,6 +884,10 @@ export function MessagesHub({ session }: MessagesHubProps) {
                   image={selectedConversation.peer.image}
                   size="sm"
                 />
+              ) : activeThread.kind === "group" ? (
+                <div className="flex size-9 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-400">
+                  <Users className="size-4" aria-hidden />
+                </div>
               ) : (
                 <div className="flex size-9 items-center justify-center rounded-full bg-accent/15 text-accent">
                   <Users className="size-4" aria-hidden />
@@ -719,7 +957,56 @@ export function MessagesHub({ session }: MessagesHubProps) {
                   placeholder="Message the community…"
                 />
               </>
-            ) : selectedConversation ? (
+            ) : activeThread.kind === "group" && selectedGroup ? (
+              <>
+                <div ref={groupScrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-4">
+                  {groupLoading ? (
+                    <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                      Loading messages…
+                    </div>
+                  ) : null}
+
+                  {!groupLoading && groupMessages.length === 0 ? (
+                    <p className="py-16 text-center text-sm text-muted-foreground">
+                      No messages yet. Say hello to {selectedGroup.name}.
+                    </p>
+                  ) : null}
+
+                  {groupMessages.map((message, index) => {
+                    const mine = message.sender.id === session.user.id;
+                    const previous = groupMessages[index - 1];
+                    const grouped = previous?.sender.id === message.sender.id;
+
+                    return (
+                      <ChatMessageBubble
+                        key={message.id}
+                        body={message.body}
+                        createdAt={message.createdAt}
+                        mine={mine}
+                        senderName={mine ? "You" : (message.sender.name ?? "Member")}
+                        senderImage={message.sender.image}
+                        senderRole={message.sender.role}
+                        showSender={!grouped}
+                        canDelete={false}
+                        deleting={false}
+                        onDelete={() => undefined}
+                      />
+                    );
+                  })}
+                </div>
+
+                <MessageComposer
+                  id="group-chat-input"
+                  value={groupDraft}
+                  onChange={setGroupDraft}
+                  onSubmit={handleGroupSubmit}
+                  pending={groupPending}
+                  error={groupError}
+                  placeholder={`Message ${selectedGroup.name}…`}
+                />
+              </>
+            ) : activeThread.kind === "direct" && selectedConversation ? (
               <>
                 <div ref={directScrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-4">
                   {directLoading ? (
@@ -781,6 +1068,20 @@ export function MessagesHub({ session }: MessagesHubProps) {
         open={showNewMessage}
         onClose={() => setShowNewMessage(false)}
         onSelectMember={startConversation}
+      />
+
+      <CreateGroupDialog
+        open={showCreateGroup}
+        onClose={() => setShowCreateGroup(false)}
+        onCreated={(groupId) => {
+          void fetch("/api/chat/groups")
+            .then((response) => response.json())
+            .then((payload: { groups?: MemberGroupPayload[] }) => {
+              setGroups(payload.groups ?? []);
+              openGroup(groupId);
+            })
+            .catch(() => openGroup(groupId));
+        }}
       />
     </>
   );

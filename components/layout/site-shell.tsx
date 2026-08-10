@@ -25,7 +25,7 @@ export function SiteShell({
   showSidebar = true,
 }: SiteShellProps) {
   return (
-    <div className="relative flex min-h-screen flex-col">
+    <div className="relative flex min-h-dvh flex-col">
       <PageBackground variant={pageBackground} />
       <div
         aria-hidden

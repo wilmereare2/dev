@@ -47,9 +47,18 @@ export const metadata: Metadata = {
   },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
-    capable: true,
+    capable: false,
     title: APP_NAME,
   },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fff8fa" },
+    { media: "(prefers-color-scheme: dark)", color: "#030305" },
+  ],
 };
 
 export default async function RootLayout({
