@@ -5,8 +5,6 @@ export const siteSettings = defineType({
   name: "siteSettings",
   title: "Site settings",
   type: "document",
-  /** Singleton settings — editable immediately (not read-only on Published perspective). */
-  liveEdit: true,
   fields: [
     defineField({
       name: "title",

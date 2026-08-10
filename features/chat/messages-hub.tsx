@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { ChatMessageBubble } from "@/features/chat/chat-message-bubble";
 import { ConversationActionsMenu } from "@/features/chat/conversation-actions-menu";
 import { CreateGroupDialog } from "@/features/chat/create-group-dialog";
+import { GroupActionsMenu } from "@/features/chat/group-actions-menu";
 import { NewMessageDialog } from "@/features/chat/new-message-dialog";
 import type {
   ChatMessagePayload,
@@ -58,11 +59,13 @@ export function MessagesHub({ session }: MessagesHubProps) {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
 
   const [groups, setGroups] = useState<MemberGroupPayload[]>([]);
+  const [publicGroups, setPublicGroups] = useState<MemberGroupPayload[]>([]);
   const [groupMessages, setGroupMessages] = useState<GroupMessagePayload[]>([]);
   const [groupDraft, setGroupDraft] = useState("");
   const [groupError, setGroupError] = useState<string | null>(null);
   const [groupLoading, setGroupLoading] = useState(false);
   const [groupPending, setGroupPending] = useState(false);
+  const [joinGroupPendingId, setJoinGroupPendingId] = useState<string | null>(null);
   const groupLastIdRef = useRef<string | null>(null);
   const groupScrollRef = useRef<HTMLDivElement>(null);
 
@@ -205,6 +208,21 @@ export function MessagesHub({ session }: MessagesHubProps) {
       .catch(() => undefined);
   }, [searchParams]);
 
+  const refreshGroups = useCallback(async () => {
+    try {
+      const [mineResponse, discoverResponse] = await Promise.all([
+        fetch("/api/chat/groups"),
+        fetch("/api/chat/groups?discover=1"),
+      ]);
+      const minePayload = (await mineResponse.json()) as { groups?: MemberGroupPayload[] };
+      const discoverPayload = (await discoverResponse.json()) as { groups?: MemberGroupPayload[] };
+      setGroups(minePayload.groups ?? []);
+      setPublicGroups(discoverPayload.groups ?? []);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const refreshConversations = useCallback(async () => {
     try {
       const response = await fetch("/api/chat/direct/conversations");
@@ -332,21 +350,16 @@ export function MessagesHub({ session }: MessagesHubProps) {
     let cancelled = false;
 
     async function loadGroups() {
-      try {
-        const response = await fetch("/api/chat/groups");
-        const payload = (await response.json()) as { groups?: MemberGroupPayload[] };
-        if (!response.ok || cancelled) return;
-        setGroups(payload.groups ?? []);
-      } catch {
-        /* ignore */
-      }
+      await refreshGroups();
     }
 
-    loadGroups();
+    if (!cancelled) {
+      void loadGroups();
+    }
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshGroups]);
 
   const activeConversationId = activeThread.kind === "direct" ? activeThread.conversationId : null;
   const activeGroupId = activeThread.kind === "group" ? activeThread.groupId : null;
@@ -481,6 +494,39 @@ export function MessagesHub({ session }: MessagesHubProps) {
   function openGroup(groupId: string) {
     setActiveThread({ kind: "group", groupId });
     setMobileShowThread(true);
+  }
+
+  async function joinPublicGroup(groupId: string) {
+    if (joinGroupPendingId) return;
+
+    setJoinGroupPendingId(groupId);
+    setGroupError(null);
+
+    try {
+      const response = await fetch(`/api/chat/groups/${groupId}`, { method: "POST" });
+      const payload = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        setGroupError(payload.error ?? "Could not join group.");
+        return;
+      }
+
+      await refreshGroups();
+      openGroup(groupId);
+    } catch {
+      setGroupError("Could not join group.");
+    } finally {
+      setJoinGroupPendingId(null);
+    }
+  }
+
+  function handleGroupArchivedChange() {
+    void refreshGroups().then(() => {
+      if (activeThread.kind === "group") {
+        setActiveThread({ kind: "community" });
+        setMobileShowThread(false);
+      }
+    });
   }
 
   async function handleGroupSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -693,8 +739,15 @@ export function MessagesHub({ session }: MessagesHubProps) {
         ? `Live · ${onlineLabel}`
         : "Reconnecting…"
       : activeThread.kind === "group"
-        ? `${selectedGroup?.memberCount ?? 0} members`
+        ? selectedGroup
+          ? `${selectedGroup.memberCount} members · ${selectedGroup.visibility === "public" ? "Public" : "Private"}${selectedGroup.archivedAt ? " · Archived" : ""}`
+          : "Group chat"
         : "Private message";
+
+  const discoverablePublicGroups = useMemo(
+    () => publicGroups.filter((group) => !groups.some((mine) => mine.id === group.id)),
+    [groups, publicGroups],
+  );
 
   return (
     <>
@@ -783,11 +836,23 @@ export function MessagesHub({ session }: MessagesHubProps) {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
                             <p className="truncate text-sm font-medium">{group.name}</p>
-                            {group.lastMessage ? (
-                              <time className="shrink-0 text-[11px] text-muted-foreground">
-                                {formatTime(group.lastMessage.createdAt)}
-                              </time>
-                            ) : null}
+                            <div className="flex shrink-0 items-center gap-2">
+                              <span
+                                className={cn(
+                                  "rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                                  group.visibility === "public"
+                                    ? "bg-emerald-500/15 text-emerald-400"
+                                    : "bg-muted text-muted-foreground",
+                                )}
+                              >
+                                {group.visibility}
+                              </span>
+                              {group.lastMessage ? (
+                                <time className="text-[11px] text-muted-foreground">
+                                  {formatTime(group.lastMessage.createdAt)}
+                                </time>
+                              ) : null}
+                            </div>
                           </div>
                           <p className="mt-1 truncate text-xs text-muted-foreground">
                             {group.lastMessage?.body ?? `${group.memberCount} members`}
@@ -797,6 +862,46 @@ export function MessagesHub({ session }: MessagesHubProps) {
                     </li>
                   ))}
                 </ul>
+              ) : null}
+
+              {discoverablePublicGroups.length > 0 ? (
+                <>
+                  <div className="border-b border-border/40 px-4 py-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Public groups
+                    </p>
+                  </div>
+                  <ul>
+                    {discoverablePublicGroups.map((group) => (
+                      <li key={group.id}>
+                        <div className="flex items-center gap-3 border-b border-border/40 px-4 py-3">
+                          <div className="flex size-10 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
+                            <Users className="size-5" aria-hidden />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{group.name}</p>
+                            <p className="mt-1 truncate text-xs text-muted-foreground">
+                              {group.memberCount} members · Open to join
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            disabled={joinGroupPendingId === group.id}
+                            onClick={() => void joinPublicGroup(group.id)}
+                          >
+                            {joinGroupPendingId === group.id ? (
+                              <Loader2 className="size-4 animate-spin" aria-hidden />
+                            ) : (
+                              "Join"
+                            )}
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </>
               ) : null}
 
               <div className="border-b border-border/40 px-4 py-2">
@@ -913,6 +1018,14 @@ export function MessagesHub({ session }: MessagesHubProps) {
                   peerId={selectedConversation.peer.id}
                   peerName={selectedConversation.peer.name ?? "Member"}
                   signedIn
+                />
+              ) : activeThread.kind === "group" && selectedGroup ? (
+                <GroupActionsMenu
+                  groupId={selectedGroup.id}
+                  groupName={selectedGroup.name}
+                  isOwner={selectedGroup.createdById === session.user.id}
+                  archived={Boolean(selectedGroup.archivedAt)}
+                  onArchivedChange={handleGroupArchivedChange}
                 />
               ) : null}
             </header>
@@ -1083,13 +1196,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         open={showCreateGroup}
         onClose={() => setShowCreateGroup(false)}
         onCreated={(groupId) => {
-          void fetch("/api/chat/groups")
-            .then((response) => response.json())
-            .then((payload: { groups?: MemberGroupPayload[] }) => {
-              setGroups(payload.groups ?? []);
-              openGroup(groupId);
-            })
-            .catch(() => openGroup(groupId));
+          void refreshGroups().then(() => openGroup(groupId));
         }}
       />
     </>

@@ -24,5 +24,19 @@ export const tag = defineType({
       type: "text",
       rows: 2,
     }),
+    defineField({
+      name: "archived",
+      title: "Archived",
+      type: "boolean",
+      initialValue: false,
+      readOnly: true,
+    }),
+    defineField({
+      name: "archivedAt",
+      title: "Archived at",
+      type: "datetime",
+      readOnly: true,
+      hidden: ({ document }) => !document?.archived,
+    }),
   ],
 });

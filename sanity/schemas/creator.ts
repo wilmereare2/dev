@@ -5,7 +5,6 @@ export const creator = defineType({
   name: "creator",
   title: "Creator",
   type: "document",
-  liveEdit: true,
   fields: [
     defineField({
       name: "name",
@@ -35,6 +34,20 @@ export const creator = defineType({
       name: "seo",
       title: "SEO",
       type: "seo",
+    }),
+    defineField({
+      name: "archived",
+      title: "Archived",
+      type: "boolean",
+      initialValue: false,
+      readOnly: true,
+    }),
+    defineField({
+      name: "archivedAt",
+      title: "Archived at",
+      type: "datetime",
+      readOnly: true,
+      hidden: ({ document }) => !document?.archived,
     }),
   ],
 });

@@ -3,6 +3,7 @@ import { defineConfig } from "sanity";
 import { structureTool } from "sanity/structure";
 import { schemaTypes } from "./sanity/schemas";
 import { structure } from "./lib/sanity/structure";
+import { documentActions } from "./sanity/plugins/manual-archive";
 import {
   sanityApiVersion,
   sanityDataset,
@@ -21,5 +22,8 @@ export default defineConfig({
   plugins: [structureTool({ structure }), visionTool({ defaultApiVersion: sanityApiVersion })],
   schema: {
     types: schemaTypes,
+  },
+  document: {
+    actions: documentActions,
   },
 });

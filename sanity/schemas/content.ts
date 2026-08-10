@@ -13,7 +13,6 @@ export const content = defineType({
   name: "content",
   title: "Content",
   type: "document",
-  liveEdit: true,
   fields: [
     defineField({
       name: "title",
@@ -158,6 +157,21 @@ export const content = defineType({
       name: "seo",
       title: "SEO",
       type: "seo",
+    }),
+    defineField({
+      name: "archived",
+      title: "Archived",
+      type: "boolean",
+      initialValue: false,
+      description: "Use the Archive action in the toolbar — nothing is archived automatically.",
+      readOnly: true,
+    }),
+    defineField({
+      name: "archivedAt",
+      title: "Archived at",
+      type: "datetime",
+      readOnly: true,
+      hidden: ({ document }) => !document?.archived,
     }),
   ],
   preview: {

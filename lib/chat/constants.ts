@@ -29,6 +29,8 @@ export type DirectConversationPayload = {
   unreadCount: number;
 };
 
+export type GroupVisibility = "private" | "public";
+
 export type MemberSummaryPayload = {
   id: string;
   name: string | null;
@@ -48,6 +50,8 @@ export type MemberGroupPayload = {
   id: string;
   name: string;
   description: string | null;
+  visibility: "private" | "public";
+  archivedAt: string | null;
   updatedAt: string;
   memberCount: number;
   createdById: string;

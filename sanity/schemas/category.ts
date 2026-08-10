@@ -5,8 +5,6 @@ export const category = defineType({
   name: "category",
   title: "Category",
   type: "document",
-  /** Editable in Studio without forcing Draft perspective (enables image upload/select/clear). */
-  liveEdit: true,
   fields: [
     defineField({
       name: "title",
@@ -36,6 +34,21 @@ export const category = defineType({
       name: "seo",
       title: "SEO",
       type: "seo",
+    }),
+    defineField({
+      name: "archived",
+      title: "Archived",
+      type: "boolean",
+      initialValue: false,
+      description: "Archived manually from the Studio toolbar. Archived items are hidden on the site.",
+      readOnly: true,
+    }),
+    defineField({
+      name: "archivedAt",
+      title: "Archived at",
+      type: "datetime",
+      readOnly: true,
+      hidden: ({ document }) => !document?.archived,
     }),
   ],
 });
