@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Crown } from "lucide-react";
+import { ArrowLeft, Crown } from "lucide-react";
 import { UserAvatar } from "@/components/user/user-avatar";
 import { Button } from "@/components/ui/button";
 import { getPublicMemberPost } from "@/services/creator/uploads";
@@ -24,7 +24,15 @@ export default async function MemberPostPage({ params }: PageProps) {
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="flex items-center gap-3">
+      <Link
+        href="/promotions"
+        className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-surface/40 px-3 py-2 text-sm text-muted-foreground transition hover:border-accent/40 hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" aria-hidden />
+        Back to promotions
+      </Link>
+
+      <div className="mt-6 flex items-center gap-3">
         <UserAvatar name={post.creator.name} email={null} image={post.creator.image} size="md" />
         <div>
           <p className="text-sm text-muted-foreground">Member post</p>
@@ -70,9 +78,6 @@ export default async function MemberPostPage({ params }: PageProps) {
             <Link href={`/creator/${post.creator.slug}`}>View creator profile</Link>
           </Button>
         ) : null}
-        <Button asChild variant="outline">
-          <Link href="/promotions">Back to promotions</Link>
-        </Button>
       </div>
     </section>
   );
