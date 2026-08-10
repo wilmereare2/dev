@@ -9,6 +9,7 @@ export const NAV_PATH_KEYS: Record<string, MessageKey> = {
   "/trending": "nav.trending",
   "/newest": "nav.newest",
   "/library": "nav.library",
+  "/create": "nav.create",
   "/pricing": "nav.pricing",
   "/popular": "nav.popular",
   "/tags": "nav.tags",

@@ -13,6 +13,16 @@
   --accent-foreground: #ffffff;
   --glow: rgba(225, 29, 72, 0.18);
   --ring: #e11d48;
+  --success: #10b981;
+  --success-foreground: #ecfdf5;
+  --warning: #f59e0b;
+  --warning-foreground: #fffbeb;
+  --destructive: #ef4444;
+  --destructive-foreground: #fef2f2;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
   --site-nav-height: 4rem;
   --site-header-offset: 4rem;
   --site-bottom-offset: 0px;
@@ -31,6 +41,12 @@
   --accent-foreground: #fff1f2;
   --glow: rgba(244, 63, 94, 0.24);
   --ring: #fb7185;
+  --success: #34d399;
+  --success-foreground: #022c22;
+  --warning: #fbbf24;
+  --warning-foreground: #451a03;
+  --destructive: #f87171;
+  --destructive-foreground: #450a0a;
 }
 
 @theme inline {
@@ -44,6 +60,9 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
 }

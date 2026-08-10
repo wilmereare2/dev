@@ -1,3 +1,4 @@
+import { ErrorState } from "@/components/ui/error-state";
 import { cn } from "@/lib/utils";
 
 export function ConversationListSkeleton({ rows = 5 }: { rows?: number }) {
@@ -47,17 +48,10 @@ export function InlineErrorState({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col items-center justify-center gap-3 px-6 py-10 text-center", className)}>
-      <p className="text-sm text-muted-foreground">{message}</p>
-      {onRetry ? (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="rounded-lg border border-border bg-surface/60 px-3 py-1.5 text-sm font-medium transition hover:border-accent/40 hover:bg-muted/40"
-        >
-          Retry
-        </button>
-      ) : null}
-    </div>
+    <ErrorState
+      message={message}
+      onRetry={onRetry}
+      className={cn("border-0 bg-transparent py-10", className)}
+    />
   );
 }

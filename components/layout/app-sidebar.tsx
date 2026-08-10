@@ -3,37 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import {
-  Bookmark,
-  ChevronLeft,
-  ChevronRight,
-  Compass,
-  Crown,
-  History,
-  Home,
-  LayoutGrid,
-  MessageSquare,
-  Tag,
-  TrendingUp,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, History } from "lucide-react";
 import { useI18n } from "@/components/providers/i18n-provider";
-import { navMessageKey } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/i18n/messages";
+import { QUICK_SIDEBAR_LINKS, QUICK_SIDEBAR_SECONDARY } from "@/lib/site/quick-sidebar-nav";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "manuelax-sidebar-collapsed";
 const WIDTH_EXPANDED = "14rem";
 const WIDTH_COLLAPSED = "4.5rem";
-
-const LINKS = [
-  { href: "/", icon: Home },
-  { href: "/messages", icon: MessageSquare },
-  { href: "/explore", icon: Compass },
-  { href: "/categories", icon: LayoutGrid },
-  { href: "/promotions", icon: Tag },
-  { href: "/trending", icon: TrendingUp },
-  { href: "/library", icon: Bookmark },
-  { href: "/pricing", icon: Crown },
-] as const;
 
 function readCollapsedPreference() {
   if (typeof window === "undefined") return false;
@@ -85,6 +63,30 @@ export function AppSidebar({ className }: AppSidebarProps) {
     });
   }, []);
 
+  function renderLink(href: string, Icon: (typeof QUICK_SIDEBAR_LINKS)[number]["icon"], labelKey: MessageKey) {
+    const active =
+      href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+    const label = t(labelKey);
+
+    return (
+      <Link
+        key={href}
+        href={href}
+        title={collapsed ? label : undefined}
+        className={cn(
+          "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition",
+          active
+            ? "bg-accent/10 font-medium text-accent"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          collapsed ? "justify-center px-2" : "",
+        )}
+      >
+        <Icon className="size-4 shrink-0" aria-hidden />
+        {!collapsed ? <span className="truncate">{label}</span> : null}
+      </Link>
+    );
+  }
+
   return (
     <aside
       style={{ width: mounted ? (collapsed ? WIDTH_COLLAPSED : WIDTH_EXPANDED) : WIDTH_EXPANDED }}
@@ -94,31 +96,21 @@ export function AppSidebar({ className }: AppSidebarProps) {
       )}
     >
       <div className="flex h-full flex-col rounded-2xl border border-border/60 bg-surface/40 p-2 backdrop-blur-sm">
-        <nav aria-label="App sidebar" className="min-h-0 flex-1 space-y-1 overflow-y-auto">
-          {LINKS.map(({ href, icon: Icon }) => {
-            const active =
-              href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
-            const key = navMessageKey(href);
-            const label = key ? t(key) : href;
+        {!collapsed ? (
+          <p className="px-3 pb-2 pt-1 font-display text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Quick access
+          </p>
+        ) : null}
 
-            return (
-              <Link
-                key={href}
-                href={href}
-                title={collapsed ? label : undefined}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition",
-                  active
-                    ? "bg-accent/10 font-medium text-accent"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  collapsed ? "justify-center px-2" : "",
-                )}
-              >
-                <Icon className="size-4 shrink-0" aria-hidden />
-                {!collapsed ? <span className="truncate">{label}</span> : null}
-              </Link>
-            );
-          })}
+        <nav aria-label="Quick access" className="min-h-0 flex-1 space-y-1 overflow-y-auto">
+          {QUICK_SIDEBAR_LINKS.map(({ href, icon, labelKey }) => renderLink(href, icon, labelKey))}
+
+          {!collapsed ? (
+            <p className="px-3 pb-1 pt-4 font-display text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Discover
+            </p>
+          ) : null}
+          {QUICK_SIDEBAR_SECONDARY.map(({ href, icon, labelKey }) => renderLink(href, icon, labelKey))}
         </nav>
 
         {!collapsed ? (

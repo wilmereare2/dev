@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   formatDateOfBirthInput,
   isAdult,
@@ -18,9 +19,6 @@ type VerifyAgeFormProps = {
   redirectTo?: string;
   alreadyVerified?: boolean;
 };
-
-const inputClassName =
-  "mt-2 h-11 w-full rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground outline-none transition focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30 disabled:opacity-60";
 
 const checkboxClassName =
   "mt-0.5 size-4 shrink-0 rounded border-border accent-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
@@ -228,7 +226,8 @@ export function VerifyAgeForm({ redirectTo = "/", alreadyVerified = false }: Ver
         Confirm you are 18+
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-        Enter your date of birth and accept our policies to enter the platform.
+        manuelaX is adults-only. Enter your date of birth and accept our policies to continue. Your date of birth is
+        used only for age verification and is not shown on your public profile.
       </p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
@@ -236,7 +235,7 @@ export function VerifyAgeForm({ redirectTo = "/", alreadyVerified = false }: Ver
           <label htmlFor="dob" className="text-sm font-medium">
             Date of birth
           </label>
-          <input
+          <Input
             id="dob"
             type="text"
             inputMode="numeric"
@@ -250,7 +249,8 @@ export function VerifyAgeForm({ redirectTo = "/", alreadyVerified = false }: Ver
               setError(null);
             }}
             onBlur={() => setTouched(true)}
-            className={cn(inputClassName, dateIssue ? "border-red-500/40" : "")}
+            className="mt-2"
+            error={Boolean(dateIssue)}
             aria-describedby="dob-help"
             aria-invalid={dateIssue ? true : undefined}
           />
