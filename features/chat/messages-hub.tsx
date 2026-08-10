@@ -115,6 +115,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
   const [inboxWidth, setInboxWidth] = useState(INBOX_DEFAULT_WIDTH);
   const inboxWidthRef = useRef(INBOX_DEFAULT_WIDTH);
   const inboxResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const [inboxResizable, setInboxResizable] = useState(false);
 
   const [groups, setGroups] = useState<MemberGroupPayload[]>([]);
   const [publicGroups, setPublicGroups] = useState<MemberGroupPayload[]>([]);
@@ -238,6 +239,14 @@ export function MessagesHub({ session }: MessagesHubProps) {
       groupLastIdRef.current = next[next.length - 1]?.id ?? groupLastIdRef.current;
       return next;
     });
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const sync = () => setInboxResizable(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
   }, []);
 
   useEffect(() => {
@@ -993,7 +1002,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
     [groups, publicGroups],
   );
 
-  const inboxIconOnly = inboxWidth <= INBOX_ICON_ONLY_THRESHOLD;
+  const inboxIconOnly = inboxResizable && inboxWidth <= INBOX_ICON_ONLY_THRESHOLD;
 
   const messageNavActions = (
     <div className="flex flex-col gap-1.5">
@@ -1027,9 +1036,9 @@ export function MessagesHub({ session }: MessagesHubProps) {
           />
 
           <aside
-            style={{ width: inboxWidth }}
+            style={inboxResizable ? { width: inboxWidth } : undefined}
             className={cn(
-              "flex w-full min-w-0 shrink-0 flex-col overflow-hidden border-r border-border/60 bg-background/40 transition-[width]",
+              "flex w-full min-w-0 shrink-0 flex-col overflow-hidden border-r border-border/60 bg-background/40 md:transition-[width]",
               mobileShowThread ? "hidden md:flex" : "flex",
               inboxIconOnly && "items-center",
             )}

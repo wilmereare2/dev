@@ -152,6 +152,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
 
 export function shouldShowAppSidebar(pathname: string) {
   if (pathname === "/messages" || pathname.startsWith("/messages/")) return false;
+  if (pathname.startsWith("/creator/")) return false;
   if (pathname === "/verify-age") return false;
   if (pathname.startsWith("/account/forgot-password")) return false;
   if (pathname.startsWith("/account/reset-password")) return false;

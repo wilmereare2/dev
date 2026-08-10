@@ -39,7 +39,7 @@ export function FooterNewsletter() {
       <label htmlFor="footer-newsletter" className="sr-only">
         Email for launch updates
       </label>
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
         <input
           id="footer-newsletter"
           type="email"
@@ -47,9 +47,9 @@ export function FooterNewsletter() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder="Email for launch updates"
-          className="h-10 flex-1 rounded-xl border border-border bg-background/80 px-3 text-sm outline-none transition focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
+          className="h-12 w-full flex-1 rounded-xl border border-border bg-background/80 px-4 text-base outline-none transition focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30 sm:h-11 sm:text-sm"
         />
-        <Button type="submit" disabled={pending} className="shrink-0">
+        <Button type="submit" disabled={pending} className="h-12 w-full shrink-0 sm:h-11 sm:w-auto">
           {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
           Subscribe
         </Button>

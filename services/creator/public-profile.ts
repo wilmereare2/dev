@@ -9,6 +9,13 @@ export type CreatorPublicProfile = {
   bio?: string;
   avatar?: SanityImageSource;
   platformUserId?: string;
+  platformAvatar?: {
+    image: string | null;
+    name: string | null;
+    avatarScale: number;
+    avatarFocusX: number;
+    avatarFocusY: number;
+  };
   verified: boolean;
   followerCount: number;
   videoCount: number;
@@ -51,6 +58,24 @@ export async function getCreatorPublicProfile(slug: string): Promise<CreatorPubl
   });
 
   const platformUserId = platformProfile?.userId;
+
+  const platformUser = platformUserId
+    ? await prisma.user.findUnique({
+        where: { id: platformUserId },
+        select: {
+          image: true,
+          name: true,
+          settings: {
+            select: {
+              avatarScale: true,
+              avatarFocusX: true,
+              avatarFocusY: true,
+            },
+          },
+        },
+      })
+    : null;
+
   const contentIds = items.map((item) => item._id);
 
   const [followerCount, likeCount] = platformUserId
@@ -68,6 +93,15 @@ export async function getCreatorPublicProfile(slug: string): Promise<CreatorPubl
     bio: creator.bio,
     avatar: creator.avatar,
     platformUserId,
+    platformAvatar: platformUser
+      ? {
+          image: platformUser.image,
+          name: platformUser.name,
+          avatarScale: platformUser.settings?.avatarScale ?? 100,
+          avatarFocusX: platformUser.settings?.avatarFocusX ?? 0,
+          avatarFocusY: platformUser.settings?.avatarFocusY ?? 0,
+        }
+      : undefined,
     verified: platformProfile?.verificationStatus === "approved",
     followerCount,
     videoCount: items.length,
