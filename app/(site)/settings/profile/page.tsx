@@ -25,6 +25,8 @@ export default async function ProfileSettingsPage() {
       initialBio={profile?.settings?.bio ?? ""}
       initialImage={profile?.image ?? session.user.image ?? null}
       initialAvatarScale={profile?.settings?.avatarScale ?? 100}
+      initialAvatarFocusX={profile?.settings?.avatarFocusX ?? 0}
+      initialAvatarFocusY={profile?.settings?.avatarFocusY ?? 0}
       accountSynced={accountSynced}
     />
   );

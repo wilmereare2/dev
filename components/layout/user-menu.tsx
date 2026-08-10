@@ -62,6 +62,8 @@ export function UserMenu() {
           image={user.image}
           size="sm"
           imageScale={user.avatarScale ?? 100}
+          imageFocusX={user.avatarFocusX ?? 0}
+          imageFocusY={user.avatarFocusY ?? 0}
         />
         <span className="max-w-[120px] truncate text-sm font-medium">{label}</span>
       </button>
@@ -79,6 +81,8 @@ export function UserMenu() {
                 image={user.image}
                 size="md"
                 imageScale={user.avatarScale ?? 100}
+                imageFocusX={user.avatarFocusX ?? 0}
+                imageFocusY={user.avatarFocusY ?? 0}
               />
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{label}</p>

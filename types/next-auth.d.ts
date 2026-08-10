@@ -8,6 +8,8 @@ declare module "next-auth" {
       role?: Role;
       compliant?: boolean;
       avatarScale?: number;
+      avatarFocusX?: number;
+      avatarFocusY?: number;
     } & DefaultSession["user"];
     avatarVersion?: number;
     role?: Role;
@@ -27,6 +29,8 @@ declare module "next-auth/jwt" {
     dbSynced?: boolean;
     avatarVersion?: number;
     avatarScale?: number;
+    avatarFocusX?: number;
+    avatarFocusY?: number;
   }
 }
 
@@ -39,5 +43,7 @@ declare module "@auth/core/jwt" {
     dbSynced?: boolean;
     avatarVersion?: number;
     avatarScale?: number;
+    avatarFocusX?: number;
+    avatarFocusY?: number;
   }
 }

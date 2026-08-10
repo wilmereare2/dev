@@ -13,6 +13,8 @@ type ProfileFormProps = {
   initialBio: string;
   initialImage?: string | null;
   initialAvatarScale?: number;
+  initialAvatarFocusX?: number;
+  initialAvatarFocusY?: number;
   email: string;
   accountSynced?: boolean;
 };
@@ -22,6 +24,8 @@ export function ProfileForm({
   initialBio,
   initialImage,
   initialAvatarScale = 100,
+  initialAvatarFocusX = 0,
+  initialAvatarFocusY = 0,
   email,
   accountSynced = true,
 }: ProfileFormProps) {
@@ -72,6 +76,8 @@ export function ProfileForm({
       <AvatarUpload
         initialImage={initialImage}
         initialScale={initialAvatarScale}
+        initialFocusX={initialAvatarFocusX}
+        initialFocusY={initialAvatarFocusY}
         name={name || initialName}
         email={email}
         disabled={!accountSynced}

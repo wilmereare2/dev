@@ -8,7 +8,7 @@ import { ensureDesignatedAdminAccess } from "@/lib/auth/provision-admin";
 import { isDesignatedAdminEmail } from "@/lib/auth/admin-email";
 import { verifyPassword } from "@/lib/auth/password";
 import { resolveDbUserId } from "@/lib/auth/resolve-db-user";
-import { avatarSessionUrl, clampAvatarScale } from "@/lib/user/avatar";
+import { avatarSessionUrl, clampAvatarFocus, clampAvatarScale, normalizeAvatarFraming } from "@/lib/user/avatar";
 import { getComplianceStatus } from "@/services/user/compliance";
 import { prisma } from "@/lib/db/prisma";
 
@@ -27,12 +27,16 @@ async function loadAvatarVersion(userId: string) {
   return user?.image ? user.updatedAt.getTime() : 0;
 }
 
-async function loadAvatarScale(userId: string) {
+async function loadAvatarFraming(userId: string) {
   const settings = await prisma.userSettings.findUnique({
     where: { userId },
-    select: { avatarScale: true },
+    select: { avatarScale: true, avatarFocusX: true, avatarFocusY: true },
   });
-  return clampAvatarScale(settings?.avatarScale ?? 100);
+  return normalizeAvatarFraming({
+    scale: settings?.avatarScale,
+    focusX: settings?.avatarFocusX,
+    focusY: settings?.avatarFocusY,
+  });
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -133,7 +137,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
         try {
           token.avatarVersion = await loadAvatarVersion(user.id);
-          token.avatarScale = await loadAvatarScale(user.id);
+          const framing = await loadAvatarFraming(user.id);
+          token.avatarScale = framing.scale;
+          token.avatarFocusX = framing.focusX;
+          token.avatarFocusY = framing.focusY;
           const compliance = await getComplianceStatus(user.id);
           token.compliant = compliance.compliant;
         } catch (error) {
@@ -142,6 +149,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
           token.avatarVersion = 0;
           token.avatarScale = 100;
+          token.avatarFocusX = 0;
+          token.avatarFocusY = 0;
           token.compliant = false;
         }
         token.dbSynced = true;
@@ -156,7 +165,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (resolvedId) {
             token.sub = resolvedId;
             token.avatarVersion = await loadAvatarVersion(resolvedId);
-            token.avatarScale = await loadAvatarScale(resolvedId);
+            const framing = await loadAvatarFraming(resolvedId);
+            token.avatarScale = framing.scale;
+            token.avatarFocusX = framing.focusX;
+            token.avatarFocusY = framing.focusY;
           }
         } catch (error) {
           if (process.env.NODE_ENV === "development") {
@@ -169,10 +181,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.sub && typeof token.avatarVersion !== "number") {
         try {
           token.avatarVersion = await loadAvatarVersion(token.sub);
-          token.avatarScale = await loadAvatarScale(token.sub);
+          const framing = await loadAvatarFraming(token.sub);
+          token.avatarScale = framing.scale;
+          token.avatarFocusX = framing.focusX;
+          token.avatarFocusY = framing.focusY;
         } catch {
           token.avatarVersion = 0;
           token.avatarScale = 100;
+          token.avatarFocusX = 0;
+          token.avatarFocusY = 0;
         }
       }
 
@@ -181,6 +198,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name?: string | null;
           avatarVersion?: number;
           avatarScale?: number;
+          avatarFocusX?: number;
+          avatarFocusY?: number;
           image?: string | null;
           role?: string;
         };
@@ -192,6 +211,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
         if (update.avatarScale !== undefined) {
           token.avatarScale = clampAvatarScale(update.avatarScale);
+        }
+        if (update.avatarFocusX !== undefined) {
+          token.avatarFocusX = clampAvatarFocus(update.avatarFocusX);
+        }
+        if (update.avatarFocusY !== undefined) {
+          token.avatarFocusY = clampAvatarFocus(update.avatarFocusY);
         }
         if (update.role !== undefined) {
           token.role = parseRole(update.role) ?? token.role;
@@ -222,6 +247,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         session.user.avatarScale =
           typeof token.avatarScale === "number" ? clampAvatarScale(token.avatarScale) : 100;
+        session.user.avatarFocusX =
+          typeof token.avatarFocusX === "number" ? clampAvatarFocus(token.avatarFocusX) : 0;
+        session.user.avatarFocusY =
+          typeof token.avatarFocusY === "number" ? clampAvatarFocus(token.avatarFocusY) : 0;
       }
       return session;
     },

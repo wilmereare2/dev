@@ -4,8 +4,30 @@ export const AVATAR_SCALE_MIN = 75;
 export const AVATAR_SCALE_MAX = 150;
 export const AVATAR_SCALE_DEFAULT = 100;
 
+export const AVATAR_FOCUS_MIN = -50;
+export const AVATAR_FOCUS_MAX = 50;
+export const AVATAR_FOCUS_DEFAULT = 0;
+
 export function clampAvatarScale(value: number) {
   return Math.min(AVATAR_SCALE_MAX, Math.max(AVATAR_SCALE_MIN, Math.round(value)));
+}
+
+export function clampAvatarFocus(value: number) {
+  return Math.min(AVATAR_FOCUS_MAX, Math.max(AVATAR_FOCUS_MIN, Math.round(value)));
+}
+
+export type AvatarFraming = {
+  scale: number;
+  focusX: number;
+  focusY: number;
+};
+
+export function normalizeAvatarFraming(input?: Partial<AvatarFraming>): AvatarFraming {
+  return {
+    scale: clampAvatarScale(input?.scale ?? AVATAR_SCALE_DEFAULT),
+    focusX: clampAvatarFocus(input?.focusX ?? AVATAR_FOCUS_DEFAULT),
+    focusY: clampAvatarFocus(input?.focusY ?? AVATAR_FOCUS_DEFAULT),
+  };
 }
 
 export const ALLOWED_AVATAR_TYPES = new Set([

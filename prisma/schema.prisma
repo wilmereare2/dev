@@ -107,6 +107,8 @@ model UserSettings {
   bio                 String?
   locale              String    @default("en")
   avatarScale         Int       @default(100)
+  avatarFocusX        Int       @default(0)
+  avatarFocusY        Int       @default(0)
   showActivity        Boolean   @default(true)
   anonymousMode       Boolean   @default(false)
   hideSubscriptions   Boolean   @default(false)

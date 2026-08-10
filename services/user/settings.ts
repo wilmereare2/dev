@@ -19,9 +19,21 @@ export async function getUserProfile(userId: string) {
 
 export async function updateProfile(
   userId: string,
-  data: { name?: string; bio?: string; image?: string; avatarScale?: number },
+  data: {
+    name?: string;
+    bio?: string;
+    image?: string;
+    avatarScale?: number;
+    avatarFocusX?: number;
+    avatarFocusY?: number;
+  },
 ) {
-  const { name, bio, image, avatarScale } = data;
+  const { name, bio, image, avatarScale, avatarFocusX, avatarFocusY } = data;
+  const settingsPatch =
+    bio !== undefined ||
+    avatarScale !== undefined ||
+    avatarFocusX !== undefined ||
+    avatarFocusY !== undefined;
 
   await prisma.$transaction([
     ...(name !== undefined || image !== undefined
@@ -35,7 +47,7 @@ export async function updateProfile(
           }),
         ]
       : []),
-    ...(bio !== undefined || avatarScale !== undefined
+    ...(settingsPatch
       ? [
           prisma.userSettings.upsert({
             where: { userId },
@@ -43,10 +55,14 @@ export async function updateProfile(
               userId,
               ...(bio !== undefined ? { bio: bio.trim() || null } : {}),
               ...(avatarScale !== undefined ? { avatarScale } : {}),
+              ...(avatarFocusX !== undefined ? { avatarFocusX } : {}),
+              ...(avatarFocusY !== undefined ? { avatarFocusY } : {}),
             },
             update: {
               ...(bio !== undefined ? { bio: bio.trim() || null } : {}),
               ...(avatarScale !== undefined ? { avatarScale } : {}),
+              ...(avatarFocusX !== undefined ? { avatarFocusX } : {}),
+              ...(avatarFocusY !== undefined ? { avatarFocusY } : {}),
             },
           }),
         ]
@@ -56,12 +72,16 @@ export async function updateProfile(
   return getUserProfile(userId);
 }
 
-export async function getAvatarScale(userId: string) {
+export async function getAvatarFraming(userId: string) {
   const settings = await prisma.userSettings.findUnique({
     where: { userId },
-    select: { avatarScale: true },
+    select: { avatarScale: true, avatarFocusX: true, avatarFocusY: true },
   });
-  return settings?.avatarScale ?? 100;
+  return {
+    scale: settings?.avatarScale ?? 100,
+    focusX: settings?.avatarFocusX ?? 0,
+    focusY: settings?.avatarFocusY ?? 0,
+  };
 }
 
 export async function updatePrivacySettings(
