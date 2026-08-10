@@ -1,27 +1,22 @@
 import { spawnSync } from "node:child_process";
+import { ensurePrismaDatabaseEnv } from "./prepare-prisma-env.mjs";
 
 const timeout = process.env.PRISMA_MIGRATE_ADVISORY_LOCK_TIMEOUT ?? "60000";
+process.env.PRISMA_MIGRATE_ADVISORY_LOCK_TIMEOUT = timeout;
 
-function buildEnv() {
-  const env = {
-    ...process.env,
-    PRISMA_MIGRATE_ADVISORY_LOCK_TIMEOUT: timeout,
-  };
-
-  if (!env.DIRECT_URL && env.DATABASE_URL) {
-    env.DIRECT_URL = env.DATABASE_URL;
-    console.log("[migrate] DIRECT_URL not set; falling back to DATABASE_URL for migrations.");
-  }
-
-  return env;
+const envCheck = ensurePrismaDatabaseEnv();
+if (!envCheck.ok) {
+  console.warn("[migrate] Skipping prisma migrate deploy (DATABASE_URL unavailable at build time).");
+  console.warn("[migrate] Enable DATABASE_URL for Vercel Build, or run: npx prisma migrate deploy");
+  process.exit(0);
 }
 
 function runMigrate(label) {
   console.log(`[migrate] ${label}`);
   return spawnSync("npx", ["prisma", "migrate", "deploy"], {
     stdio: "inherit",
-    env: buildEnv(),
-    shell: true,
+    env: process.env,
+    shell: false,
   });
 }
 
