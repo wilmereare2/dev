@@ -24,6 +24,19 @@ export function NewMessageDialog({ open, onClose, onSelectMember }: NewMessageDi
       return;
     }
 
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
     let cancelled = false;
     setPending(true);
 
@@ -35,6 +48,12 @@ export function NewMessageDialog({ open, onClose, onSelectMember }: NewMessageDi
         if (cancelled) return;
         setKnownMembers((knownPayload as { members?: MemberSummaryPayload[] }).members ?? []);
         setMemberResults((searchPayload as { members?: MemberSummaryPayload[] }).members ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setKnownMembers([]);
+          setMemberResults([]);
+        }
       })
       .finally(() => {
         if (!cancelled) setPending(false);
@@ -51,15 +70,22 @@ export function NewMessageDialog({ open, onClose, onSelectMember }: NewMessageDi
     <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
       <button
         type="button"
-        aria-label="Close"
+        aria-label="Close dialog"
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      <div className="relative z-10 flex max-h-[min(80dvh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-message-title"
+        className="relative z-10 flex max-h-[min(80dvh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl"
+      >
         <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
           <div>
-            <h2 className="text-base font-semibold">New message</h2>
+            <h2 id="new-message-title" className="text-base font-semibold">
+              New message
+            </h2>
             <p className="text-xs text-muted-foreground">Message any member on manuelaX</p>
           </div>
           <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close dialog">

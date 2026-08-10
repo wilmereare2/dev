@@ -1,6 +1,6 @@
 import { Footer } from "@/components/layout/footer";
 import { Navbar } from "@/components/layout/navbar";
-import { AppSidebar, shouldShowAppSidebar } from "@/components/layout/app-sidebar";
+import { AppSidebar } from "@/components/layout/app-sidebar";
 import { PageBackground } from "@/components/layout/page-background";
 import { AgeGateBanner } from "@/components/layout/age-gate-banner";
 import { CookieConsentBanner } from "@/components/layout/cookie-consent-banner";

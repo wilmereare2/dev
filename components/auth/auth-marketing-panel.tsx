@@ -1,12 +1,4 @@
-import {
-  CheckCircle2,
-  Lock,
-  Shield,
-  Sparkles,
-  Star,
-  Users,
-  Video,
-} from "lucide-react";
+import { CheckCircle2, Sparkles, Star, Users, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type AuthMarketingPanelProps = {
@@ -28,9 +20,9 @@ const ACCOUNT_FEATURES = [
 ] as const;
 
 const VERIFY_FEATURES = [
-  "Privacy-protected verification — we never share your date of birth publicly",
-  "Secure SSL connection for every session",
-  "18+ platform with DMCA and compliance tooling built in",
+  "One-time check to unlock the full catalog",
+  "Your date of birth is never shown on your profile",
+  "Leave anytime — verification expires on this device",
 ] as const;
 
 export function AuthMarketingPanel({
@@ -59,8 +51,8 @@ export function AuthMarketingPanel({
 
       <div className="relative">
         <p className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-          {isVerify ? <Shield className="size-3.5" /> : <Sparkles className="size-3.5" />}
-          {isVerify ? "Secure entry" : "manuelaX · 18+"}
+          <Sparkles className="size-3.5" />
+          {isVerify ? "manuelaX · 18+" : "Member access"}
         </p>
 
         <h2
@@ -69,12 +61,12 @@ export function AuthMarketingPanel({
             compact ? "text-2xl" : "text-3xl sm:text-4xl lg:text-[2.5rem] lg:leading-[1.08]",
           )}
         >
-          {isVerify ? "Premium access, verified safely." : "Discover exclusive creators."}
+          {isVerify ? "Adults-only creator platform." : "Discover exclusive creators."}
         </h2>
 
         <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
           {isVerify
-            ? "Confirm your age once to unlock the full catalog. Your verification is encrypted and stored only to keep the platform 18+."
+            ? "Confirm your age once to browse profiles, releases, and member features."
             : "Join a premium creator platform built for cinematic releases, curated discovery, and member-only experiences."}
         </p>
 
@@ -104,12 +96,7 @@ export function AuthMarketingPanel({
           ))}
         </ul>
 
-        {isVerify ? (
-          <div className="mt-8 inline-flex items-center gap-2 rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm text-muted-foreground">
-            <Lock className="size-4 text-accent" aria-hidden />
-            Privacy protected · Secure verification
-          </div>
-        ) : (
+        {!isVerify ? (
           <div className="mt-8 flex items-center gap-2 text-sm text-muted-foreground">
             <span className="inline-flex text-amber-400" aria-hidden>
               {Array.from({ length: 5 }).map((_, index) => (
@@ -118,7 +105,7 @@ export function AuthMarketingPanel({
             </span>
             Trusted by early members and verified creators
           </div>
-        )}
+        ) : null}
       </div>
     </aside>
   );

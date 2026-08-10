@@ -1,7 +1,7 @@
 import { validateAgeVerificationInput } from "@/lib/compliance/age-rules";
 import { prisma } from "@/lib/db/prisma";
 
-export { MIN_AGE_YEARS, calculateAge, isAdult, parseDateOfBirth, validateAgeVerificationInput } from "@/lib/compliance/age-rules";
+export { MIN_AGE_YEARS, calculateAge, formatDateOfBirthInput, isAdult, parseDateOfBirth, parseDisplayDateOfBirth, toIsoDateString, validateAgeVerificationInput } from "@/lib/compliance/age-rules";
 
 export const CURRENT_TERMS_VERSION = "2026-01";
 export const CURRENT_PRIVACY_VERSION = "2026-01";

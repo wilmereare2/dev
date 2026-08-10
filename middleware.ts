@@ -6,7 +6,6 @@ import {
   isSupportedLocale,
   localeCookieOptions,
   negotiateLocale,
-  resolveLocale,
 } from "@/lib/i18n";
 import { applySecurityHeaders } from "@/middleware/security-headers";
 import { clientIp, rateLimit } from "@/lib/rate-limit";

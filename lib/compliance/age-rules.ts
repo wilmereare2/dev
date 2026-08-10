@@ -17,28 +17,21 @@ export function isAdult(dateOfBirth: Date, today = new Date()) {
   return calculateAge(dateOfBirth, today) >= MIN_AGE_YEARS;
 }
 
-/** Parse YYYY-MM-DD from an HTML date input and validate it. */
-export function parseDateOfBirth(value: string): DateValidationResult {
-  const trimmed = value.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return { ok: false, error: "Enter a valid date of birth." };
-  }
-
-  const [yearStr, monthStr, dayStr] = trimmed.split("-");
-  const year = Number(yearStr);
-  const month = Number(monthStr);
-  const day = Number(dayStr);
-
+function validateDateParts(year: number, month: number, day: number): DateValidationResult {
   if (!Number.isInteger(year) || year < 1900 || year > new Date().getFullYear()) {
     return { ok: false, error: "Enter a valid date of birth." };
   }
 
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    return { ok: false, error: "Enter a valid date of birth." };
+  }
+
+  if (!Number.isInteger(day) || day < 1 || day > 31) {
+    return { ok: false, error: "Enter a valid date of birth." };
+  }
+
   const date = new Date(year, month - 1, day);
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month - 1 ||
-    date.getDate() !== day
-  ) {
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
     return { ok: false, error: "Enter a valid date of birth." };
   }
 
@@ -51,6 +44,60 @@ export function parseDateOfBirth(value: string): DateValidationResult {
   return { ok: true, date };
 }
 
+/** Parse YYYY-MM-DD from an HTML date input and validate it. */
+export function parseDateOfBirth(value: string): DateValidationResult {
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return { ok: false, error: "Enter a valid date of birth." };
+  }
+
+  const [yearStr, monthStr, dayStr] = trimmed.split("-");
+  return validateDateParts(Number(yearStr), Number(monthStr), Number(dayStr));
+}
+
+/** Parse MM / DD / YYYY display input (also accepts ISO paste). */
+export function parseDisplayDateOfBirth(value: string): DateValidationResult {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { ok: false, error: "Enter your date of birth." };
+  }
+
+  const usMatch = trimmed.match(/^(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{4})$/);
+  if (usMatch) {
+    return validateDateParts(Number(usMatch[3]), Number(usMatch[1]), Number(usMatch[2]));
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [yearStr, monthStr, dayStr] = trimmed.split("-");
+    return validateDateParts(Number(yearStr), Number(monthStr), Number(dayStr));
+  }
+
+  if (/^\d{8}$/.test(trimmed.replace(/\D/g, ""))) {
+    const digits = trimmed.replace(/\D/g, "");
+    return validateDateParts(
+      Number(digits.slice(4, 8)),
+      Number(digits.slice(0, 2)),
+      Number(digits.slice(2, 4)),
+    );
+  }
+
+  return { ok: false, error: "Use MM / DD / YYYY." };
+}
+
+export function formatDateOfBirthInput(raw: string) {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)} / ${digits.slice(2)}`;
+  return `${digits.slice(0, 2)} / ${digits.slice(2, 4)} / ${digits.slice(4)}`;
+}
+
+export function toIsoDateString(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function validateAgeVerificationInput(input: {
   dateOfBirth: string;
   acceptTerms: boolean;
@@ -60,7 +107,7 @@ export function validateAgeVerificationInput(input: {
     return { ok: false, error: "You must accept the Terms of Service and Privacy Policy." };
   }
 
-  const parsed = parseDateOfBirth(input.dateOfBirth);
+  const parsed = parseDisplayDateOfBirth(input.dateOfBirth);
   if (!parsed.ok) return parsed;
 
   if (!isAdult(parsed.date)) {
