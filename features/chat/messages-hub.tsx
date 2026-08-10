@@ -564,6 +564,10 @@ export function MessagesHub({ session }: MessagesHubProps) {
     });
   }
 
+  function handleGroupMembersChange() {
+    void refreshGroups();
+  }
+
   async function handleGroupSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (activeThread.kind !== "group") return;
@@ -775,7 +779,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         : "Reconnecting…"
       : activeThread.kind === "group"
         ? selectedGroup
-          ? `${selectedGroup.memberCount} members · ${selectedGroup.visibility === "public" ? "Public" : "Private"}${selectedGroup.archivedAt ? " · Archived" : ""}`
+          ? `${selectedGroup.memberCount} members · ${selectedGroup.visibility === "public" ? "Public" : "Private"}${selectedGroup.myRole === "creator" ? " · You are creator" : selectedGroup.myRole === "admin" ? " · You are admin" : ""}${selectedGroup.archivedAt ? " · Archived" : ""}`
           : "Group chat"
         : "Private message";
 
@@ -1058,9 +1062,10 @@ export function MessagesHub({ session }: MessagesHubProps) {
                 <GroupActionsMenu
                   groupId={selectedGroup.id}
                   groupName={selectedGroup.name}
-                  isOwner={selectedGroup.createdById === session.user.id}
+                  myRole={selectedGroup.myRole}
                   archived={Boolean(selectedGroup.archivedAt)}
                   onArchivedChange={handleGroupArchivedChange}
+                  onMembersChange={handleGroupMembersChange}
                 />
               ) : null}
             </header>

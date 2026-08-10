@@ -147,6 +147,7 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
               Create group
             </h2>
             <p className="text-xs text-muted-foreground">Choose access, invite members, then save</p>
+            <p className="text-[11px] text-muted-foreground">You become the group creator automatically</p>
           </div>
           <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close dialog">
             <X className="size-4" />

@@ -32,6 +32,8 @@ export type DirectConversationPayload = {
 
 export type GroupVisibility = "private" | "public";
 
+export type GroupMemberRole = "creator" | "admin" | "member";
+
 export type MemberSummaryPayload = {
   id: string;
   name: string | null;
@@ -47,6 +49,15 @@ export type GroupMessagePayload = {
   sender: ChatUserPayload;
 };
 
+export type GroupMemberPayload = {
+  userId: string;
+  name: string | null;
+  image: string | null;
+  siteRole: string;
+  groupRole: GroupMemberRole;
+  joinedAt: string;
+};
+
 export type MemberGroupPayload = {
   id: string;
   name: string;
@@ -56,5 +67,6 @@ export type MemberGroupPayload = {
   updatedAt: string;
   memberCount: number;
   createdById: string;
+  myRole: GroupMemberRole;
   lastMessage: GroupMessagePayload | null;
 };
