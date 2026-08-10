@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiUser } from "@/lib/api/require-user";
+import { AVATAR_SCALE_MAX, AVATAR_SCALE_MIN } from "@/lib/user/avatar";
 import { updateProfile } from "@/services/user/settings";
 
 const bodySchema = z.object({
   name: z.string().max(120).optional(),
   bio: z.string().max(500).optional(),
   image: z.string().url().optional().or(z.literal("")),
+  avatarScale: z.number().int().min(AVATAR_SCALE_MIN).max(AVATAR_SCALE_MAX).optional(),
 });
 
 export async function PATCH(request: Request) {

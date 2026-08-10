@@ -106,6 +106,7 @@ model UserSettings {
   userId              String    @id
   bio                 String?
   locale              String    @default("en")
+  avatarScale         Int       @default(100)
   showActivity        Boolean   @default(true)
   anonymousMode       Boolean   @default(false)
   hideSubscriptions   Boolean   @default(false)

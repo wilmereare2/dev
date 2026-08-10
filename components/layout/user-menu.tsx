@@ -56,7 +56,13 @@ export function UserMenu() {
         aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
       >
-        <UserAvatar name={user.name} email={user.email} image={user.image} size="sm" />
+        <UserAvatar
+          name={user.name}
+          email={user.email}
+          image={user.image}
+          size="sm"
+          imageScale={user.avatarScale ?? 100}
+        />
         <span className="max-w-[120px] truncate text-sm font-medium">{label}</span>
       </button>
 
@@ -67,7 +73,13 @@ export function UserMenu() {
         >
           <div className="border-b border-border px-4 py-3">
             <div className="flex items-center gap-3">
-              <UserAvatar name={user.name} email={user.email} image={user.image} size="md" />
+              <UserAvatar
+                name={user.name}
+                email={user.email}
+                image={user.image}
+                size="md"
+                imageScale={user.avatarScale ?? 100}
+              />
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{label}</p>
                 {user.email ? <p className="truncate text-xs text-muted-foreground">{user.email}</p> : null}

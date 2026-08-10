@@ -8,7 +8,7 @@ import { ensureDesignatedAdminAccess } from "@/lib/auth/provision-admin";
 import { isDesignatedAdminEmail } from "@/lib/auth/admin-email";
 import { verifyPassword } from "@/lib/auth/password";
 import { resolveDbUserId } from "@/lib/auth/resolve-db-user";
-import { avatarSessionUrl } from "@/lib/user/avatar";
+import { avatarSessionUrl, clampAvatarScale } from "@/lib/user/avatar";
 import { getComplianceStatus } from "@/services/user/compliance";
 import { prisma } from "@/lib/db/prisma";
 
@@ -25,6 +25,14 @@ async function loadAvatarVersion(userId: string) {
     select: { image: true, updatedAt: true },
   });
   return user?.image ? user.updatedAt.getTime() : 0;
+}
+
+async function loadAvatarScale(userId: string) {
+  const settings = await prisma.userSettings.findUnique({
+    where: { userId },
+    select: { avatarScale: true },
+  });
+  return clampAvatarScale(settings?.avatarScale ?? 100);
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -125,6 +133,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
         try {
           token.avatarVersion = await loadAvatarVersion(user.id);
+          token.avatarScale = await loadAvatarScale(user.id);
           const compliance = await getComplianceStatus(user.id);
           token.compliant = compliance.compliant;
         } catch (error) {
@@ -132,6 +141,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             console.error("[auth] jwt user bootstrap failed:", error);
           }
           token.avatarVersion = 0;
+          token.avatarScale = 100;
           token.compliant = false;
         }
         token.dbSynced = true;
@@ -146,6 +156,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (resolvedId) {
             token.sub = resolvedId;
             token.avatarVersion = await loadAvatarVersion(resolvedId);
+            token.avatarScale = await loadAvatarScale(resolvedId);
           }
         } catch (error) {
           if (process.env.NODE_ENV === "development") {
@@ -158,8 +169,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.sub && typeof token.avatarVersion !== "number") {
         try {
           token.avatarVersion = await loadAvatarVersion(token.sub);
+          token.avatarScale = await loadAvatarScale(token.sub);
         } catch {
           token.avatarVersion = 0;
+          token.avatarScale = 100;
         }
       }
 
@@ -167,6 +180,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const update = session as {
           name?: string | null;
           avatarVersion?: number;
+          avatarScale?: number;
           image?: string | null;
           role?: string;
         };
@@ -175,6 +189,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.avatarVersion = update.avatarVersion;
         } else if (update.image !== undefined) {
           token.avatarVersion = update.image ? Date.now() : 0;
+        }
+        if (update.avatarScale !== undefined) {
+          token.avatarScale = clampAvatarScale(update.avatarScale);
         }
         if (update.role !== undefined) {
           token.role = parseRole(update.role) ?? token.role;
@@ -202,6 +219,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         } else {
           session.user.image = null;
         }
+
+        session.user.avatarScale =
+          typeof token.avatarScale === "number" ? clampAvatarScale(token.avatarScale) : 100;
       }
       return session;
     },

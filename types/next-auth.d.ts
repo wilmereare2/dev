@@ -7,6 +7,7 @@ declare module "next-auth" {
       id: string;
       role?: Role;
       compliant?: boolean;
+      avatarScale?: number;
     } & DefaultSession["user"];
     avatarVersion?: number;
     role?: Role;
@@ -25,6 +26,7 @@ declare module "next-auth/jwt" {
     picture?: string | null;
     dbSynced?: boolean;
     avatarVersion?: number;
+    avatarScale?: number;
   }
 }
 
@@ -36,5 +38,6 @@ declare module "@auth/core/jwt" {
     picture?: string | null;
     dbSynced?: boolean;
     avatarVersion?: number;
+    avatarScale?: number;
   }
 }

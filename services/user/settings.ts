@@ -17,8 +17,11 @@ export async function getUserProfile(userId: string) {
   });
 }
 
-export async function updateProfile(userId: string, data: { name?: string; bio?: string; image?: string }) {
-  const { name, bio, image } = data;
+export async function updateProfile(
+  userId: string,
+  data: { name?: string; bio?: string; image?: string; avatarScale?: number },
+) {
+  const { name, bio, image, avatarScale } = data;
 
   await prisma.$transaction([
     ...(name !== undefined || image !== undefined
@@ -32,18 +35,33 @@ export async function updateProfile(userId: string, data: { name?: string; bio?:
           }),
         ]
       : []),
-    ...(bio !== undefined
+    ...(bio !== undefined || avatarScale !== undefined
       ? [
           prisma.userSettings.upsert({
             where: { userId },
-            create: { userId, bio: bio.trim() || null },
-            update: { bio: bio.trim() || null },
+            create: {
+              userId,
+              ...(bio !== undefined ? { bio: bio.trim() || null } : {}),
+              ...(avatarScale !== undefined ? { avatarScale } : {}),
+            },
+            update: {
+              ...(bio !== undefined ? { bio: bio.trim() || null } : {}),
+              ...(avatarScale !== undefined ? { avatarScale } : {}),
+            },
           }),
         ]
       : []),
   ]);
 
   return getUserProfile(userId);
+}
+
+export async function getAvatarScale(userId: string) {
+  const settings = await prisma.userSettings.findUnique({
+    where: { userId },
+    select: { avatarScale: true },
+  });
+  return settings?.avatarScale ?? 100;
 }
 
 export async function updatePrivacySettings(

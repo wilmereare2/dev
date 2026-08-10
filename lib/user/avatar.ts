@@ -1,5 +1,13 @@
 export const MAX_AVATAR_BYTES = 1024 * 1024;
 
+export const AVATAR_SCALE_MIN = 75;
+export const AVATAR_SCALE_MAX = 150;
+export const AVATAR_SCALE_DEFAULT = 100;
+
+export function clampAvatarScale(value: number) {
+  return Math.min(AVATAR_SCALE_MAX, Math.max(AVATAR_SCALE_MIN, Math.round(value)));
+}
+
 export const ALLOWED_AVATAR_TYPES = new Set([
   "image/jpeg",
   "image/png",
