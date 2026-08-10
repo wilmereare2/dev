@@ -13,6 +13,7 @@ type ConversationItemProps = {
   unreadCount?: number;
   badge?: ReactNode;
   meta?: ReactNode;
+  iconOnly?: boolean;
 };
 
 export function ConversationItem({
@@ -25,8 +26,29 @@ export function ConversationItem({
   unreadCount = 0,
   badge,
   meta,
+  iconOnly = false,
 }: ConversationItemProps) {
   const unread = unreadCount > 0;
+
+  if (iconOnly) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        title={title}
+        aria-label={unread ? `${title}, ${unreadCount} unread messages` : title}
+        className={cn(
+          "relative flex w-full items-center justify-center rounded-xl p-1.5 transition",
+          active ? "bg-accent/15 ring-2 ring-accent/40" : "hover:bg-muted/40",
+        )}
+      >
+        {icon}
+        {unread ? (
+          <span className="absolute right-1 top-1 size-2.5 rounded-full border-2 border-background bg-accent" aria-hidden />
+        ) : null}
+      </button>
+    );
+  }
 
   return (
     <button

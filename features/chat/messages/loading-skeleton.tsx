@@ -18,17 +18,20 @@ export function ConversationListSkeleton({ rows = 5 }: { rows?: number }) {
 
 export function ChatMessagesSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6 animate-pulse" aria-hidden>
-      <div className="flex gap-2">
-        <div className="size-8 rounded-full bg-muted/60" />
-        <div className="h-12 w-2/5 rounded-2xl bg-muted/50" />
+    <div className="mx-auto w-full max-w-3xl space-y-3 px-2 py-3 animate-pulse" aria-hidden>
+      <div className="flex justify-center">
+        <div className="h-6 w-24 rounded-full bg-black/30" />
       </div>
-      <div className="flex flex-row-reverse gap-2">
-        <div className="h-10 w-1/3 rounded-2xl bg-accent/20" />
+      <div className="flex gap-2.5">
+        <div className="size-8 rounded-full bg-[#182533]/80" />
+        <div className="h-14 w-2/5 rounded-xl rounded-tl-sm bg-[#182533]/70" />
       </div>
-      <div className="flex gap-2">
-        <div className="size-8 rounded-full bg-muted/60" />
-        <div className="h-16 w-3/5 rounded-2xl bg-muted/50" />
+      <div className="flex flex-row-reverse">
+        <div className="h-10 w-1/3 rounded-xl rounded-br-sm bg-accent/25" />
+      </div>
+      <div className="flex gap-2.5">
+        <div className="size-8 rounded-full bg-[#182533]/80" />
+        <div className="h-16 w-3/5 rounded-xl rounded-tl-sm bg-[#182533]/70" />
       </div>
     </div>
   );

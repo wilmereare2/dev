@@ -35,26 +35,30 @@ function bubbleRadius(mine: boolean, position: MessageGroupPosition) {
   if (mine) {
     switch (position) {
       case "first":
-        return "rounded-[18px] rounded-br-[6px]";
+        return "rounded-[12px] rounded-br-[4px]";
       case "middle":
-        return "rounded-l-[18px] rounded-r-[6px]";
+        return "rounded-[12px] rounded-br-[4px] rounded-tr-[4px]";
       case "last":
-        return "rounded-[18px] rounded-tr-[6px] rounded-br-[4px]";
+        return "rounded-[12px] rounded-tr-[4px]";
       default:
-        return "rounded-[18px] rounded-br-[4px]";
+        return "rounded-[12px]";
     }
   }
 
   switch (position) {
     case "first":
-      return "rounded-[18px] rounded-bl-[6px]";
+      return "rounded-[12px] rounded-bl-[4px]";
     case "middle":
-      return "rounded-r-[18px] rounded-l-[6px]";
+      return "rounded-[12px] rounded-bl-[4px] rounded-tl-[4px]";
     case "last":
-      return "rounded-[18px] rounded-tl-[6px] rounded-bl-[4px]";
+      return "rounded-[12px] rounded-tl-[4px]";
     default:
-      return "rounded-[18px] rounded-bl-[4px]";
+      return "rounded-[12px]";
   }
+}
+
+function hasTail(mine: boolean, position: MessageGroupPosition) {
+  return position === "single" || position === "last";
 }
 
 export function ChatMessageBubble({
@@ -75,6 +79,7 @@ export function ChatMessageBubble({
 }: ChatMessageBubbleProps) {
   const badge = roleLabel(senderRole);
   const [copied, setCopied] = useState(false);
+  const tail = hasTail(mine, groupPosition);
 
   async function copyMessage() {
     try {
@@ -87,17 +92,17 @@ export function ChatMessageBubble({
   }
 
   return (
-    <article className={cn("group flex gap-2", mine ? "flex-row-reverse" : "flex-row")}>
+    <article className={cn("group flex gap-2.5", mine ? "flex-row-reverse" : "flex-row")}>
       {showAvatar ? (
         <UserAvatar name={senderName} email={null} image={senderImage} size="sm" className="mt-auto shrink-0" />
       ) : (
         <div className="size-8 shrink-0" aria-hidden />
       )}
 
-      <div className={cn("flex min-w-0 max-w-[75%] flex-col", mine ? "items-end" : "items-start")}>
+      <div className={cn("flex min-w-0 max-w-[min(75%,520px)] flex-col", mine ? "items-end" : "items-start")}>
         {showSenderName ? (
           <div className="mb-1 flex flex-wrap items-center gap-2 px-1">
-            <span className="text-xs font-semibold text-accent">{senderName}</span>
+            <span className="text-xs font-semibold text-sky-400">{senderName}</span>
             {badge ? (
               <span className="rounded-full border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
                 {badge}
@@ -113,18 +118,18 @@ export function ChatMessageBubble({
               void copyMessage();
             }}
             className={cn(
-              "relative inline-block max-w-full px-3 py-1.5 text-sm leading-relaxed shadow-sm",
+              "relative inline-block max-w-full px-2.5 pb-1.5 pt-1.5 text-[15px] leading-[1.35] shadow-sm",
               bubbleRadius(mine, groupPosition),
-              mine
-                ? "bg-accent text-accent-foreground"
-                : "border border-border/50 bg-background/90 text-foreground",
+              mine ? "chat-bubble-outgoing" : "chat-bubble-incoming",
+              tail && !mine && "chat-bubble-tail-in",
+              tail && mine && "chat-bubble-tail-out",
             )}
           >
-            <span className="whitespace-pre-wrap break-words">{body}</span>
+            <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{body}</span>
             <span
               className={cn(
-                "float-right ml-3 mt-1 inline-flex translate-y-0.5 items-center gap-1 text-[10px] leading-none select-none",
-                mine ? "text-accent-foreground/75" : "text-muted-foreground",
+                "float-right ml-3 mt-2 inline-flex translate-y-0.5 items-center gap-1 text-[11px] leading-none select-none",
+                mine ? "text-accent-foreground/70" : "text-[var(--chat-incoming-meta)]",
               )}
             >
               {copied ? <span className="text-[10px]">Copied</span> : null}

@@ -126,7 +126,7 @@ export function ChatMessageList({
   return (
     <div className="relative min-h-0 flex-1">
       <div ref={scrollRef} className="chat-thread-panel absolute inset-0 overflow-y-auto">
-        <div className="mx-auto w-full max-w-3xl px-3 py-4 sm:px-4">
+        <div className="mx-auto w-full max-w-3xl px-2 py-3 sm:px-3">
           {loading ? <ChatMessagesSkeleton /> : null}
 
           {!loading && error ? (
@@ -159,15 +159,19 @@ export function ChatMessageList({
                 return (
                   <div key={message.id}>
                     {showDateDivider ? (
-                      <div className="my-5 flex items-center gap-3 px-1">
-                        <div className="h-px flex-1 bg-border/60" aria-hidden />
-                        <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <div className="my-4 flex justify-center px-1">
+                        <span className="chat-date-pill rounded-full px-3 py-1 text-xs font-medium">
                           {formatDateDivider(message.createdAt)}
                         </span>
-                        <div className="h-px flex-1 bg-border/60" aria-hidden />
                       </div>
                     ) : null}
-                    <div className={cn("flex", mine ? "justify-end" : "justify-start", groupedWithPrevious ? "mt-1" : "mt-3")}>
+                    <div
+                      className={cn(
+                        "flex",
+                        mine ? "justify-end" : "justify-start",
+                        groupedWithPrevious ? "mt-0.5" : "mt-2.5",
+                      )}
+                    >
                       <ChatMessageBubble
                         body={message.body}
                         createdAt={message.createdAt}

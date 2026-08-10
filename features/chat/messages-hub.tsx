@@ -93,9 +93,11 @@ function isStaff(role?: string | null) {
 }
 
 const INBOX_WIDTH_KEY = "messages-inbox-width";
-const INBOX_MIN_WIDTH = 280;
-const INBOX_MAX_WIDTH = 330;
+const INBOX_MIN_WIDTH = 56;
+const INBOX_MAX_WIDTH = 360;
 const INBOX_DEFAULT_WIDTH = 300;
+const INBOX_ICON_ONLY_WIDTH = 72;
+const INBOX_ICON_ONLY_THRESHOLD = 96;
 const NAV_WIDTH = 220;
 
 export function MessagesHub({ session }: MessagesHubProps) {
@@ -273,6 +275,14 @@ export function MessagesHub({ session }: MessagesHubProps) {
   function endInboxResize(event: React.PointerEvent<HTMLDivElement>) {
     if (!inboxResizeRef.current) return;
     inboxResizeRef.current = null;
+
+    const width = inboxWidthRef.current;
+    if (width < INBOX_ICON_ONLY_THRESHOLD) {
+      const snapped = INBOX_ICON_ONLY_WIDTH;
+      setInboxWidth(snapped);
+      inboxWidthRef.current = snapped;
+    }
+
     try {
       localStorage.setItem(INBOX_WIDTH_KEY, String(inboxWidthRef.current));
     } catch {
@@ -983,6 +993,8 @@ export function MessagesHub({ session }: MessagesHubProps) {
     [groups, publicGroups],
   );
 
+  const inboxIconOnly = inboxWidth <= INBOX_ICON_ONLY_THRESHOLD;
+
   const messageNavActions = (
     <div className="flex flex-col gap-1.5">
       <Button
@@ -1015,55 +1027,70 @@ export function MessagesHub({ session }: MessagesHubProps) {
           />
 
           <aside
-            style={{ width: inboxWidth, maxWidth: INBOX_MAX_WIDTH }}
+            style={{ width: inboxWidth }}
             className={cn(
-              "flex w-full min-w-0 shrink-0 flex-col overflow-hidden border-r border-border/60 bg-background/40",
+              "flex w-full min-w-0 shrink-0 flex-col overflow-hidden border-r border-border/60 bg-background/40 transition-[width]",
               mobileShowThread ? "hidden md:flex" : "flex",
+              inboxIconOnly && "items-center",
             )}
           >
-            <div className="flex h-14 shrink-0 items-center border-b border-border/60 px-4">
-              <div className="min-w-0 flex-1">
-                <h1 className="truncate font-display text-base font-semibold tracking-tight">Conversations</h1>
-                <p className="truncate text-xs text-muted-foreground">Recent chats</p>
+            {!inboxIconOnly ? (
+              <div className="flex h-14 w-full shrink-0 items-center border-b border-border/60 px-4">
+                <div className="min-w-0 flex-1">
+                  <h1 className="truncate font-display text-base font-semibold tracking-tight">Conversations</h1>
+                  <p className="truncate text-xs text-muted-foreground">Recent chats</p>
+                </div>
+                <div className="ml-2 flex shrink-0 gap-1 lg:hidden">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="size-9 shrink-0"
+                    onClick={() => setShowCreateGroup(true)}
+                    aria-label="Create group"
+                  >
+                    <UserPlus className="size-4" aria-hidden />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="premium"
+                    className="size-9 shrink-0"
+                    onClick={() => setShowNewMessage(true)}
+                    aria-label="New message"
+                  >
+                    <Plus className="size-4" aria-hidden />
+                  </Button>
+                </div>
               </div>
-              <div className="ml-2 flex shrink-0 gap-1 lg:hidden">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="secondary"
-                  className="size-9 shrink-0"
-                  onClick={() => setShowCreateGroup(true)}
-                  aria-label="Create group"
-                >
-                  <UserPlus className="size-4" aria-hidden />
-                </Button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="premium"
-                  className="size-9 shrink-0"
-                  onClick={() => setShowNewMessage(true)}
-                  aria-label="New message"
-                >
-                  <Plus className="size-4" aria-hidden />
-                </Button>
-              </div>
-            </div>
+            ) : null}
 
-            <MessageNav filter={inboxFilter} onFilterChange={setInboxFilter} layout="tabs" className="lg:hidden" />
+            {!inboxIconOnly ? (
+              <MessageNav filter={inboxFilter} onFilterChange={setInboxFilter} layout="tabs" className="lg:hidden" />
+            ) : null}
 
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <p className="sticky top-0 z-[1] border-b border-border/40 bg-background/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
-                Recent
-              </p>
+            <div className={cn("min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden", inboxIconOnly && "px-1 py-2")}>
+              {!inboxIconOnly ? (
+                <p className="sticky top-0 z-[1] border-b border-border/40 bg-background/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
+                  Recent
+                </p>
+              ) : null}
 
-              {listLoading ? <ConversationListSkeleton /> : null}
+              {listLoading && !inboxIconOnly ? <ConversationListSkeleton /> : null}
+              {listLoading && inboxIconOnly ? (
+                <ul className="flex flex-col items-center gap-2 py-2" aria-hidden>
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <li key={index} className="size-10 animate-pulse rounded-full bg-muted/50" />
+                  ))}
+                </ul>
+              ) : null}
 
               {!listLoading && showCommunityInList ? (
-                <div className="px-2 py-1">
+                <div className={cn(inboxIconOnly ? "w-full" : "px-2 py-1")}>
                   <ConversationItem
                     active={activeThread.kind === "community"}
                     onClick={openCommunity}
+                    iconOnly={inboxIconOnly}
                     icon={
                       <div className="flex size-10 items-center justify-center rounded-full bg-accent/15 text-accent">
                         <MessagesSquare className="size-5" aria-hidden />
@@ -1082,12 +1109,13 @@ export function MessagesHub({ session }: MessagesHubProps) {
               ) : null}
 
               {!listLoading && showGroupsInList && groups.length > 0 ? (
-                <ul className="space-y-0.5 px-2 py-1">
+                <ul className={cn("space-y-0.5", inboxIconOnly ? "w-full py-1" : "px-2 py-1")}>
                   {groups.map((group) => (
                     <li key={group.id}>
                       <ConversationItem
                         active={activeThread.kind === "group" && activeThread.groupId === group.id}
                         onClick={() => openGroup(group.id)}
+                        iconOnly={inboxIconOnly}
                         icon={
                           <div className="flex size-10 items-center justify-center rounded-full bg-accent/10 text-accent">
                             <Users className="size-5" aria-hidden />
@@ -1103,7 +1131,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
                 </ul>
               ) : null}
 
-              {!listLoading && showGroupsInList && discoverablePublicGroups.length > 0 ? (
+              {!listLoading && showGroupsInList && !inboxIconOnly && discoverablePublicGroups.length > 0 ? (
                 <>
                   <p className="border-t border-border/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Discover
@@ -1143,7 +1171,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
 
               {!listLoading && showPrivateInList ? (
                 conversations.length > 0 ? (
-                  <ul className="space-y-0.5 px-2 py-1">
+                  <ul className={cn("space-y-0.5", inboxIconOnly ? "w-full py-1" : "px-2 py-1")}>
                     {conversations.map((conversation) => (
                       <li key={conversation.id}>
                         <ConversationItem
@@ -1152,6 +1180,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
                             activeThread.conversationId === conversation.id
                           }
                           onClick={() => openDirect(conversation.id)}
+                          iconOnly={inboxIconOnly}
                           icon={
                             <UserAvatar
                               name={conversation.peer.name}
@@ -1172,7 +1201,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
                       </li>
                     ))}
                   </ul>
-                ) : inboxFilter === "private" ? (
+                ) : inboxFilter === "private" && !inboxIconOnly ? (
                   <EmptyState
                     title="No conversations yet"
                     description="Start a conversation to see it here."
@@ -1180,7 +1209,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
                 ) : null
               ) : null}
 
-              {!listLoading && inboxFilter === "groups" && groups.length === 0 && discoverablePublicGroups.length === 0 ? (
+              {!listLoading && !inboxIconOnly && inboxFilter === "groups" && groups.length === 0 && discoverablePublicGroups.length === 0 ? (
                 <EmptyState
                   title="No groups yet"
                   description="Create a group or join a public one to get started."
@@ -1192,7 +1221,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
           <div
             role="separator"
             aria-orientation="vertical"
-            aria-label="Resize conversation list"
+            aria-label={inboxIconOnly ? "Expand conversation list" : "Resize conversation list"}
             onPointerDown={startInboxResize}
             onPointerMove={moveInboxResize}
             onPointerUp={endInboxResize}
