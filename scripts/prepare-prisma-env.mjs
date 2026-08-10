@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 
 export function ensurePrismaDatabaseEnv() {
   if (!process.env.DATABASE_URL) {
-    return { ok: false as const, reason: "missing_database_url" as const };
+    return { ok: false, reason: "missing_database_url" };
   }
 
   if (!process.env.DIRECT_URL) {
@@ -14,7 +14,7 @@ export function ensurePrismaDatabaseEnv() {
     console.log("[prisma-env] DIRECT_URL not set; using DATABASE_URL.");
   }
 
-  return { ok: true as const };
+  return { ok: true };
 }
 
 const isMain =
