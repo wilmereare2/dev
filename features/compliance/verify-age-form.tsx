@@ -69,7 +69,12 @@ export function VerifyAgeForm({ redirectTo = "/", alreadyVerified = false }: Ver
     return null;
   }, [acceptTerms, acceptPrivacy, touched]);
 
-  const canSubmit = validation.ok && !pending;
+  const canSubmit =
+    !pending &&
+    acceptTerms &&
+    acceptPrivacy &&
+    dateOfBirth.replace(/\D/g, "").length === 8 &&
+    !dateIssue;
 
   async function restoreVerification() {
     setPending(true);
@@ -237,7 +242,7 @@ export function VerifyAgeForm({ redirectTo = "/", alreadyVerified = false }: Ver
             inputMode="numeric"
             autoComplete="bday"
             required
-            placeholder="MM / DD / YYYY"
+            placeholder="DD / MM / YYYY"
             value={dateOfBirth}
             onChange={(event) => {
               setDateOfBirth(formatDateOfBirthInput(event.target.value));

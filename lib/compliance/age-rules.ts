@@ -55,16 +55,42 @@ export function parseDateOfBirth(value: string): DateValidationResult {
   return validateDateParts(Number(yearStr), Number(monthStr), Number(dayStr));
 }
 
-/** Parse MM / DD / YYYY display input (also accepts ISO paste). */
+function resolveDayMonth(first: number, second: number): { day: number; month: number } | null {
+  if (first > 31 || second > 31) return null;
+
+  if (first > 12 && second <= 12) {
+    return { day: first, month: second };
+  }
+
+  if (second > 12 && first <= 12) {
+    return { day: second, month: first };
+  }
+
+  if (first <= 12 && second <= 12) {
+    // Ambiguous — prefer day-first (common outside the US).
+    return { day: first, month: second };
+  }
+
+  return null;
+}
+
+/** Parse MM / DD / YYYY display input (also accepts DD / MM / YYYY and ISO paste). */
 export function parseDisplayDateOfBirth(value: string): DateValidationResult {
   const trimmed = value.trim();
   if (!trimmed) {
     return { ok: false, error: "Enter your date of birth." };
   }
 
-  const usMatch = trimmed.match(/^(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{4})$/);
-  if (usMatch) {
-    return validateDateParts(Number(usMatch[3]), Number(usMatch[1]), Number(usMatch[2]));
+  const slashMatch = trimmed.match(/^(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{4})$/);
+  if (slashMatch) {
+    const first = Number(slashMatch[1]);
+    const second = Number(slashMatch[2]);
+    const year = Number(slashMatch[3]);
+    const parts = resolveDayMonth(first, second);
+    if (!parts) {
+      return { ok: false, error: "Enter a valid date of birth." };
+    }
+    return validateDateParts(year, parts.month, parts.day);
   }
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
@@ -72,16 +98,19 @@ export function parseDisplayDateOfBirth(value: string): DateValidationResult {
     return validateDateParts(Number(yearStr), Number(monthStr), Number(dayStr));
   }
 
-  if (/^\d{8}$/.test(trimmed.replace(/\D/g, ""))) {
-    const digits = trimmed.replace(/\D/g, "");
-    return validateDateParts(
-      Number(digits.slice(4, 8)),
-      Number(digits.slice(0, 2)),
-      Number(digits.slice(2, 4)),
-    );
+  const digits = trimmed.replace(/\D/g, "");
+  if (/^\d{8}$/.test(digits)) {
+    const first = Number(digits.slice(0, 2));
+    const second = Number(digits.slice(2, 4));
+    const year = Number(digits.slice(4, 8));
+    const parts = resolveDayMonth(first, second);
+    if (!parts) {
+      return { ok: false, error: "Enter a valid date of birth." };
+    }
+    return validateDateParts(year, parts.month, parts.day);
   }
 
-  return { ok: false, error: "Use MM / DD / YYYY." };
+  return { ok: false, error: "Use DD / MM / YYYY." };
 }
 
 export function formatDateOfBirthInput(raw: string) {

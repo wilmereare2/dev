@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { Camera, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user/user-avatar";
+import { AvatarCropDialog } from "@/features/settings/avatar-crop-dialog";
 import { AvatarFocusEditor } from "@/features/settings/avatar-focus-editor";
 import {
   AVATAR_FOCUS_DEFAULT,
@@ -44,6 +45,7 @@ export function AvatarUpload({
 }: AvatarUploadProps) {
   const { update } = useSession();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [image, setImage] = useState(initialImage ?? null);
   const [framing, setFraming] = useState<AvatarFraming>(
     normalizeAvatarFraming({ scale: initialScale, focusX: initialFocusX, focusY: initialFocusY }),
@@ -62,13 +64,13 @@ export function AvatarUpload({
     setFraming((current) => normalizeAvatarFraming({ ...current, ...next }));
   }
 
-  async function uploadFile(file: File) {
+  async function uploadBlob(blob: Blob) {
     setPending(true);
     setError(null);
     setMessage(null);
 
     const formData = new FormData();
-    formData.append("avatar", file);
+    formData.append("avatar", blob, "avatar.jpg");
 
     try {
       const response = await fetch("/api/user/avatar", {
@@ -96,7 +98,7 @@ export function AvatarUpload({
         avatarFocusX: resetFraming.focusX,
         avatarFocusY: resetFraming.focusY,
       });
-      setMessage("Avatar updated. Drag the photo to center your face.");
+      setMessage("Avatar saved. Fine-tune framing below if needed.");
     } catch {
       setError("Could not upload avatar.");
     } finally {
@@ -191,7 +193,7 @@ export function AvatarUpload({
           <div>
             <h2 className="text-sm font-semibold">Profile photo</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              JPG, PNG, WebP, or GIF. Max 1 MB. Drag to focus your face, then save.
+              Upload your full photo, crop the part you want, then fine-tune if needed.
             </p>
           </div>
 
@@ -203,7 +205,7 @@ export function AvatarUpload({
               onClick={() => inputRef.current?.click()}
             >
               <Camera className="size-4" />
-              {pending ? "Uploading..." : "Upload photo"}
+              {pending ? "Uploading..." : image ? "Change photo" : "Upload photo"}
             </Button>
             {image ? (
               <Button type="button" size="sm" variant="secondary" disabled={pending || disabled} onClick={removeAvatar}>
@@ -221,8 +223,14 @@ export function AvatarUpload({
             onChange={(event) => {
               const file = event.target.files?.[0];
               event.target.value = "";
-              if (file) void uploadFile(file);
+              if (file) setCropFile(file);
             }}
+          />
+
+          <AvatarCropDialog
+            file={cropFile}
+            onClose={() => setCropFile(null)}
+            onConfirm={uploadBlob}
           />
 
           {image ? (

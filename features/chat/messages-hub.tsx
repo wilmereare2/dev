@@ -88,6 +88,11 @@ function isStaff(role?: string | null) {
   return role === "ADMIN" || role === "MODERATOR";
 }
 
+const INBOX_WIDTH_KEY = "messages-inbox-width";
+const INBOX_MIN_WIDTH = 260;
+const INBOX_MAX_WIDTH = 520;
+const INBOX_DEFAULT_WIDTH = 320;
+
 export function MessagesHub({ session }: MessagesHubProps) {
   const searchParams = useSearchParams();
   const staff = isStaff(session.user.role);
@@ -95,6 +100,9 @@ export function MessagesHub({ session }: MessagesHubProps) {
   const [mobileShowThread, setMobileShowThread] = useState(false);
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [inboxWidth, setInboxWidth] = useState(INBOX_DEFAULT_WIDTH);
+  const inboxWidthRef = useRef(INBOX_DEFAULT_WIDTH);
+  const inboxResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const [groups, setGroups] = useState<MemberGroupPayload[]>([]);
   const [publicGroups, setPublicGroups] = useState<MemberGroupPayload[]>([]);
@@ -216,6 +224,49 @@ export function MessagesHub({ session }: MessagesHubProps) {
       return next;
     });
   }, []);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(INBOX_WIDTH_KEY);
+      if (!stored) return;
+      const parsed = Number(stored);
+      if (!Number.isFinite(parsed)) return;
+      const next = Math.min(INBOX_MAX_WIDTH, Math.max(INBOX_MIN_WIDTH, parsed));
+      setInboxWidth(next);
+      inboxWidthRef.current = next;
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    inboxWidthRef.current = inboxWidth;
+  }, [inboxWidth]);
+
+  function startInboxResize(event: React.PointerEvent<HTMLDivElement>) {
+    inboxResizeRef.current = { startX: event.clientX, startWidth: inboxWidthRef.current };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function moveInboxResize(event: React.PointerEvent<HTMLDivElement>) {
+    if (!inboxResizeRef.current) return;
+    const next = Math.min(
+      INBOX_MAX_WIDTH,
+      Math.max(INBOX_MIN_WIDTH, inboxResizeRef.current.startWidth + (event.clientX - inboxResizeRef.current.startX)),
+    );
+    setInboxWidth(next);
+  }
+
+  function endInboxResize(event: React.PointerEvent<HTMLDivElement>) {
+    if (!inboxResizeRef.current) return;
+    inboxResizeRef.current = null;
+    try {
+      localStorage.setItem(INBOX_WIDTH_KEY, String(inboxWidthRef.current));
+    } catch {
+      /* ignore */
+    }
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
 
   useEffect(() => {
     const conversationId = searchParams.get("conversation");
@@ -793,8 +844,9 @@ export function MessagesHub({ session }: MessagesHubProps) {
       <section className="mx-auto max-w-6xl px-3 py-4 sm:px-4 lg:px-6">
         <div className="flex h-[min(720px,calc(100dvh-var(--site-header-offset)-var(--site-bottom-offset)-6rem))] min-h-[480px] flex-col overflow-hidden rounded-2xl border border-border bg-surface/40 shadow-xl md:flex-row">
           <aside
+            style={{ width: inboxWidth }}
             className={cn(
-              "flex w-full shrink-0 flex-col border-r border-border/60 bg-background/40 md:w-[320px]",
+              "flex w-full shrink-0 flex-col border-r border-border/60 bg-background/40 md:max-w-[75%]",
               mobileShowThread ? "hidden md:flex" : "flex",
             )}
           >
@@ -1011,6 +1063,17 @@ export function MessagesHub({ session }: MessagesHubProps) {
               )}
             </div>
           </aside>
+
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize chat list"
+            onPointerDown={startInboxResize}
+            onPointerMove={moveInboxResize}
+            onPointerUp={endInboxResize}
+            onPointerCancel={endInboxResize}
+            className="hidden shrink-0 cursor-col-resize bg-border/40 transition hover:bg-accent/40 md:block md:w-1.5"
+          />
 
           <div
             className={cn(
