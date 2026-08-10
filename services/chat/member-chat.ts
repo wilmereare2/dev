@@ -94,3 +94,22 @@ export async function createChatMessage(userId: string, body: string) {
 
   return { ok: true as const, message: serializeMessage(message) };
 }
+
+export async function deleteChatMessage(messageId: string) {
+  const channel = await ensureMemberChatChannel();
+  const existing = await prisma.chatMessage.findUnique({
+    where: { id: messageId },
+    select: { id: true, channelId: true },
+  });
+
+  if (!existing || existing.channelId !== channel.id) {
+    return { ok: false as const, error: "Message not found." };
+  }
+
+  await prisma.chatMessage.delete({ where: { id: messageId } });
+  return { ok: true as const };
+}
+
+export async function syncRecentChatMessages(limit = 50) {
+  return getRecentChatMessages(limit);
+}
