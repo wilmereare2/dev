@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { createUserNotification } from "@/services/user/notifications";
 import type {
   DirectConversationPayload,
   DirectMessagePayload,
@@ -230,6 +231,18 @@ export async function createDirectMessage(conversationId: string, userId: string
     });
 
     return created;
+  });
+
+  const senderName = message.sender.name ?? "A member";
+  const preview = trimmed.length > 120 ? `${trimmed.slice(0, 117)}…` : trimmed;
+
+  await createUserNotification({
+    userId: peerId,
+    type: "direct_message",
+    title: `New message from ${senderName}`,
+    body: preview,
+    href: `/messages?conversation=${conversationId}`,
+    respectPushSetting: true,
   });
 
   return { ok: true as const, message: serializeDirectMessage(message) };

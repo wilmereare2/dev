@@ -1,28 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Session } from "next-auth";
-import Link from "next/link";
 import {
-  ArrowLeft,
+  ChevronLeft,
   Loader2,
-  MessageSquare,
+  MessageSquarePlus,
   MessagesSquare,
-  Search,
   Send,
-  Trash2,
-  UserPlus,
   Users,
   Wifi,
   WifiOff,
 } from "lucide-react";
 import { UserAvatar } from "@/components/user/user-avatar";
 import { Button } from "@/components/ui/button";
+import { ChatMessageBubble } from "@/features/chat/chat-message-bubble";
+import { NewMessageDialog } from "@/features/chat/new-message-dialog";
 import type {
   ChatMessagePayload,
   DirectConversationPayload,
   DirectMessagePayload,
-  MemberSummaryPayload,
 } from "@/lib/chat/constants";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +28,9 @@ type MessagesHubProps = {
   session: Session;
 };
 
-type Tab = "community" | "private";
+type ActiveThread =
+  | { kind: "community" }
+  | { kind: "direct"; conversationId: string };
 
 function formatTime(iso: string) {
   return new Intl.DateTimeFormat(undefined, {
@@ -39,28 +39,16 @@ function formatTime(iso: string) {
   }).format(new Date(iso));
 }
 
-function formatDateTime(iso: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(iso));
-}
-
-function roleLabel(role: string) {
-  if (role === "ADMIN" || role === "MODERATOR") return role;
-  if (role === "CREATOR") return "Creator";
-  return "Member";
-}
-
 function isStaff(role?: string | null) {
   return role === "ADMIN" || role === "MODERATOR";
 }
 
 export function MessagesHub({ session }: MessagesHubProps) {
+  const searchParams = useSearchParams();
   const staff = isStaff(session.user.role);
-  const [tab, setTab] = useState<Tab>("community");
+  const [activeThread, setActiveThread] = useState<ActiveThread>({ kind: "community" });
+  const [mobileShowThread, setMobileShowThread] = useState(false);
+  const [showNewMessage, setShowNewMessage] = useState(false);
 
   const [communityMessages, setCommunityMessages] = useState<ChatMessagePayload[]>([]);
   const [communityDraft, setCommunityDraft] = useState("");
@@ -73,7 +61,6 @@ export function MessagesHub({ session }: MessagesHubProps) {
   const communityScrollRef = useRef<HTMLDivElement>(null);
 
   const [conversations, setConversations] = useState<DirectConversationPayload[]>([]);
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [directMessages, setDirectMessages] = useState<DirectMessagePayload[]>([]);
   const [directDraft, setDirectDraft] = useState("");
   const [directError, setDirectError] = useState<string | null>(null);
@@ -83,16 +70,10 @@ export function MessagesHub({ session }: MessagesHubProps) {
   const directLastIdRef = useRef<string | null>(null);
   const directScrollRef = useRef<HTMLDivElement>(null);
 
-  const [memberQuery, setMemberQuery] = useState("");
-  const [memberResults, setMemberResults] = useState<MemberSummaryPayload[]>([]);
-  const [knownMembers, setKnownMembers] = useState<MemberSummaryPayload[]>([]);
-  const [memberSearchPending, setMemberSearchPending] = useState(false);
-  const [showMemberPicker, setShowMemberPicker] = useState(false);
-
-  const selectedConversation = useMemo(
-    () => conversations.find((conversation) => conversation.id === selectedConversationId) ?? null,
-    [conversations, selectedConversationId],
-  );
+  const selectedConversation = useMemo(() => {
+    if (activeThread.kind !== "direct") return null;
+    return conversations.find((conversation) => conversation.id === activeThread.conversationId) ?? null;
+  }, [activeThread, conversations]);
 
   const mergeCommunityMessages = useCallback((incoming: ChatMessagePayload[]) => {
     if (!incoming.length) return;
@@ -142,6 +123,23 @@ export function MessagesHub({ session }: MessagesHubProps) {
     if (!node) return;
     node.scrollTop = node.scrollHeight;
   }, []);
+
+  useEffect(() => {
+    const conversationId = searchParams.get("conversation");
+    if (!conversationId) return;
+    setActiveThread({ kind: "direct", conversationId });
+    setMobileShowThread(true);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (activeThread.kind !== "direct") return;
+
+    void fetch("/api/user/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ markConversationRead: activeThread.conversationId }),
+    }).catch(() => undefined);
+  }, [activeThread]);
 
   useEffect(() => {
     let cancelled = false;
@@ -226,7 +224,6 @@ export function MessagesHub({ session }: MessagesHubProps) {
         const response = await fetch("/api/chat/direct/conversations");
         const payload = (await response.json()) as {
           conversations?: DirectConversationPayload[];
-          error?: string;
         };
         if (!response.ok || cancelled) return;
         setConversations(payload.conversations ?? []);
@@ -241,8 +238,10 @@ export function MessagesHub({ session }: MessagesHubProps) {
     };
   }, []);
 
+  const activeConversationId = activeThread.kind === "direct" ? activeThread.conversationId : null;
+
   useEffect(() => {
-    if (!selectedConversationId) {
+    if (!activeConversationId) {
       setDirectMessages([]);
       directLastIdRef.current = null;
       return;
@@ -252,7 +251,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
     setDirectLoading(true);
     setDirectError(null);
 
-    fetch(`/api/chat/direct/conversations/${selectedConversationId}/messages`)
+    fetch(`/api/chat/direct/conversations/${activeConversationId}/messages`)
       .then((response) => response.json())
       .then((payload: { messages?: DirectMessagePayload[]; error?: string }) => {
         if (cancelled) return;
@@ -275,16 +274,16 @@ export function MessagesHub({ session }: MessagesHubProps) {
     return () => {
       cancelled = true;
     };
-  }, [scrollDirectToBottom, selectedConversationId]);
+  }, [activeConversationId, scrollDirectToBottom]);
 
   useEffect(() => {
-    if (!selectedConversationId) return;
+    if (!activeConversationId) return;
 
     const poll = window.setInterval(() => {
       const after = directLastIdRef.current;
       const url = after
-        ? `/api/chat/direct/conversations/${selectedConversationId}/messages?after=${encodeURIComponent(after)}`
-        : `/api/chat/direct/conversations/${selectedConversationId}/messages`;
+        ? `/api/chat/direct/conversations/${activeConversationId}/messages?after=${encodeURIComponent(after)}`
+        : `/api/chat/direct/conversations/${activeConversationId}/messages`;
 
       fetch(url)
         .then((response) => response.json())
@@ -296,37 +295,23 @@ export function MessagesHub({ session }: MessagesHubProps) {
     }, 4000);
 
     return () => window.clearInterval(poll);
-  }, [mergeDirectMessages, scrollDirectToBottom, selectedConversationId]);
-
-  useEffect(() => {
-    if (!showMemberPicker) return;
-
-    let cancelled = false;
-    setMemberSearchPending(true);
-
-    Promise.all([
-      fetch("/api/chat/members?known=1").then((response) => response.json()),
-      fetch(`/api/chat/members?q=${encodeURIComponent(memberQuery)}`).then((response) => response.json()),
-    ])
-      .then(([knownPayload, searchPayload]) => {
-        if (cancelled) return;
-        setKnownMembers((knownPayload as { members?: MemberSummaryPayload[] }).members ?? []);
-        setMemberResults((searchPayload as { members?: MemberSummaryPayload[] }).members ?? []);
-      })
-      .finally(() => {
-        if (!cancelled) setMemberSearchPending(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [memberQuery, showMemberPicker]);
+  }, [activeConversationId, mergeDirectMessages, scrollDirectToBottom]);
 
   const onlineLabel = useMemo(() => {
     const unique = new Set(communityMessages.map((message) => message.user.id));
     unique.add(session.user.id);
-    return `${Math.max(unique.size, 1)} active in channel`;
+    return `${Math.max(unique.size, 1)} active`;
   }, [communityMessages, session.user.id]);
+
+  function openCommunity() {
+    setActiveThread({ kind: "community" });
+    setMobileShowThread(true);
+  }
+
+  function openDirect(conversationId: string) {
+    setActiveThread({ kind: "direct", conversationId });
+    setMobileShowThread(true);
+  }
 
   async function handleCommunitySubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -383,7 +368,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
 
   async function handleDirectSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedConversationId) return;
+    if (activeThread.kind !== "direct") return;
 
     const body = directDraft.trim();
     if (!body || directPending) return;
@@ -392,7 +377,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
     setDirectError(null);
 
     try {
-      const response = await fetch(`/api/chat/direct/conversations/${selectedConversationId}/messages`, {
+      const response = await fetch(`/api/chat/direct/conversations/${activeThread.conversationId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body }),
@@ -411,7 +396,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         setConversations((current) =>
           current
             .map((conversation) =>
-              conversation.id === selectedConversationId
+              conversation.id === activeThread.conversationId
                 ? {
                     ...conversation,
                     updatedAt: payload.message!.createdAt,
@@ -471,284 +456,98 @@ export function MessagesHub({ session }: MessagesHubProps) {
         const existing = current.filter((item) => item.id !== payload.conversation!.id);
         return [payload.conversation!, ...existing];
       });
-      setSelectedConversationId(payload.conversation.id);
-      setShowMemberPicker(false);
-      setMemberQuery("");
-      setTab("private");
+      openDirect(payload.conversation.id);
     } catch {
       setDirectError("Could not start conversation.");
     }
   }
 
+  const threadTitle =
+    activeThread.kind === "community"
+      ? "Community lounge"
+      : (selectedConversation?.peer.name ?? "Private message");
+
+  const threadSubtitle =
+    activeThread.kind === "community"
+      ? communityLive
+        ? `Live · ${onlineLabel}`
+        : "Reconnecting…"
+      : "Private message";
+
   return (
-    <section className="mx-auto flex max-w-6xl flex-col px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-      <Link
-        href="/"
-        className="inline-flex w-fit items-center gap-2 rounded-lg border border-border/60 bg-surface/40 px-3 py-2 text-sm text-muted-foreground transition hover:border-accent/40 hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" aria-hidden />
-        Back to home
-      </Link>
-
-      <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="font-display text-xs font-semibold uppercase tracking-[0.22em] text-accent">
-            Messages
-          </p>
-          <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-            Member messaging
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Community lounge and private member messages. Be respectful — 18+ community standards apply.
-          </p>
-        </div>
-
-        {tab === "community" ? (
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              {communityLive ? <Wifi className="size-4 text-accent" /> : <WifiOff className="size-4" />}
-              {communityLive ? "Live" : "Reconnecting…"}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Users className="size-4 text-accent" aria-hidden />
-              {onlineLabel}
-            </span>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="mt-6 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setTab("community")}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition",
-            tab === "community"
-              ? "border-accent/40 bg-accent/10 text-accent"
-              : "border-border/60 bg-surface/40 text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <MessagesSquare className="size-4" aria-hidden />
-          Community chat
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("private")}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition",
-            tab === "private"
-              ? "border-accent/40 bg-accent/10 text-accent"
-              : "border-border/60 bg-surface/40 text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <MessageSquare className="size-4" aria-hidden />
-          Private messages
-        </button>
-      </div>
-
-      {tab === "community" ? (
-        <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-surface/50 shadow-xl">
-          <div ref={communityScrollRef} className="max-h-[520px] overflow-y-auto">
-            {communityLoading ? (
-              <div className="flex items-center justify-center px-4 py-16 text-sm text-muted-foreground">
-                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
-                Loading messages…
-              </div>
-            ) : null}
-
-            {!communityLoading && communityMessages.length === 0 ? (
-              <p className="px-4 py-16 text-center text-sm text-muted-foreground">
-                No messages yet. Say hello to the community.
-              </p>
-            ) : null}
-
-            {!communityLoading && communityMessages.length > 0 ? (
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10 bg-muted/80 text-left text-muted-foreground backdrop-blur">
-                  <tr>
-                    <th className="px-4 py-3">Member</th>
-                    <th className="hidden px-4 py-3 sm:table-cell">Role</th>
-                    <th className="px-4 py-3">Message</th>
-                    <th className="hidden px-4 py-3 md:table-cell">Time</th>
-                    {staff ? <th className="px-4 py-3 text-right">Action</th> : null}
-                  </tr>
-                </thead>
-                <tbody>
-                  {communityMessages.map((message) => (
-                    <tr key={message.id} className="border-t border-border/60 align-top">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <UserAvatar
-                            name={message.user.name}
-                            email={null}
-                            image={message.user.image}
-                            size="sm"
-                          />
-                          <span className="font-medium">{message.user.name ?? "Member"}</span>
-                        </div>
-                      </td>
-                      <td className="hidden px-4 py-3 sm:table-cell">
-                        <span className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          {roleLabel(message.user.role)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-pre-wrap break-words">{message.body}</td>
-                      <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
-                        <time dateTime={message.createdAt}>{formatDateTime(message.createdAt)}</time>
-                      </td>
-                      {staff ? (
-                        <td className="px-4 py-3 text-right">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={deletingCommunityId === message.id}
-                            onClick={() => handleDeleteCommunityMessage(message.id)}
-                            className="text-red-400 hover:text-red-300"
-                          >
-                            {deletingCommunityId === message.id ? (
-                              <Loader2 className="size-4 animate-spin" aria-hidden />
-                            ) : (
-                              <Trash2 className="size-4" aria-hidden />
-                            )}
-                            Delete
-                          </Button>
-                        </td>
-                      ) : null}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : null}
-          </div>
-
-          <form onSubmit={handleCommunitySubmit} className="border-t border-border/60 bg-background/60 px-4 py-4">
-            {communityError ? <p className="mb-3 text-sm text-red-400">{communityError}</p> : null}
-            <div className="flex gap-3">
-              <label htmlFor="community-chat-input" className="sr-only">
-                Community message
-              </label>
-              <input
-                id="community-chat-input"
-                value={communityDraft}
-                onChange={(event) => setCommunityDraft(event.target.value)}
-                placeholder="Write a message to the lounge…"
-                maxLength={2000}
-                className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-background/80 px-4 text-sm outline-none transition focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
-              />
-              <Button type="submit" variant="premium" disabled={communityPending || !communityDraft.trim()}>
-                {communityPending ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                ) : (
-                  <Send className="size-4" />
-                )}
-                Send
-              </Button>
-            </div>
-          </form>
-        </div>
-      ) : (
-        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(240px,300px)_1fr]">
-          <div className="overflow-hidden rounded-2xl border border-border bg-surface/50">
-            <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
-              <p className="text-sm font-medium">Conversations</p>
-              <Button type="button" size="sm" variant="outline" onClick={() => setShowMemberPicker((value) => !value)}>
-                <UserPlus className="size-4" aria-hidden />
-                New
-              </Button>
-            </div>
-
-            {showMemberPicker ? (
-              <div className="border-b border-border/60 px-4 py-3">
-                <label htmlFor="member-search" className="sr-only">
-                  Search members
-                </label>
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    id="member-search"
-                    value={memberQuery}
-                    onChange={(event) => setMemberQuery(event.target.value)}
-                    placeholder="Search all members…"
-                    className="h-10 w-full rounded-lg border border-border bg-background/80 pl-9 pr-3 text-sm outline-none focus-visible:border-accent/60"
-                  />
+    <>
+      <section className="mx-auto flex h-[calc(100dvh-5.5rem)] max-w-6xl flex-col px-3 py-4 sm:px-4 lg:px-6">
+        <div className="flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-surface/40 shadow-xl">
+          <aside
+            className={cn(
+              "flex w-full shrink-0 flex-col border-r border-border/60 bg-background/40 md:w-[320px]",
+              mobileShowThread ? "hidden md:flex" : "flex",
+            )}
+          >
+            <div className="border-b border-border/60 px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h1 className="font-display text-xl font-semibold tracking-tight">Messages</h1>
+                  <p className="text-xs text-muted-foreground">Community & private chats</p>
                 </div>
-
-                {memberSearchPending ? (
-                  <p className="mt-3 text-xs text-muted-foreground">Searching…</p>
-                ) : (
-                  <div className="mt-3 max-h-48 space-y-3 overflow-y-auto">
-                    {knownMembers.length > 0 ? (
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          People you know
-                        </p>
-                        <ul className="mt-2 space-y-1">
-                          {knownMembers.slice(0, 8).map((member) => (
-                            <li key={`known-${member.id}`}>
-                              <button
-                                type="button"
-                                onClick={() => startConversation(member.id)}
-                                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted/40"
-                              >
-                                <UserAvatar name={member.name} email={null} image={member.image} size="sm" />
-                                <span>{member.name ?? "Member"}</span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
-
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        All members
-                      </p>
-                      <ul className="mt-2 space-y-1">
-                        {memberResults.map((member) => (
-                          <li key={member.id}>
-                            <button
-                              type="button"
-                              onClick={() => startConversation(member.id)}
-                              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted/40"
-                            >
-                              <UserAvatar name={member.name} email={null} image={member.image} size="sm" />
-                              <span>{member.name ?? "Member"}</span>
-                              {member.known ? (
-                                <span className="ml-auto text-[10px] uppercase text-accent">Known</span>
-                              ) : null}
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                )}
+                <Button type="button" size="sm" variant="premium" onClick={() => setShowNewMessage(true)}>
+                  <MessageSquarePlus className="size-4" aria-hidden />
+                  New
+                </Button>
               </div>
-            ) : null}
+            </div>
 
-            <div className="max-h-[420px] overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <button
+                type="button"
+                onClick={openCommunity}
+                className={cn(
+                  "flex w-full items-center gap-3 border-b border-border/40 px-4 py-3 text-left transition hover:bg-muted/30",
+                  activeThread.kind === "community" && "bg-accent/10",
+                )}
+              >
+                <div className="flex size-10 items-center justify-center rounded-full bg-accent/15 text-accent">
+                  <MessagesSquare className="size-5" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-medium">Community lounge</p>
+                    <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+                      {communityLive ? <Wifi className="size-3 text-accent" /> : <WifiOff className="size-3" />}
+                      {onlineLabel}
+                    </span>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {communityMessages[communityMessages.length - 1]?.body ?? "Public member channel"}
+                  </p>
+                </div>
+              </button>
+
               {conversations.length === 0 ? (
                 <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  No private conversations yet. Start one with any member.
+                  No private chats yet.
+                  <br />
+                  Tap <span className="font-medium text-foreground">New</span> to message someone.
                 </p>
               ) : (
                 <ul>
                   {conversations.map((conversation) => (
-                    <li key={conversation.id} className="border-b border-border/40 last:border-b-0">
+                    <li key={conversation.id}>
                       <button
                         type="button"
-                        onClick={() => setSelectedConversationId(conversation.id)}
+                        onClick={() => openDirect(conversation.id)}
                         className={cn(
-                          "flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-muted/30",
-                          selectedConversationId === conversation.id && "bg-accent/10",
+                          "flex w-full items-center gap-3 border-b border-border/40 px-4 py-3 text-left transition hover:bg-muted/30",
+                          activeThread.kind === "direct" &&
+                            activeThread.conversationId === conversation.id &&
+                            "bg-accent/10",
                         )}
                       >
                         <UserAvatar
                           name={conversation.peer.name}
                           email={null}
                           image={conversation.peer.image}
-                          size="sm"
+                          size="md"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
@@ -762,7 +561,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
                             ) : null}
                           </div>
                           <p className="mt-1 truncate text-xs text-muted-foreground">
-                            {conversation.lastMessage?.body ?? "No messages yet"}
+                            {conversation.lastMessage?.body ?? "Start the conversation"}
                           </p>
                         </div>
                       </button>
@@ -771,137 +570,207 @@ export function MessagesHub({ session }: MessagesHubProps) {
                 </ul>
               )}
             </div>
-          </div>
+          </aside>
 
-          <div className="flex min-h-[520px] flex-col overflow-hidden rounded-2xl border border-border bg-surface/50">
-            {!selectedConversation ? (
-              <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                Select a conversation or start a new private message.
+          <div
+            className={cn(
+              "flex min-w-0 flex-1 flex-col bg-background/20",
+              !mobileShowThread ? "hidden md:flex" : "flex",
+            )}
+          >
+            <header className="flex items-center gap-3 border-b border-border/60 px-3 py-3 sm:px-4">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+                onClick={() => setMobileShowThread(false)}
+                aria-label="Back to inbox"
+              >
+                <ChevronLeft className="size-5" />
+              </Button>
+
+              {activeThread.kind === "direct" && selectedConversation ? (
+                <UserAvatar
+                  name={selectedConversation.peer.name}
+                  email={null}
+                  image={selectedConversation.peer.image}
+                  size="sm"
+                />
+              ) : (
+                <div className="flex size-9 items-center justify-center rounded-full bg-accent/15 text-accent">
+                  <Users className="size-4" aria-hidden />
+                </div>
+              )}
+
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{threadTitle}</p>
+                <p className="truncate text-xs text-muted-foreground">{threadSubtitle}</p>
               </div>
-            ) : (
+            </header>
+
+            {activeThread.kind === "community" ? (
               <>
-                <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
-                  <UserAvatar
-                    name={selectedConversation.peer.name}
-                    email={null}
-                    image={selectedConversation.peer.image}
-                    size="sm"
-                  />
-                  <div>
-                    <p className="text-sm font-medium">{selectedConversation.peer.name ?? "Member"}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Private message · {roleLabel(selectedConversation.peer.role)}
+                <div ref={communityScrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 sm:px-4">
+                  {communityLoading ? (
+                    <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                      Loading messages…
+                    </div>
+                  ) : null}
+
+                  {!communityLoading && communityMessages.length === 0 ? (
+                    <p className="py-16 text-center text-sm text-muted-foreground">
+                      No messages yet. Say hello to the community.
                     </p>
-                  </div>
+                  ) : null}
+
+                  {communityMessages.map((message, index) => {
+                    const mine = message.user.id === session.user.id;
+                    const previous = communityMessages[index - 1];
+                    const grouped = previous?.user.id === message.user.id;
+
+                    return (
+                      <ChatMessageBubble
+                        key={message.id}
+                        body={message.body}
+                        createdAt={message.createdAt}
+                        mine={mine}
+                        senderName={message.user.name ?? "Member"}
+                        senderImage={message.user.image}
+                        senderRole={message.user.role}
+                        showSender={!grouped}
+                        canDelete={staff}
+                        deleting={deletingCommunityId === message.id}
+                        onDelete={() => handleDeleteCommunityMessage(message.id)}
+                      />
+                    );
+                  })}
                 </div>
 
-                <div ref={directScrollRef} className="flex-1 overflow-y-auto">
+                <MessageComposer
+                  id="community-chat-input"
+                  value={communityDraft}
+                  onChange={setCommunityDraft}
+                  onSubmit={handleCommunitySubmit}
+                  pending={communityPending}
+                  error={communityError}
+                  placeholder="Message the community…"
+                />
+              </>
+            ) : selectedConversation ? (
+              <>
+                <div ref={directScrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-4">
                   {directLoading ? (
-                    <div className="flex items-center justify-center px-4 py-16 text-sm text-muted-foreground">
+                    <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
                       <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
                       Loading messages…
                     </div>
                   ) : null}
 
                   {!directLoading && directMessages.length === 0 ? (
-                    <p className="px-4 py-16 text-center text-sm text-muted-foreground">
-                      No messages yet. Send the first private message.
+                    <p className="py-16 text-center text-sm text-muted-foreground">
+                      No messages yet. Send the first message to {selectedConversation.peer.name ?? "this member"}.
                     </p>
                   ) : null}
 
-                  {!directLoading && directMessages.length > 0 ? (
-                    <table className="w-full text-sm">
-                      <thead className="sticky top-0 z-10 bg-muted/80 text-left text-muted-foreground backdrop-blur">
-                        <tr>
-                          <th className="px-4 py-3">From</th>
-                          <th className="hidden px-4 py-3 sm:table-cell">Role</th>
-                          <th className="px-4 py-3">Message</th>
-                          <th className="hidden px-4 py-3 md:table-cell">Time</th>
-                          {staff ? <th className="px-4 py-3 text-right">Action</th> : null}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {directMessages.map((message) => (
-                          <tr key={message.id} className="border-t border-border/60 align-top">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <UserAvatar
-                                  name={message.sender.name}
-                                  email={null}
-                                  image={message.sender.image}
-                                  size="sm"
-                                />
-                                <span className="font-medium">
-                                  {message.sender.id === session.user.id
-                                    ? "You"
-                                    : (message.sender.name ?? "Member")}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="hidden px-4 py-3 sm:table-cell">
-                              <span className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                {roleLabel(message.sender.role)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 whitespace-pre-wrap break-words">{message.body}</td>
-                            <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
-                              <time dateTime={message.createdAt}>{formatDateTime(message.createdAt)}</time>
-                            </td>
-                            {staff ? (
-                              <td className="px-4 py-3 text-right">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={deletingDirectId === message.id}
-                                  onClick={() => handleDeleteDirectMessage(message.id)}
-                                  className="text-red-400 hover:text-red-300"
-                                >
-                                  {deletingDirectId === message.id ? (
-                                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                                  ) : (
-                                    <Trash2 className="size-4" aria-hidden />
-                                  )}
-                                  Delete
-                                </Button>
-                              </td>
-                            ) : null}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : null}
+                  {directMessages.map((message, index) => {
+                    const mine = message.sender.id === session.user.id;
+                    const previous = directMessages[index - 1];
+                    const grouped = previous?.sender.id === message.sender.id;
+
+                    return (
+                      <ChatMessageBubble
+                        key={message.id}
+                        body={message.body}
+                        createdAt={message.createdAt}
+                        mine={mine}
+                        senderName={mine ? "You" : (message.sender.name ?? "Member")}
+                        senderImage={message.sender.image}
+                        senderRole={message.sender.role}
+                        showSender={!grouped}
+                        canDelete={staff}
+                        deleting={deletingDirectId === message.id}
+                        onDelete={() => handleDeleteDirectMessage(message.id)}
+                      />
+                    );
+                  })}
                 </div>
 
-                <form onSubmit={handleDirectSubmit} className="border-t border-border/60 bg-background/60 px-4 py-4">
-                  {directError ? <p className="mb-3 text-sm text-red-400">{directError}</p> : null}
-                  <div className="flex gap-3">
-                    <label htmlFor="direct-chat-input" className="sr-only">
-                      Private message
-                    </label>
-                    <input
-                      id="direct-chat-input"
-                      value={directDraft}
-                      onChange={(event) => setDirectDraft(event.target.value)}
-                      placeholder={`Message ${selectedConversation.peer.name ?? "member"}…`}
-                      maxLength={2000}
-                      className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-background/80 px-4 text-sm outline-none transition focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
-                    />
-                    <Button type="submit" variant="premium" disabled={directPending || !directDraft.trim()}>
-                      {directPending ? (
-                        <Loader2 className="size-4 animate-spin" aria-hidden />
-                      ) : (
-                        <Send className="size-4" />
-                      )}
-                      Send
-                    </Button>
-                  </div>
-                </form>
+                <MessageComposer
+                  id="direct-chat-input"
+                  value={directDraft}
+                  onChange={setDirectDraft}
+                  onSubmit={handleDirectSubmit}
+                  pending={directPending}
+                  error={directError}
+                  placeholder={`Message ${selectedConversation.peer.name ?? "member"}…`}
+                />
               </>
+            ) : (
+              <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                Select a conversation from your inbox, or start a new message.
+              </div>
             )}
           </div>
         </div>
-      )}
-    </section>
+      </section>
+
+      <NewMessageDialog
+        open={showNewMessage}
+        onClose={() => setShowNewMessage(false)}
+        onSelectMember={startConversation}
+      />
+    </>
+  );
+}
+
+function MessageComposer({
+  id,
+  value,
+  onChange,
+  onSubmit,
+  pending,
+  error,
+  placeholder,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  pending: boolean;
+  error: string | null;
+  placeholder: string;
+}) {
+  return (
+    <form onSubmit={onSubmit} className="border-t border-border/60 bg-background/70 px-3 py-3 sm:px-4">
+      {error ? <p className="mb-2 text-sm text-red-400">{error}</p> : null}
+      <div className="flex items-end gap-2">
+        <label htmlFor={id} className="sr-only">
+          Message
+        </label>
+        <textarea
+          id={id}
+          rows={1}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }
+          }}
+          placeholder={placeholder}
+          maxLength={2000}
+          className="max-h-32 min-h-11 min-w-0 flex-1 resize-y rounded-2xl border border-border bg-background/80 px-4 py-2.5 text-sm outline-none transition focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/20"
+        />
+        <Button type="submit" variant="premium" size="icon" className="size-11 shrink-0" disabled={pending || !value.trim()}>
+          {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" />}
+        </Button>
+      </div>
+      <p className="mt-2 hidden text-[11px] text-muted-foreground sm:block">
+        Enter to send · Shift+Enter for a new line
+      </p>
+    </form>
   );
 }

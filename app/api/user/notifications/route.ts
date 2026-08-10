@@ -5,6 +5,7 @@ import {
   countUnreadNotifications,
   listNotifications,
   markAllNotificationsRead,
+  markConversationNotificationsRead,
   markNotificationRead,
 } from "@/services/user/notifications";
 
@@ -34,6 +35,7 @@ export async function GET() {
 const patchSchema = z.object({
   notificationId: z.string().optional(),
   markAllRead: z.boolean().optional(),
+  markConversationRead: z.string().optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -48,6 +50,11 @@ export async function PATCH(request: Request) {
 
   if (parsed.data.markAllRead) {
     await markAllNotificationsRead(authResult.userId);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (parsed.data.markConversationRead) {
+    await markConversationNotificationsRead(authResult.userId, parsed.data.markConversationRead);
     return NextResponse.json({ ok: true });
   }
 

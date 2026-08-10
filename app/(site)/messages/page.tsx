@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { MessagesHub } from "@/features/chat/messages-hub";
 import { requireSession } from "@/lib/auth/guards";
 import { APP_NAME } from "@/lib/constants";
@@ -11,5 +12,9 @@ export const metadata: Metadata = {
 
 export default async function MessagesPage() {
   const session = await requireSession();
-  return <MessagesHub session={session} />;
+  return (
+    <Suspense fallback={null}>
+      <MessagesHub session={session} />
+    </Suspense>
+  );
 }

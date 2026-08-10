@@ -22,7 +22,7 @@ const STORAGE_KEY = "manuelax-sidebar-collapsed";
 
 const LINKS = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/messages", label: "Chat", icon: MessageSquare },
+  { href: "/messages", label: "Messages", icon: MessageSquare },
   { href: "/explore", label: "Explore", icon: Compass },
   { href: "/categories", label: "Categories", icon: LayoutGrid },
   { href: "/promotions", label: "Promotions", icon: Tag },

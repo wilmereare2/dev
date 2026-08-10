@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Bell, MessageSquare, Upload } from "lucide-react";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 type NotificationItem = {
   id: string;
+  type?: string;
   title: string;
   body: string;
   href?: string | null;
@@ -23,32 +24,31 @@ export function NavActions() {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const rootRef = useRef<HTMLDivElement>(null);
 
+  const loadNotifications = useCallback(async () => {
+    try {
+      const response = await fetch("/api/user/notifications");
+      if (!response.ok) return;
+      const payload = (await response.json()) as {
+        items?: NotificationItem[];
+        unreadCount?: number;
+      };
+      setItems(payload.items ?? []);
+      setUnreadCount(payload.unreadCount ?? 0);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
     if (!session?.user) return;
 
-    let cancelled = false;
+    void loadNotifications();
+    const interval = window.setInterval(() => {
+      void loadNotifications();
+    }, 20_000);
 
-    async function loadNotifications() {
-      try {
-        const response = await fetch("/api/user/notifications");
-        if (!response.ok) return;
-        const payload = (await response.json()) as {
-          items?: NotificationItem[];
-          unreadCount?: number;
-        };
-        if (cancelled) return;
-        setItems(payload.items ?? []);
-        setUnreadCount(payload.unreadCount ?? 0);
-      } catch {
-        /* ignore */
-      }
-    }
-
-    loadNotifications();
-    return () => {
-      cancelled = true;
-    };
-  }, [session?.user]);
+    return () => window.clearInterval(interval);
+  }, [loadNotifications, session?.user]);
 
   useEffect(() => {
     function onClickOutside(event: MouseEvent) {
@@ -70,7 +70,28 @@ export function NavActions() {
     setItems((current) => current.map((item) => ({ ...item, readAt: item.readAt ?? new Date().toISOString() })));
   }
 
+  async function markNotificationRead(item: NotificationItem) {
+    if (item.readAt) return;
+
+    await fetch("/api/user/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notificationId: item.id }),
+    });
+
+    setUnreadCount((count) => Math.max(0, count - 1));
+    setItems((current) =>
+      current.map((entry) =>
+        entry.id === item.id ? { ...entry, readAt: new Date().toISOString() } : entry,
+      ),
+    );
+  }
+
   if (!session?.user) return null;
+
+  const unreadMessageCount = items.filter(
+    (item) => item.type === "direct_message" && !item.readAt,
+  ).length;
 
   const canUpload = ["CREATOR", "ADMIN", "EDITOR", "BUSINESS", "MODERATOR"].includes(
     session.user.role ?? "USER",
@@ -118,7 +139,10 @@ export function NavActions() {
                           "block px-4 py-3 transition hover:bg-muted",
                           !item.readAt ? "bg-accent/5" : "",
                         )}
-                        onClick={() => setOpen(false)}
+                        onClick={() => {
+                          setOpen(false);
+                          void markNotificationRead(item);
+                        }}
                       >
                         <p className="text-sm font-medium">{item.title}</p>
                         <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.body}</p>
@@ -141,9 +165,12 @@ export function NavActions() {
         ) : null}
       </div>
 
-      <Button asChild variant="ghost" size="icon" aria-label="Messages">
+      <Button asChild variant="ghost" size="icon" aria-label="Messages" className="relative">
         <Link href="/messages">
           <MessageSquare className="size-4" />
+          {unreadMessageCount > 0 ? (
+            <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-accent ring-2 ring-background" />
+          ) : null}
         </Link>
       </Button>
 
