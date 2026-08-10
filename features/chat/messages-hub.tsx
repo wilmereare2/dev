@@ -133,22 +133,31 @@ export function MessagesHub({ session }: MessagesHubProps) {
     });
   }, []);
 
-  const scrollCommunityToBottom = useCallback(() => {
+  const scrollCommunityToBottom = useCallback((force = false) => {
     const node = communityScrollRef.current;
     if (!node) return;
-    node.scrollTop = node.scrollHeight;
+    const nearBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 120;
+    if (force || nearBottom) {
+      node.scrollTop = node.scrollHeight;
+    }
   }, []);
 
-  const scrollDirectToBottom = useCallback(() => {
+  const scrollDirectToBottom = useCallback((force = false) => {
     const node = directScrollRef.current;
     if (!node) return;
-    node.scrollTop = node.scrollHeight;
+    const nearBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 120;
+    if (force || nearBottom) {
+      node.scrollTop = node.scrollHeight;
+    }
   }, []);
 
-  const scrollGroupToBottom = useCallback(() => {
+  const scrollGroupToBottom = useCallback((force = false) => {
     const node = groupScrollRef.current;
     if (!node) return;
-    node.scrollTop = node.scrollHeight;
+    const nearBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 120;
+    if (force || nearBottom) {
+      node.scrollTop = node.scrollHeight;
+    }
   }, []);
 
   const mergeGroupMessages = useCallback((incoming: GroupMessagePayload[]) => {
@@ -236,7 +245,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         }
         if (cancelled) return;
         replaceCommunityMessages(payload.messages ?? []);
-        window.requestAnimationFrame(scrollCommunityToBottom);
+        window.requestAnimationFrame(() => scrollCommunityToBottom(false));
       } catch {
         if (!cancelled) setCommunityError("Could not load community chat.");
       } finally {
@@ -264,7 +273,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         try {
           const message = JSON.parse(event.data) as ChatMessagePayload;
           mergeCommunityMessages([message]);
-          window.requestAnimationFrame(scrollCommunityToBottom);
+          window.requestAnimationFrame(() => scrollCommunityToBottom(true));
         } catch {
           /* ignore malformed events */
         }
@@ -364,7 +373,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         const messages = payload.messages ?? [];
         setDirectMessages(messages);
         directLastIdRef.current = messages[messages.length - 1]?.id ?? null;
-        window.requestAnimationFrame(scrollDirectToBottom);
+        window.requestAnimationFrame(() => scrollDirectToBottom(false));
       })
       .catch(() => {
         if (!cancelled) setDirectError("Could not load private messages.");
@@ -391,7 +400,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         .then((response) => response.json())
         .then((payload: { messages?: DirectMessagePayload[] }) => {
           mergeDirectMessages(payload.messages ?? []);
-          window.requestAnimationFrame(scrollDirectToBottom);
+          window.requestAnimationFrame(() => scrollDirectToBottom(false));
         })
         .catch(() => undefined);
     }, 4000);
@@ -421,7 +430,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         const messages = payload.messages ?? [];
         setGroupMessages(messages);
         groupLastIdRef.current = messages[messages.length - 1]?.id ?? null;
-        window.requestAnimationFrame(scrollGroupToBottom);
+        window.requestAnimationFrame(() => scrollGroupToBottom(false));
       })
       .catch(() => {
         if (!cancelled) setGroupError("Could not load group messages.");
@@ -445,7 +454,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
           const messages = payload.messages ?? [];
           setGroupMessages(messages);
           groupLastIdRef.current = messages[messages.length - 1]?.id ?? null;
-          window.requestAnimationFrame(scrollGroupToBottom);
+          window.requestAnimationFrame(() => scrollGroupToBottom(false));
         })
         .catch(() => undefined);
     }, 5000);
@@ -500,7 +509,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
       if (payload.message) {
         mergeGroupMessages([payload.message]);
         setGroupDraft("");
-        window.requestAnimationFrame(scrollGroupToBottom);
+        window.requestAnimationFrame(() => scrollGroupToBottom(true));
         setGroups((current) =>
           current
             .map((group) =>
@@ -546,7 +555,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
       if (payload.message) {
         mergeCommunityMessages([payload.message]);
         setCommunityDraft("");
-        window.requestAnimationFrame(scrollCommunityToBottom);
+        window.requestAnimationFrame(() => scrollCommunityToBottom(true));
       }
     } catch {
       setCommunityError("Could not send message.");
@@ -601,7 +610,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
       if (payload.message) {
         mergeDirectMessages([payload.message]);
         setDirectDraft("");
-        window.requestAnimationFrame(scrollDirectToBottom);
+        window.requestAnimationFrame(() => scrollDirectToBottom(true));
         setConversations((current) =>
           current
             .map((conversation) =>
@@ -690,7 +699,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
   return (
     <>
       <section className="mx-auto max-w-6xl px-3 py-4 sm:px-4 lg:px-6">
-        <div className="flex min-h-[min(720px,calc(100dvh-var(--site-header-offset)-var(--site-bottom-offset)-4rem))] flex-col overflow-hidden rounded-2xl border border-border bg-surface/40 shadow-xl">
+        <div className="flex h-[min(720px,calc(100dvh-var(--site-header-offset)-var(--site-bottom-offset)-6rem))] min-h-[480px] flex-col overflow-hidden rounded-2xl border border-border bg-surface/40 shadow-xl md:flex-row">
           <aside
             className={cn(
               "flex w-full shrink-0 flex-col border-r border-border/60 bg-background/40 md:w-[320px]",
@@ -861,7 +870,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
 
           <div
             className={cn(
-              "flex min-w-0 flex-1 flex-col bg-background/20",
+              "flex min-h-0 min-w-0 flex-1 flex-col bg-background/20",
               !mobileShowThread ? "hidden md:flex" : "flex",
             )}
           >
@@ -1105,7 +1114,7 @@ function MessageComposer({
   placeholder: string;
 }) {
   return (
-    <form onSubmit={onSubmit} className="border-t border-border/60 bg-background/70 px-3 py-3 sm:px-4">
+    <form onSubmit={onSubmit} className="shrink-0 border-t border-border/60 bg-background/70 px-3 py-3 sm:px-4">
       {error ? <p className="mb-2 text-sm text-red-400">{error}</p> : null}
       <div className="flex items-end gap-2">
         <label htmlFor={id} className="sr-only">
