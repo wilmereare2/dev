@@ -3,6 +3,8 @@ import { PricingView } from "@/features/billing/pricing-view";
 import { listActivePlans } from "@/services/billing/subscriptions";
 import { APP_NAME } from "@/lib/constants";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Pricing",
   description: `Premium membership and creator plans on ${APP_NAME}.`,

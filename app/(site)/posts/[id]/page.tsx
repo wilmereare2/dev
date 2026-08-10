@@ -6,6 +6,8 @@ import { UserAvatar } from "@/components/user/user-avatar";
 import { Button } from "@/components/ui/button";
 import { getPublicMemberPost } from "@/services/creator/uploads";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

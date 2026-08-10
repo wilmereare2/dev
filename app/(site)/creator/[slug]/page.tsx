@@ -3,6 +3,8 @@ import { CreatorProfileView } from "@/features/creator/creator-profile-view";
 import { decodeRouteParam } from "@/lib/site/route-params";
 import { getCreatorPublicProfile } from "@/services/creator/public-profile";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = { params: Promise<{ slug: string }> };
 
 export default async function CreatorPage({ params }: PageProps) {
