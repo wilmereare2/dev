@@ -1,9 +1,14 @@
+"use client";
+
 import Link from "next/link";
-import { APP_NAME, APP_TAGLINE, FOOTER_LINKS, PAYMENT_BADGES, SOCIAL_LINKS } from "@/lib/constants";
+import { APP_NAME, FOOTER_LINKS, PAYMENT_BADGES, SOCIAL_LINKS } from "@/lib/constants";
 import { FooterNewsletter } from "@/components/layout/footer-newsletter";
 import { TrustBar } from "@/components/layout/trust-bar";
+import { useI18n } from "@/components/providers/i18n-provider";
+import { navMessageKey } from "@/lib/i18n";
 
 export function Footer({ compact = false }: { compact?: boolean }) {
+  const { t } = useI18n();
   const year = new Date().getFullYear();
 
   return (
@@ -22,9 +27,9 @@ export function Footer({ compact = false }: { compact?: boolean }) {
           <Link href="/" className="font-display text-2xl font-bold tracking-tight">
             manuela<span className="text-accent">X</span>
           </Link>
-          <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">{APP_TAGLINE}</p>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">{t("app.tagline")}</p>
           <div className="mt-5">
-            <p className="text-sm font-semibold text-foreground">Stay in the loop</p>
+            <p className="text-sm font-semibold text-foreground">{t("footer.stayInLoop")}</p>
             <FooterNewsletter />
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
@@ -42,9 +47,9 @@ export function Footer({ compact = false }: { compact?: boolean }) {
           </div>
         </div>
 
-        <FooterColumn title="Discover" links={FOOTER_LINKS.discover} />
-        <FooterColumn title="Company" links={FOOTER_LINKS.company} />
-        <FooterColumn title="Legal" links={FOOTER_LINKS.legal} />
+        <FooterColumn title={t("footer.discover")} links={FOOTER_LINKS.discover} />
+        <FooterColumn title={t("footer.company")} links={FOOTER_LINKS.company} />
+        <FooterColumn title={t("footer.legal")} links={FOOTER_LINKS.legal} />
       </div>
 
       <TrustBar compact className="border-t-0" />
@@ -63,9 +68,9 @@ export function Footer({ compact = false }: { compact?: boolean }) {
           </div>
           <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <p>
-              © {year} {APP_NAME}. All rights reserved.
+              © {year} {APP_NAME}. {t("footer.rights")}
             </p>
-            <p>18+ only. Content is uploaded and managed by editors via CMS.</p>
+            <p>{t("footer.disclaimer")}</p>
           </div>
         </div>
       </div>
@@ -80,20 +85,26 @@ function FooterColumn({
   title: string;
   links: readonly { href: string; label: string }[];
 }) {
+  const { t } = useI18n();
+
   return (
     <div>
       <h2 className="text-sm font-semibold tracking-wide text-foreground">{title}</h2>
       <ul className="mt-4 space-y-2.5">
-        {links.map((link) => (
-          <li key={link.href}>
-            <Link
-              href={link.href}
-              className="text-sm text-muted-foreground transition hover:text-accent"
-            >
-              {link.label}
-            </Link>
-          </li>
-        ))}
+        {links.map((link) => {
+          const key = navMessageKey(link.href);
+          const label = key ? t(key) : link.label;
+          return (
+            <li key={link.href}>
+              <Link
+                href={link.href}
+                className="text-sm text-muted-foreground transition hover:text-accent"
+              >
+                {label}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

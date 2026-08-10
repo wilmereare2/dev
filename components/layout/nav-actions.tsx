@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Bell, MessageSquare, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/providers/i18n-provider";
 import { cn } from "@/lib/utils";
 
 type NotificationItem = {
@@ -19,6 +20,7 @@ type NotificationItem = {
 
 export function NavActions() {
   const { data: session } = useSession();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [items, setItems] = useState<NotificationItem[]>([]);
@@ -104,7 +106,7 @@ export function NavActions() {
           type="button"
           variant="ghost"
           size="icon"
-          aria-label="Notifications"
+          aria-label={t("common.notifications")}
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
         >
@@ -117,10 +119,10 @@ export function NavActions() {
         {open ? (
           <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-border bg-background shadow-xl">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <p className="text-sm font-semibold">Notifications</p>
+              <p className="text-sm font-semibold">{t("common.notifications")}</p>
               <div className="flex items-center gap-3">
                 <Link href="/notifications" className="text-xs text-accent hover:underline" onClick={() => setOpen(false)}>
-                  View all
+                  {t("common.viewAll")}
                 </Link>
                 {unreadCount > 0 ? (
                   <button
@@ -128,7 +130,7 @@ export function NavActions() {
                     className="text-xs text-accent hover:underline"
                     onClick={markAllRead}
                   >
-                    Mark all read
+                    {t("common.markAllRead")}
                   </button>
                 ) : null}
               </div>
@@ -162,7 +164,7 @@ export function NavActions() {
                 ))
               ) : (
                 <li className="px-4 py-6 text-center text-sm text-muted-foreground">
-                  No notifications yet.
+                  {t("common.noNotifications")}
                 </li>
               )}
             </ul>
@@ -170,7 +172,7 @@ export function NavActions() {
         ) : null}
       </div>
 
-      <Button asChild variant="ghost" size="icon" aria-label="Messages" className="relative">
+      <Button asChild variant="ghost" size="icon" aria-label={t("nav.messages")} className="relative">
         <Link href="/messages">
           <MessageSquare className="size-4" />
           {unreadMessageCount > 0 ? (

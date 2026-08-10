@@ -6,10 +6,12 @@ import { signOut, useSession } from "next-auth/react";
 import { Bookmark, LogOut, MessageSquare, PenSquare, Settings, Shield, User } from "lucide-react";
 import { UserAvatar } from "@/components/user/user-avatar";
 import { clearAgeVerificationCookie } from "@/features/compliance/verify-age-form";
+import { useI18n } from "@/components/providers/i18n-provider";
 import { cn } from "@/lib/utils";
 
 export function UserMenu() {
   const { data: session, status } = useSession();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +38,7 @@ export function UserMenu() {
         className="hidden rounded-full border border-border bg-surface/70 px-4 py-2 text-sm font-medium transition hover:border-accent/40 sm:inline-flex sm:items-center sm:gap-2"
       >
         <User className="size-4" />
-        Sign in
+        {t("common.signIn")}
       </Link>
     );
   }
@@ -74,23 +76,23 @@ export function UserMenu() {
           </div>
           <div className="py-1">
             <MenuLink href="/create" icon={PenSquare} onClick={() => setOpen(false)}>
-              Create
+              {t("common.create")}
             </MenuLink>
             <MenuLink href="/library" icon={Bookmark} onClick={() => setOpen(false)}>
-              Library
+              {t("nav.library")}
             </MenuLink>
             <MenuLink href="/messages" icon={MessageSquare} onClick={() => setOpen(false)}>
-              Messages
+              {t("nav.messages")}
             </MenuLink>
             <MenuLink href="/settings/profile" icon={Settings} onClick={() => setOpen(false)}>
-              Settings
+              {t("nav.settings")}
             </MenuLink>
             <MenuLink href="/subscriptions" icon={User} onClick={() => setOpen(false)}>
-              Subscriptions
+              {t("menu.subscriptions")}
             </MenuLink>
             {isStaff ? (
               <MenuLink href="/admin/users" icon={Shield} onClick={() => setOpen(false)}>
-                Admin · Customers
+                {t("menu.adminCustomers")}
               </MenuLink>
             ) : null}
           </div>
@@ -106,7 +108,7 @@ export function UserMenu() {
               }}
             >
               <LogOut className="size-4" />
-              Sign out
+              {t("common.signOut")}
             </button>
           </div>
         </div>
@@ -143,6 +145,7 @@ function MenuLink({
 
 export function MobileUserLinks({ onNavigate }: { onNavigate?: () => void }) {
   const { data: session } = useSession();
+  const { t } = useI18n();
   const isStaff = session?.user?.role === "ADMIN" || session?.user?.role === "MODERATOR";
 
   if (!session?.user) {
@@ -152,7 +155,7 @@ export function MobileUserLinks({ onNavigate }: { onNavigate?: () => void }) {
         onClick={onNavigate}
         className="block rounded-lg px-3 py-2.5 text-sm font-medium text-accent"
       >
-        Sign in
+        {t("common.signIn")}
       </Link>
     );
   }
@@ -160,23 +163,23 @@ export function MobileUserLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <Link href="/create" onClick={onNavigate} className="block rounded-lg px-3 py-2.5 text-sm font-medium text-accent">
-        Create
+        {t("common.create")}
       </Link>
       <Link href="/library" onClick={onNavigate} className="block rounded-lg px-3 py-2.5 text-sm">
-        Library
+        {t("nav.library")}
       </Link>
       <Link href="/messages" onClick={onNavigate} className="block rounded-lg px-3 py-2.5 text-sm">
-        Messages
+        {t("nav.messages")}
       </Link>
       <Link href="/settings/profile" onClick={onNavigate} className="block rounded-lg px-3 py-2.5 text-sm">
-        Settings
+        {t("nav.settings")}
       </Link>
       <Link href="/subscriptions" onClick={onNavigate} className="block rounded-lg px-3 py-2.5 text-sm">
-        Subscriptions
+        {t("menu.subscriptions")}
       </Link>
       {isStaff ? (
         <Link href="/admin/users" onClick={onNavigate} className="block rounded-lg px-3 py-2.5 text-sm">
-          Admin · Customers
+          {t("menu.adminCustomers")}
         </Link>
       ) : null}
       <button
@@ -188,7 +191,7 @@ export function MobileUserLinks({ onNavigate }: { onNavigate?: () => void }) {
         }}
         className="block w-full rounded-lg px-3 py-2.5 text-left text-sm text-muted-foreground"
       >
-        Sign out
+        {t("common.signOut")}
       </button>
     </>
   );

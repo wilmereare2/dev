@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { AGE_VERIFIED_COOKIE, isAgeVerifiedCookie } from "@/lib/auth/age-cookie";
+import {
+  LOCALE_COOKIE,
+  isSupportedLocale,
+  localeCookieOptions,
+  negotiateLocale,
+  resolveLocale,
+} from "@/lib/i18n";
 import { applySecurityHeaders } from "@/middleware/security-headers";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
@@ -33,6 +40,21 @@ function redirectToVerifyAge(request: NextRequest) {
   return NextResponse.redirect(url);
 }
 
+function applyLocaleCookie(request: NextRequest, response: NextResponse) {
+  const existing = request.cookies.get(LOCALE_COOKIE)?.value;
+  if (isSupportedLocale(existing)) {
+    return response;
+  }
+
+  const locale = negotiateLocale(request.headers.get("accept-language"));
+  response.cookies.set(
+    LOCALE_COOKIE,
+    locale,
+    localeCookieOptions(locale, request.nextUrl.protocol === "https:"),
+  );
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const { nextUrl } = request;
   const pathname = nextUrl.pathname;
@@ -49,15 +71,15 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isPublicPath(pathname)) {
-    return response;
+    return applyLocaleCookie(request, response);
   }
 
   const cookieValue = request.cookies.get(AGE_VERIFIED_COOKIE)?.value;
   if (await isAgeVerifiedCookie(cookieValue)) {
-    return response;
+    return applyLocaleCookie(request, response);
   }
 
-  return redirectToVerifyAge(request);
+  return applyLocaleCookie(request, redirectToVerifyAge(request));
 }
 
 export const config = {

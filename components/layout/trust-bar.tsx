@@ -1,11 +1,14 @@
+"use client";
+
 import { Lock, Shield, ShieldCheck, CreditCard } from "lucide-react";
+import { useI18n } from "@/components/providers/i18n-provider";
 import { cn } from "@/lib/utils";
 
 const TRUST_ITEMS = [
-  { icon: ShieldCheck, label: "18+ Verified" },
-  { icon: Lock, label: "SSL Secure" },
-  { icon: Shield, label: "DMCA Protected" },
-  { icon: CreditCard, label: "Secure Payments" },
+  { icon: ShieldCheck, key: "trust.verified" as const },
+  { icon: Lock, key: "trust.ssl" as const },
+  { icon: Shield, key: "trust.dmca" as const },
+  { icon: CreditCard, key: "trust.payments" as const },
 ] as const;
 
 type TrustBarProps = {
@@ -14,6 +17,8 @@ type TrustBarProps = {
 };
 
 export function TrustBar({ className, compact = false }: TrustBarProps) {
+  const { t } = useI18n();
+
   return (
     <div
       className={cn(
@@ -23,13 +28,13 @@ export function TrustBar({ className, compact = false }: TrustBarProps) {
       )}
     >
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-6 gap-y-2 px-4 sm:px-6 lg:px-8">
-        {TRUST_ITEMS.map(({ icon: Icon, label }) => (
+        {TRUST_ITEMS.map(({ icon: Icon, key }) => (
           <span
-            key={label}
+            key={key}
             className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground sm:text-xs"
           >
             <Icon className="size-3.5 shrink-0 text-accent" aria-hidden />
-            {label}
+            {t(key)}
           </span>
         ))}
       </div>

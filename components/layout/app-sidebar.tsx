@@ -16,19 +16,21 @@ import {
   Tag,
   TrendingUp,
 } from "lucide-react";
+import { useI18n } from "@/components/providers/i18n-provider";
+import { navMessageKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "manuelax-sidebar-collapsed";
 
 const LINKS = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/messages", label: "Messages", icon: MessageSquare },
-  { href: "/explore", label: "Explore", icon: Compass },
-  { href: "/categories", label: "Categories", icon: LayoutGrid },
-  { href: "/promotions", label: "Promotions", icon: Tag },
-  { href: "/trending", label: "Trending", icon: TrendingUp },
-  { href: "/library", label: "Library", icon: Bookmark },
-  { href: "/pricing", label: "Pricing", icon: Crown },
+  { href: "/", icon: Home },
+  { href: "/messages", icon: MessageSquare },
+  { href: "/explore", icon: Compass },
+  { href: "/categories", icon: LayoutGrid },
+  { href: "/promotions", icon: Tag },
+  { href: "/trending", icon: TrendingUp },
+  { href: "/library", icon: Bookmark },
+  { href: "/pricing", icon: Crown },
 ] as const;
 
 type AppSidebarProps = {
@@ -37,6 +39,7 @@ type AppSidebarProps = {
 
 export function AppSidebar({ className }: AppSidebarProps) {
   const pathname = usePathname();
+  const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -69,9 +72,12 @@ export function AppSidebar({ className }: AppSidebarProps) {
     >
       <div className="flex h-full flex-col rounded-2xl border border-border/60 bg-surface/40 p-2 backdrop-blur-sm">
         <nav aria-label="App sidebar" className="flex-1 space-y-1">
-          {LINKS.map(({ href, label, icon: Icon }) => {
+          {LINKS.map(({ href, icon: Icon }) => {
             const active =
               href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+            const key = navMessageKey(href);
+            const label = key ? t(key) : href;
+
             return (
               <Link
                 key={href}
@@ -96,18 +102,16 @@ export function AppSidebar({ className }: AppSidebarProps) {
           <div className="mt-4 rounded-xl border border-border/50 bg-background/40 p-3 text-xs text-muted-foreground">
             <div className="flex items-center gap-2 font-medium text-foreground">
               <History className="size-3.5 text-accent" aria-hidden />
-              Quick access
+              {t("sidebar.quickAccess")}
             </div>
-            <p className="mt-2 leading-relaxed">
-              Library saves favorites, watch later, and history in one place.
-            </p>
+            <p className="mt-2 leading-relaxed">{t("sidebar.quickAccessBody")}</p>
           </div>
         ) : null}
 
         <button
           type="button"
           className="mt-3 flex items-center justify-center rounded-xl border border-border/50 py-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? t("sidebar.expand") : t("sidebar.collapse")}
           onClick={toggleCollapsed}
         >
           {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}

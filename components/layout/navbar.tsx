@@ -14,6 +14,8 @@ import {
   useSearchCommandPalette,
 } from "@/components/search/search-command-palette";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/providers/i18n-provider";
+import { navMessageKey } from "@/lib/i18n";
 import type { NavItem } from "@/types";
 
 type NavbarProps = {
@@ -24,6 +26,12 @@ export function Navbar({ navItems }: NavbarProps) {
   const [open, setOpen] = useState(false);
   const { open: paletteOpen, setOpen: setPaletteOpen } = useSearchCommandPalette();
   const pathname = usePathname();
+  const { t } = useI18n();
+
+  function navLabel(item: NavItem) {
+    const key = navMessageKey(item.href);
+    return key ? t(key) : item.label;
+  }
 
   const linkClass = (href: string, active: boolean, mobile = false) =>
     cn(
@@ -54,10 +62,10 @@ export function Navbar({ navItems }: NavbarProps) {
                 const active = isActive(item.href);
                 return (
                   <Link key={item.href} href={item.href} className={linkClass(item.href, active)}>
-                    {item.label}
+                    {navLabel(item)}
                     {item.comingSoon ? (
                       <span className="ml-1.5 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Soon
+                        {t("common.soon")}
                       </span>
                     ) : null}
                   </Link>
@@ -71,7 +79,7 @@ export function Navbar({ navItems }: NavbarProps) {
               type="button"
               variant="ghost"
               size="icon"
-              aria-label="Open search"
+              aria-label={t("common.openSearch")}
               onClick={() => setPaletteOpen(true)}
             >
               <Search className="size-4" />
@@ -112,7 +120,7 @@ export function Navbar({ navItems }: NavbarProps) {
                   }}
                 >
                   <Search className="size-4" />
-                  Search catalog
+                  {t("common.searchCatalog")}
                 </button>
                 {navItems.map((item) => (
                   <Link
@@ -121,10 +129,10 @@ export function Navbar({ navItems }: NavbarProps) {
                     onClick={() => setOpen(false)}
                     className={linkClass(item.href, isActive(item.href), true)}
                   >
-                    {item.label}
+                    {navLabel(item)}
                     {item.comingSoon ? (
                       <span className="ml-2 text-[10px] font-semibold uppercase text-muted-foreground">
-                        Soon
+                        {t("common.soon")}
                       </span>
                     ) : null}
                   </Link>
