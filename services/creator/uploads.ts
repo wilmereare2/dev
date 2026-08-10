@@ -74,9 +74,9 @@ export async function listPublishedMemberPosts(limit = 48) {
   const items = await prisma.creatorUpload.findMany({
     where: {
       status: "published",
-      visibility: "public",
+      visibility: { not: "private" },
     },
-    orderBy: { publishedAt: "desc" },
+    orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
     take: Math.min(Math.max(limit, 1), 100),
     include: publicPostInclude,
   });
@@ -113,6 +113,7 @@ export function mapPublicMemberPost(record: PublishedMemberPostRecord) {
     mediaType: mapped.mediaType,
     thumbnailUrl: mapped.thumbnailUrl,
     mediaUrl: mapped.mediaUrl,
+    visibility: mapped.visibility,
     isPremium: mapped.isPremium,
     ppvPriceCents: mapped.ppvPriceCents,
     categories: mapped.categories,
