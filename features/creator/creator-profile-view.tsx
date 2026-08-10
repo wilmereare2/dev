@@ -3,6 +3,7 @@ import { BadgeCheck, Heart, Users, Video } from "lucide-react";
 import { ContentCard } from "@/components/content/content-card";
 import { SanityImage } from "@/components/media/sanity-image";
 import { CreatorFollowButton } from "@/features/creator/creator-follow-button";
+import { CreatorSupportActions } from "@/features/creator/creator-support-actions";
 import { Button } from "@/components/ui/button";
 import { sanityImageUrl } from "@/lib/sanity/image";
 import type { CreatorPublicProfile } from "@/services/creator/public-profile";
@@ -14,10 +15,6 @@ type CreatorProfileViewProps = {
 
 export function CreatorProfileView({ profile }: CreatorProfileViewProps) {
   const avatar = sanityImageUrl(profile.avatar, 256);
-  const subscriptionPrice =
-    profile.subscriptionPriceCents != null
-      ? `$${(profile.subscriptionPriceCents / 100).toFixed(2)}/mo`
-      : null;
 
   return (
     <div className="pb-12">
@@ -65,13 +62,18 @@ export function CreatorProfileView({ profile }: CreatorProfileViewProps) {
               </div>
 
               <div className="mt-5 flex flex-wrap gap-3">
-                <CreatorFollowButton creatorUserId={profile.platformUserId} />
-                <Button asChild variant="secondary">
-                  <Link href="/pricing">
-                    {subscriptionPrice ? `Subscribe · ${subscriptionPrice}` : "Subscribe"}
-                  </Link>
-                </Button>
+                {profile.platformUserId ? (
+                  <CreatorFollowButton creatorUserId={profile.platformUserId} />
+                ) : null}
               </div>
+              {profile.platformUserId ? (
+                <div className="mt-4">
+                  <CreatorSupportActions
+                    creatorUserId={profile.platformUserId}
+                    subscriptionPriceCents={profile.subscriptionPriceCents ?? null}
+                  />
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

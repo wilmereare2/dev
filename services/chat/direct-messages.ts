@@ -54,6 +54,60 @@ async function isBlocked(userA: string, userB: string) {
   return Boolean(block);
 }
 
+async function isMutedByRecipient(recipientId: string, senderId: string) {
+  const mute = await prisma.mutedUser.findUnique({
+    where: { muterId_mutedId: { muterId: recipientId, mutedId: senderId } },
+    select: { id: true },
+  });
+  return Boolean(mute);
+}
+
+async function unreadCountsByConversation(userId: string, conversationIds: string[]) {
+  if (!conversationIds.length) return new Map<string, number>();
+
+  const grouped = await prisma.directMessage.groupBy({
+    by: ["conversationId"],
+    where: {
+      conversationId: { in: conversationIds },
+      senderId: { not: userId },
+      readAt: null,
+    },
+    _count: { _all: true },
+  });
+
+  return new Map(grouped.map((entry) => [entry.conversationId, entry._count._all]));
+}
+
+function mapConversation(
+  conversation: {
+    id: string;
+    updatedAt: Date;
+    userLowId: string;
+    userHighId: string;
+    userLow: { id: string; name: string | null; image: string | null; role: string };
+    userHigh: { id: string; name: string | null; image: string | null; role: string };
+    messages: Array<{
+      id: string;
+      body: string;
+      createdAt: Date;
+      sender: { id: string; name: string | null; image: string | null; role: string };
+    }>;
+  },
+  userId: string,
+  unreadCount: number,
+): DirectConversationPayload {
+  const peer = conversation.userLowId === userId ? conversation.userHigh : conversation.userLow;
+  const last = conversation.messages[0];
+
+  return {
+    id: conversation.id,
+    updatedAt: conversation.updatedAt.toISOString(),
+    peer: serializeUser(peer),
+    lastMessage: last ? serializeDirectMessage(last) : null,
+    unreadCount,
+  };
+}
+
 export async function userInConversation(conversationId: string, userId: string) {
   const conversation = await prisma.directConversation.findUnique({
     where: { id: conversationId },
@@ -78,17 +132,14 @@ export async function listDirectConversations(userId: string): Promise<DirectCon
     },
   });
 
-  return conversations.map((conversation) => {
-    const peer =
-      conversation.userLowId === userId ? conversation.userHigh : conversation.userLow;
-    const last = conversation.messages[0];
+  const unreadMap = await unreadCountsByConversation(
+    userId,
+    conversations.map((conversation) => conversation.id),
+  );
 
-    return {
-      id: conversation.id,
-      updatedAt: conversation.updatedAt.toISOString(),
-      peer: serializeUser(peer),
-      lastMessage: last ? serializeDirectMessage(last) : null,
-    };
+  return conversations.map((conversation) => {
+    const unread = unreadMap.get(conversation.id) ?? 0;
+    return mapConversation(conversation, userId, unread);
   });
 }
 
@@ -125,17 +176,9 @@ export async function getOrCreateDirectConversation(userId: string, peerId: stri
     },
   });
 
-  const peerUser = conversation.userLowId === userId ? conversation.userHigh : conversation.userLow;
-  const last = conversation.messages[0];
-
   return {
     ok: true as const,
-    conversation: {
-      id: conversation.id,
-      updatedAt: conversation.updatedAt.toISOString(),
-      peer: serializeUser(peerUser),
-      lastMessage: last ? serializeDirectMessage(last) : null,
-    } satisfies DirectConversationPayload,
+    conversation: mapConversation(conversation, userId, 0),
   };
 }
 
@@ -236,16 +279,36 @@ export async function createDirectMessage(conversationId: string, userId: string
   const senderName = message.sender.name ?? "A member";
   const preview = trimmed.length > 120 ? `${trimmed.slice(0, 117)}…` : trimmed;
 
-  await createUserNotification({
-    userId: peerId,
-    type: "direct_message",
-    title: `New message from ${senderName}`,
-    body: preview,
-    href: `/messages?conversation=${conversationId}`,
-    respectPushSetting: true,
-  });
+  if (!(await isMutedByRecipient(peerId, userId))) {
+    await createUserNotification({
+      userId: peerId,
+      type: "direct_message",
+      title: `New message from ${senderName}`,
+      body: preview,
+      href: `/messages?conversation=${conversationId}`,
+      respectPushSetting: true,
+    });
+  }
 
   return { ok: true as const, message: serializeDirectMessage(message) };
+}
+
+export async function markDirectConversationRead(conversationId: string, userId: string) {
+  const allowed = await userInConversation(conversationId, userId);
+  if (!allowed) {
+    return { ok: false as const, error: "Conversation not found." };
+  }
+
+  await prisma.directMessage.updateMany({
+    where: {
+      conversationId,
+      senderId: { not: userId },
+      readAt: null,
+    },
+    data: { readAt: new Date() },
+  });
+
+  return { ok: true as const };
 }
 
 export async function deleteDirectMessage(messageId: string) {

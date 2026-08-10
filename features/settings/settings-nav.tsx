@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const links = [
   { href: "/settings/profile", label: "Profile" },
   { href: "/settings/privacy", label: "Privacy" },
+  { href: "/settings/safety", label: "Blocked & muted" },
   { href: "/settings/notifications", label: "Notifications" },
   { href: "/settings/security", label: "Security" },
 ];

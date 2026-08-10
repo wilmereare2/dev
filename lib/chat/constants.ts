@@ -26,6 +26,7 @@ export type DirectConversationPayload = {
   updatedAt: string;
   peer: ChatUserPayload;
   lastMessage: DirectMessagePayload | null;
+  unreadCount: number;
 };
 
 export type MemberSummaryPayload = {

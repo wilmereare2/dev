@@ -16,6 +16,7 @@ import {
 import { UserAvatar } from "@/components/user/user-avatar";
 import { Button } from "@/components/ui/button";
 import { ChatMessageBubble } from "@/features/chat/chat-message-bubble";
+import { ConversationActionsMenu } from "@/features/chat/conversation-actions-menu";
 import { NewMessageDialog } from "@/features/chat/new-message-dialog";
 import type {
   ChatMessagePayload,
@@ -132,14 +133,52 @@ export function MessagesHub({ session }: MessagesHubProps) {
   }, [searchParams]);
 
   useEffect(() => {
+    const memberId = searchParams.get("member");
+    if (!memberId) return;
+
+    void fetch("/api/chat/direct/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ peerId: memberId }),
+    })
+      .then((response) => response.json())
+      .then((payload: { conversation?: DirectConversationPayload; error?: string }) => {
+        if (!payload.conversation) return;
+        setConversations((current) => {
+          const existing = current.filter((item) => item.id !== payload.conversation!.id);
+          return [payload.conversation!, ...existing];
+        });
+        setActiveThread({ kind: "direct", conversationId: payload.conversation.id });
+        setMobileShowThread(true);
+      })
+      .catch(() => undefined);
+  }, [searchParams]);
+
+  const refreshConversations = useCallback(async () => {
+    try {
+      const response = await fetch("/api/chat/direct/conversations");
+      const payload = (await response.json()) as { conversations?: DirectConversationPayload[] };
+      setConversations(payload.conversations ?? []);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
     if (activeThread.kind !== "direct") return;
+
+    void fetch(`/api/chat/direct/conversations/${activeThread.conversationId}/read`, {
+      method: "PATCH",
+    })
+      .then(() => refreshConversations())
+      .catch(() => undefined);
 
     void fetch("/api/user/notifications", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ markConversationRead: activeThread.conversationId }),
     }).catch(() => undefined);
-  }, [activeThread]);
+  }, [activeThread, refreshConversations]);
 
   useEffect(() => {
     let cancelled = false;
@@ -554,13 +593,27 @@ export function MessagesHub({ session }: MessagesHubProps) {
                             <p className="truncate text-sm font-medium">
                               {conversation.peer.name ?? "Member"}
                             </p>
-                            {conversation.lastMessage ? (
-                              <time className="shrink-0 text-[11px] text-muted-foreground">
-                                {formatTime(conversation.lastMessage.createdAt)}
-                              </time>
-                            ) : null}
+                            <div className="flex shrink-0 items-center gap-2">
+                              {conversation.unreadCount > 0 ? (
+                                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">
+                                  {conversation.unreadCount}
+                                </span>
+                              ) : null}
+                              {conversation.lastMessage ? (
+                                <time className="text-[11px] text-muted-foreground">
+                                  {formatTime(conversation.lastMessage.createdAt)}
+                                </time>
+                              ) : null}
+                            </div>
                           </div>
-                          <p className="mt-1 truncate text-xs text-muted-foreground">
+                          <p
+                            className={cn(
+                              "mt-1 truncate text-xs",
+                              conversation.unreadCount > 0
+                                ? "font-medium text-foreground"
+                                : "text-muted-foreground",
+                            )}
+                          >
                             {conversation.lastMessage?.body ?? "Start the conversation"}
                           </p>
                         </div>
@@ -607,6 +660,14 @@ export function MessagesHub({ session }: MessagesHubProps) {
                 <p className="truncate text-sm font-semibold">{threadTitle}</p>
                 <p className="truncate text-xs text-muted-foreground">{threadSubtitle}</p>
               </div>
+
+              {activeThread.kind === "direct" && selectedConversation ? (
+                <ConversationActionsMenu
+                  peerId={selectedConversation.peer.id}
+                  peerName={selectedConversation.peer.name ?? "Member"}
+                  signedIn
+                />
+              ) : null}
             </header>
 
             {activeThread.kind === "community" ? (

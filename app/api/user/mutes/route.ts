@@ -1,25 +1,25 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiUser } from "@/lib/api/require-user";
-import { blockUser, listBlockedUsers, unblockUser } from "@/services/user/security";
+import { listMutedUsers, muteUser, unmuteUser } from "@/services/user/security";
 
 export async function GET() {
   const authResult = await requireApiUser();
   if ("error" in authResult) return authResult.error;
 
-  const items = await listBlockedUsers(authResult.userId);
+  const items = await listMutedUsers(authResult.userId);
   return NextResponse.json({
     items: items.map((item) => ({
       id: item.id,
-      blockedAt: item.createdAt.toISOString(),
-      user: item.blocked,
+      mutedAt: item.createdAt.toISOString(),
+      user: item.muted,
     })),
   });
 }
 
 const bodySchema = z.object({
-  blockedId: z.string().min(1),
-  action: z.enum(["block", "unblock"]),
+  mutedId: z.string().min(1),
+  action: z.enum(["mute", "unmute"]),
 });
 
 export async function POST(request: Request) {
@@ -29,13 +29,13 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid block request." }, { status: 400 });
+    return NextResponse.json({ error: "Invalid mute request." }, { status: 400 });
   }
 
   const result =
-    parsed.data.action === "block"
-      ? await blockUser(authResult.userId, parsed.data.blockedId)
-      : await unblockUser(authResult.userId, parsed.data.blockedId);
+    parsed.data.action === "mute"
+      ? await muteUser(authResult.userId, parsed.data.mutedId)
+      : await unmuteUser(authResult.userId, parsed.data.mutedId);
 
   if ("error" in result && result.error) {
     return NextResponse.json({ error: result.error }, { status: 400 });

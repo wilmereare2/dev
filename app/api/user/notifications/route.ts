@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiUser } from "@/lib/api/require-user";
 import {
+  countNotifications,
   countUnreadNotifications,
   listNotifications,
   markAllNotificationsRead,
@@ -9,13 +10,18 @@ import {
   markNotificationRead,
 } from "@/services/user/notifications";
 
-export async function GET() {
+export async function GET(request: Request) {
   const authResult = await requireApiUser();
   if ("error" in authResult) return authResult.error;
 
-  const [items, unreadCount] = await Promise.all([
-    listNotifications(authResult.userId),
+  const { searchParams } = new URL(request.url);
+  const limit = Math.min(Math.max(Number(searchParams.get("limit") ?? 20), 1), 100);
+  const offset = Math.max(Number(searchParams.get("offset") ?? 0), 0);
+
+  const [items, unreadCount, totalCount] = await Promise.all([
+    listNotifications(authResult.userId, limit, offset),
     countUnreadNotifications(authResult.userId),
+    countNotifications(authResult.userId),
   ]);
 
   return NextResponse.json({
@@ -29,6 +35,7 @@ export async function GET() {
       createdAt: item.createdAt.toISOString(),
     })),
     unreadCount,
+    totalCount,
   });
 }
 

@@ -118,15 +118,20 @@ export function NavActions() {
           <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-border bg-background shadow-xl">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <p className="text-sm font-semibold">Notifications</p>
-              {unreadCount > 0 ? (
-                <button
-                  type="button"
-                  className="text-xs text-accent hover:underline"
-                  onClick={markAllRead}
-                >
-                  Mark all read
-                </button>
-              ) : null}
+              <div className="flex items-center gap-3">
+                <Link href="/notifications" className="text-xs text-accent hover:underline" onClick={() => setOpen(false)}>
+                  View all
+                </Link>
+                {unreadCount > 0 ? (
+                  <button
+                    type="button"
+                    className="text-xs text-accent hover:underline"
+                    onClick={markAllRead}
+                  >
+                    Mark all read
+                  </button>
+                ) : null}
+              </div>
             </div>
             <ul className="max-h-80 overflow-y-auto py-1">
               {items.length ? (

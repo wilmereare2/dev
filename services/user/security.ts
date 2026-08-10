@@ -75,6 +75,35 @@ export async function listBlockedUsers(blockerId: string) {
   });
 }
 
+export async function muteUser(muterId: string, mutedId: string) {
+  if (muterId === mutedId) {
+    return { ok: false as const, error: "You cannot mute yourself." };
+  }
+
+  await prisma.mutedUser.upsert({
+    where: { muterId_mutedId: { muterId, mutedId } },
+    create: { muterId, mutedId },
+    update: {},
+  });
+
+  return { ok: true as const };
+}
+
+export async function unmuteUser(muterId: string, mutedId: string) {
+  await prisma.mutedUser.deleteMany({ where: { muterId, mutedId } });
+  return { ok: true as const };
+}
+
+export async function listMutedUsers(muterId: string) {
+  return prisma.mutedUser.findMany({
+    where: { muterId },
+    include: {
+      muted: { select: { id: true, name: true, email: true, image: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export async function exportUserData(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

@@ -1,11 +1,16 @@
 import { prisma } from "@/lib/db/prisma";
 
-export async function listNotifications(userId: string, limit = 20) {
+export async function listNotifications(userId: string, limit = 20, offset = 0) {
   return prisma.notification.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: limit,
+    skip: offset,
   });
+}
+
+export async function countNotifications(userId: string) {
+  return prisma.notification.count({ where: { userId } });
 }
 
 export async function countUnreadNotifications(userId: string) {
