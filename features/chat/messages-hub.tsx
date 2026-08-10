@@ -7,6 +7,7 @@ import {
   Loader2,
   MessageSquarePlus,
   MessagesSquare,
+  Plus,
   UserPlus,
   Users,
   Wifi,
@@ -955,7 +956,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
       </div>
     ) : (
       <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
-        <MessagesSquare className="size-4" aria-hidden />
+        <Users className="size-4" aria-hidden />
       </div>
     );
 
@@ -982,6 +983,25 @@ export function MessagesHub({ session }: MessagesHubProps) {
     [groups, publicGroups],
   );
 
+  const messageNavActions = (
+    <div className="flex flex-col gap-1.5">
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        className="w-full justify-start"
+        onClick={() => setShowCreateGroup(true)}
+      >
+        <UserPlus className="size-4" aria-hidden />
+        Create group
+      </Button>
+      <Button type="button" size="sm" variant="premium" className="w-full justify-start" onClick={() => setShowNewMessage(true)}>
+        <MessageSquarePlus className="size-4" aria-hidden />
+        New message
+      </Button>
+    </div>
+  );
+
   return (
     <>
       <section className="mx-auto w-full max-w-[1600px] px-3 py-4 sm:px-4 lg:px-6">
@@ -991,37 +1011,42 @@ export function MessagesHub({ session }: MessagesHubProps) {
             onFilterChange={setInboxFilter}
             className="hidden shrink-0 lg:flex"
             style={{ width: NAV_WIDTH }}
+            actions={messageNavActions}
           />
 
           <aside
             style={{ width: inboxWidth, maxWidth: INBOX_MAX_WIDTH }}
             className={cn(
-              "flex w-full shrink-0 flex-col border-r border-border/60 bg-background/40",
+              "flex w-full min-w-0 shrink-0 flex-col overflow-hidden border-r border-border/60 bg-background/40",
               mobileShowThread ? "hidden md:flex" : "flex",
             )}
           >
-            <div className="border-b border-border/60 px-4 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h1 className="font-display text-lg font-semibold tracking-tight">Conversations</h1>
-                  <p className="text-xs text-muted-foreground">Recent chats</p>
-                </div>
-                <div className="flex shrink-0 gap-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setShowCreateGroup(true)}
-                    aria-label="Create group"
-                  >
-                    <UserPlus className="size-4" aria-hidden />
-                    <span className="hidden sm:inline">Group</span>
-                  </Button>
-                  <Button type="button" size="sm" variant="premium" onClick={() => setShowNewMessage(true)}>
-                    <MessageSquarePlus className="size-4" aria-hidden />
-                    New
-                  </Button>
-                </div>
+            <div className="flex h-14 shrink-0 items-center border-b border-border/60 px-4">
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate font-display text-base font-semibold tracking-tight">Conversations</h1>
+                <p className="truncate text-xs text-muted-foreground">Recent chats</p>
+              </div>
+              <div className="ml-2 flex shrink-0 gap-1 lg:hidden">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="secondary"
+                  className="size-9 shrink-0"
+                  onClick={() => setShowCreateGroup(true)}
+                  aria-label="Create group"
+                >
+                  <UserPlus className="size-4" aria-hidden />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="premium"
+                  className="size-9 shrink-0"
+                  onClick={() => setShowNewMessage(true)}
+                  aria-label="New message"
+                >
+                  <Plus className="size-4" aria-hidden />
+                </Button>
               </div>
             </div>
 
@@ -1172,29 +1197,29 @@ export function MessagesHub({ session }: MessagesHubProps) {
             onPointerMove={moveInboxResize}
             onPointerUp={endInboxResize}
             onPointerCancel={endInboxResize}
-            className="hidden shrink-0 cursor-col-resize bg-border/40 transition hover:bg-accent/40 md:block md:w-1.5"
+            className="relative z-0 hidden shrink-0 cursor-col-resize bg-border/40 transition hover:bg-accent/40 md:block md:w-1.5"
           />
 
           <div
             className={cn(
-              "flex min-h-0 min-w-0 flex-1 flex-col bg-background/20",
+              "relative z-[1] flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background/20",
               !mobileShowThread ? "hidden md:flex" : "flex",
             )}
           >
-            <div className="mx-auto flex h-full w-full max-w-5xl flex-col">
-              <ChatHeader
-                title={threadTitle}
-                subtitle={threadSubtitle}
-                avatar={threadAvatar}
-                onBack={() => setMobileShowThread(false)}
-                actions={threadActions}
-                searchOpen={searchOpen}
-                searchQuery={messageSearch}
-                onSearchToggle={handleSearchToggle}
-                onSearchChange={setMessageSearch}
-                onSearchClear={() => setMessageSearch("")}
-              />
+            <ChatHeader
+              title={threadTitle}
+              subtitle={threadSubtitle}
+              avatar={threadAvatar}
+              onBack={() => setMobileShowThread(false)}
+              actions={threadActions}
+              searchOpen={searchOpen}
+              searchQuery={messageSearch}
+              onSearchToggle={handleSearchToggle}
+              onSearchChange={setMessageSearch}
+              onSearchClear={() => setMessageSearch("")}
+            />
 
+            <div className="flex min-h-0 flex-1 flex-col">
               {activeThread.kind === "community" ? (
                 <>
                   <ChatMessageList
