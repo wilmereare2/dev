@@ -515,7 +515,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
 
   return (
     <>
-      <section className="mx-auto flex h-[calc(100dvh-5.5rem)] max-w-6xl flex-col px-3 py-4 sm:px-4 lg:px-6">
+      <section className="mx-auto flex min-h-[calc(100dvh-var(--site-header-offset)-3rem)] max-h-[calc(100dvh-var(--site-header-offset)-3rem)] max-w-6xl flex-col px-3 py-4 sm:px-4 lg:px-6">
         <div className="flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-surface/40 shadow-xl">
           <aside
             className={cn(

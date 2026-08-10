@@ -13,6 +13,8 @@
   --accent-foreground: #ffffff;
   --glow: rgba(225, 29, 72, 0.18);
   --ring: #e11d48;
+  --site-nav-height: 4rem;
+  --site-header-offset: 4rem;
 }
 
 .dark {
@@ -51,7 +53,7 @@
 
   html {
     scroll-behavior: smooth;
-    overflow-x: clip;
+    scroll-padding-top: var(--site-header-offset);
   }
 
   body {
@@ -60,6 +62,8 @@
       radial-gradient(ellipse 100% 60% at 50% -15%, var(--glow), transparent 50%),
       linear-gradient(180deg, var(--background), color-mix(in oklab, var(--background) 92%, var(--surface)));
     min-height: 100vh;
+    overflow-x: hidden;
+    max-width: 100%;
   }
 
   ::selection {

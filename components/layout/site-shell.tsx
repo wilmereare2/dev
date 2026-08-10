@@ -33,7 +33,7 @@ export function SiteShell({
       />
       {ageGateText ? <AgeGateBanner message={ageGateText} /> : null}
       <Navbar navItems={navItems} />
-      <div className="relative mx-auto flex w-full max-w-7xl flex-1 gap-0 px-4 sm:px-6 lg:gap-8 lg:px-8">
+      <div className="relative mx-auto flex w-full max-w-7xl flex-1 items-start gap-0 px-4 sm:px-6 lg:gap-8 lg:px-8">
         {showSidebar ? <AppSidebar /> : null}
         <main className="min-w-0 flex-1">{children}</main>
       </div>
