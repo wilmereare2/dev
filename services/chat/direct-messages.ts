@@ -31,12 +31,14 @@ function serializeDirectMessage(message: {
   id: string;
   body: string;
   createdAt: Date;
+  readAt?: Date | null;
   sender: { id: string; name: string | null; image: string | null; role: string };
 }): DirectMessagePayload {
   return {
     id: message.id,
     body: message.body,
     createdAt: message.createdAt.toISOString(),
+    readAt: message.readAt?.toISOString() ?? null,
     sender: serializeUser(message.sender),
   };
 }
@@ -90,6 +92,7 @@ function mapConversation(
       id: string;
       body: string;
       createdAt: Date;
+      readAt: Date | null;
       sender: { id: string; name: string | null; image: string | null; role: string };
     }>;
   },

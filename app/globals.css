@@ -72,3 +72,10 @@
     background: color-mix(in oklab, var(--accent) 35%, transparent);
   }
 }
+
+.chat-thread-panel {
+  background-color: color-mix(in oklab, var(--muted) 28%, transparent);
+  background-image:
+    radial-gradient(circle at 20% 20%, color-mix(in oklab, var(--accent) 6%, transparent), transparent 45%),
+    radial-gradient(circle at 80% 0%, color-mix(in oklab, var(--accent) 4%, transparent), transparent 40%);
+}

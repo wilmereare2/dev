@@ -18,6 +18,7 @@ export type DirectMessagePayload = {
   id: string;
   body: string;
   createdAt: string;
+  readAt: string | null;
   sender: ChatUserPayload;
 };
 

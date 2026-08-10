@@ -8,7 +8,6 @@ import {
   Loader2,
   MessageSquarePlus,
   MessagesSquare,
-  Send,
   UserPlus,
   Users,
   Wifi,
@@ -16,7 +15,9 @@ import {
 } from "lucide-react";
 import { UserAvatar } from "@/components/user/user-avatar";
 import { Button } from "@/components/ui/button";
-import { ChatMessageBubble } from "@/features/chat/chat-message-bubble";
+import { ChatComposer } from "@/features/chat/chat-composer";
+import type { ChatListMessage } from "@/features/chat/chat-message-list";
+import { ChatMessageList } from "@/features/chat/chat-message-list";
 import { ConversationActionsMenu } from "@/features/chat/conversation-actions-menu";
 import { CreateGroupDialog } from "@/features/chat/create-group-dialog";
 import { GroupActionsMenu } from "@/features/chat/group-actions-menu";
@@ -44,6 +45,43 @@ function formatTime(iso: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(iso));
+}
+
+function toCommunityMessages(messages: ChatMessagePayload[]): ChatListMessage[] {
+  return messages.map((message) => ({
+    id: message.id,
+    body: message.body,
+    createdAt: message.createdAt,
+    senderId: message.user.id,
+    senderName: message.user.name ?? "Member",
+    senderImage: message.user.image,
+    senderRole: message.user.role,
+  }));
+}
+
+function toGroupMessages(messages: GroupMessagePayload[], currentUserId: string): ChatListMessage[] {
+  return messages.map((message) => ({
+    id: message.id,
+    body: message.body,
+    createdAt: message.createdAt,
+    senderId: message.sender.id,
+    senderName: message.sender.id === currentUserId ? "You" : (message.sender.name ?? "Member"),
+    senderImage: message.sender.image,
+    senderRole: message.sender.role,
+  }));
+}
+
+function toDirectMessages(messages: DirectMessagePayload[], currentUserId: string): ChatListMessage[] {
+  return messages.map((message) => ({
+    id: message.id,
+    body: message.body,
+    createdAt: message.createdAt,
+    senderId: message.sender.id,
+    senderName: message.sender.id === currentUserId ? "You" : (message.sender.name ?? "Member"),
+    senderImage: message.sender.image,
+    senderRole: message.sender.role,
+    readAt: message.readAt,
+  }));
 }
 
 function isStaff(role?: string | null) {
@@ -404,15 +442,12 @@ export function MessagesHub({ session }: MessagesHubProps) {
     if (!activeConversationId) return;
 
     const poll = window.setInterval(() => {
-      const after = directLastIdRef.current;
-      const url = after
-        ? `/api/chat/direct/conversations/${activeConversationId}/messages?after=${encodeURIComponent(after)}`
-        : `/api/chat/direct/conversations/${activeConversationId}/messages`;
-
-      fetch(url)
+      fetch(`/api/chat/direct/conversations/${activeConversationId}/messages`)
         .then((response) => response.json())
         .then((payload: { messages?: DirectMessagePayload[] }) => {
-          mergeDirectMessages(payload.messages ?? []);
+          const messages = payload.messages ?? [];
+          setDirectMessages(messages);
+          directLastIdRef.current = messages[messages.length - 1]?.id ?? null;
           window.requestAnimationFrame(() => scrollDirectToBottom(false));
         })
         .catch(() => undefined);
@@ -1032,44 +1067,19 @@ export function MessagesHub({ session }: MessagesHubProps) {
 
             {activeThread.kind === "community" ? (
               <>
-                <div ref={communityScrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 sm:px-4">
-                  {communityLoading ? (
-                    <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-                      <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
-                      Loading messages…
-                    </div>
-                  ) : null}
+                <ChatMessageList
+                  messages={toCommunityMessages(communityMessages)}
+                  currentUserId={session.user.id}
+                  scrollRef={communityScrollRef}
+                  loading={communityLoading}
+                  emptyText="No messages yet. Say hello to the community."
+                  showSenderNames
+                  canDelete={staff}
+                  deletingId={deletingCommunityId}
+                  onDelete={handleDeleteCommunityMessage}
+                />
 
-                  {!communityLoading && communityMessages.length === 0 ? (
-                    <p className="py-16 text-center text-sm text-muted-foreground">
-                      No messages yet. Say hello to the community.
-                    </p>
-                  ) : null}
-
-                  {communityMessages.map((message, index) => {
-                    const mine = message.user.id === session.user.id;
-                    const previous = communityMessages[index - 1];
-                    const grouped = previous?.user.id === message.user.id;
-
-                    return (
-                      <ChatMessageBubble
-                        key={message.id}
-                        body={message.body}
-                        createdAt={message.createdAt}
-                        mine={mine}
-                        senderName={message.user.name ?? "Member"}
-                        senderImage={message.user.image}
-                        senderRole={message.user.role}
-                        showSender={!grouped}
-                        canDelete={staff}
-                        deleting={deletingCommunityId === message.id}
-                        onDelete={() => handleDeleteCommunityMessage(message.id)}
-                      />
-                    );
-                  })}
-                </div>
-
-                <MessageComposer
+                <ChatComposer
                   id="community-chat-input"
                   value={communityDraft}
                   onChange={setCommunityDraft}
@@ -1081,44 +1091,16 @@ export function MessagesHub({ session }: MessagesHubProps) {
               </>
             ) : activeThread.kind === "group" && selectedGroup ? (
               <>
-                <div ref={groupScrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-4">
-                  {groupLoading ? (
-                    <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-                      <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
-                      Loading messages…
-                    </div>
-                  ) : null}
+                <ChatMessageList
+                  messages={toGroupMessages(groupMessages, session.user.id)}
+                  currentUserId={session.user.id}
+                  scrollRef={groupScrollRef}
+                  loading={groupLoading}
+                  emptyText={`No messages yet. Say hello to ${selectedGroup.name}.`}
+                  showSenderNames
+                />
 
-                  {!groupLoading && groupMessages.length === 0 ? (
-                    <p className="py-16 text-center text-sm text-muted-foreground">
-                      No messages yet. Say hello to {selectedGroup.name}.
-                    </p>
-                  ) : null}
-
-                  {groupMessages.map((message, index) => {
-                    const mine = message.sender.id === session.user.id;
-                    const previous = groupMessages[index - 1];
-                    const grouped = previous?.sender.id === message.sender.id;
-
-                    return (
-                      <ChatMessageBubble
-                        key={message.id}
-                        body={message.body}
-                        createdAt={message.createdAt}
-                        mine={mine}
-                        senderName={mine ? "You" : (message.sender.name ?? "Member")}
-                        senderImage={message.sender.image}
-                        senderRole={message.sender.role}
-                        showSender={!grouped}
-                        canDelete={false}
-                        deleting={false}
-                        onDelete={() => undefined}
-                      />
-                    );
-                  })}
-                </div>
-
-                <MessageComposer
+                <ChatComposer
                   id="group-chat-input"
                   value={groupDraft}
                   onChange={setGroupDraft}
@@ -1130,44 +1112,19 @@ export function MessagesHub({ session }: MessagesHubProps) {
               </>
             ) : activeThread.kind === "direct" && selectedConversation ? (
               <>
-                <div ref={directScrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-4">
-                  {directLoading ? (
-                    <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-                      <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
-                      Loading messages…
-                    </div>
-                  ) : null}
+                <ChatMessageList
+                  messages={toDirectMessages(directMessages, session.user.id)}
+                  currentUserId={session.user.id}
+                  scrollRef={directScrollRef}
+                  loading={directLoading}
+                  emptyText={`No messages yet. Send the first message to ${selectedConversation.peer.name ?? "this member"}.`}
+                  showReadStatus
+                  canDelete={staff}
+                  deletingId={deletingDirectId}
+                  onDelete={handleDeleteDirectMessage}
+                />
 
-                  {!directLoading && directMessages.length === 0 ? (
-                    <p className="py-16 text-center text-sm text-muted-foreground">
-                      No messages yet. Send the first message to {selectedConversation.peer.name ?? "this member"}.
-                    </p>
-                  ) : null}
-
-                  {directMessages.map((message, index) => {
-                    const mine = message.sender.id === session.user.id;
-                    const previous = directMessages[index - 1];
-                    const grouped = previous?.sender.id === message.sender.id;
-
-                    return (
-                      <ChatMessageBubble
-                        key={message.id}
-                        body={message.body}
-                        createdAt={message.createdAt}
-                        mine={mine}
-                        senderName={mine ? "You" : (message.sender.name ?? "Member")}
-                        senderImage={message.sender.image}
-                        senderRole={message.sender.role}
-                        showSender={!grouped}
-                        canDelete={staff}
-                        deleting={deletingDirectId === message.id}
-                        onDelete={() => handleDeleteDirectMessage(message.id)}
-                      />
-                    );
-                  })}
-                </div>
-
-                <MessageComposer
+                <ChatComposer
                   id="direct-chat-input"
                   value={directDraft}
                   onChange={setDirectDraft}
@@ -1200,55 +1157,5 @@ export function MessagesHub({ session }: MessagesHubProps) {
         }}
       />
     </>
-  );
-}
-
-function MessageComposer({
-  id,
-  value,
-  onChange,
-  onSubmit,
-  pending,
-  error,
-  placeholder,
-}: {
-  id: string;
-  value: string;
-  onChange: (value: string) => void;
-  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
-  pending: boolean;
-  error: string | null;
-  placeholder: string;
-}) {
-  return (
-    <form onSubmit={onSubmit} className="shrink-0 border-t border-border/60 bg-background/70 px-3 py-3 sm:px-4">
-      {error ? <p className="mb-2 text-sm text-red-400">{error}</p> : null}
-      <div className="flex items-end gap-2">
-        <label htmlFor={id} className="sr-only">
-          Message
-        </label>
-        <textarea
-          id={id}
-          rows={1}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              event.currentTarget.form?.requestSubmit();
-            }
-          }}
-          placeholder={placeholder}
-          maxLength={2000}
-          className="max-h-32 min-h-11 min-w-0 flex-1 resize-y rounded-2xl border border-border bg-background/80 px-4 py-2.5 text-sm outline-none transition focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/20"
-        />
-        <Button type="submit" variant="premium" size="icon" className="size-11 shrink-0" disabled={pending || !value.trim()}>
-          {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" />}
-        </Button>
-      </div>
-      <p className="mt-2 hidden text-[11px] text-muted-foreground sm:block">
-        Enter to send · Shift+Enter for a new line
-      </p>
-    </form>
   );
 }
