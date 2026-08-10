@@ -1,0 +1,81 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { ChevronLeft, Search, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+type ChatHeaderProps = {
+  title: string;
+  subtitle: string;
+  avatar: ReactNode;
+  onBack?: () => void;
+  actions?: ReactNode;
+  searchOpen: boolean;
+  searchQuery: string;
+  onSearchToggle: () => void;
+  onSearchChange: (value: string) => void;
+  onSearchClear: () => void;
+};
+
+export function ChatHeader({
+  title,
+  subtitle,
+  avatar,
+  onBack,
+  actions,
+  searchOpen,
+  searchQuery,
+  onSearchToggle,
+  onSearchChange,
+  onSearchClear,
+}: ChatHeaderProps) {
+  return (
+    <header className="shrink-0 border-b border-border/60 bg-background/50 backdrop-blur-sm">
+      <div className="flex h-14 items-center gap-3 px-3 sm:px-4">
+        {onBack ? (
+          <Button type="button" variant="ghost" size="icon" className="md:hidden" onClick={onBack} aria-label="Back to conversations">
+            <ChevronLeft className="size-5" />
+          </Button>
+        ) : null}
+
+        {avatar}
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold leading-tight">{title}</p>
+          <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={searchOpen ? "Close message search" : "Search messages"}
+            aria-pressed={searchOpen}
+            onClick={onSearchToggle}
+          >
+            {searchOpen ? <X className="size-4" /> : <Search className="size-4" />}
+          </Button>
+          {actions}
+        </div>
+      </div>
+
+      {searchOpen ? (
+        <div className="border-t border-border/40 px-3 pb-3 pt-2 sm:px-4">
+          <label htmlFor="message-search" className="sr-only">
+            Search in conversation
+          </label>
+          <input
+            id="message-search"
+            type="search"
+            value={searchQuery}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Search in this conversation…"
+            className="h-9 w-full rounded-lg border border-border bg-background/80 px-3 text-sm outline-none focus-visible:border-accent/50 focus-visible:ring-2 focus-visible:ring-accent/20"
+          />
+        </div>
+      ) : null}
+    </header>
+  );
+}

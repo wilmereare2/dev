@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatMessageBubble } from "@/features/chat/chat-message-bubble";
 import {
@@ -10,6 +10,8 @@ import {
   groupsWithPrevious,
   isSameCalendarDay,
 } from "@/features/chat/chat-format";
+import { ChatMessagesSkeleton, InlineErrorState } from "@/features/chat/messages/loading-skeleton";
+import { EmptyState } from "@/features/chat/messages/empty-state";
 import { cn } from "@/lib/utils";
 
 export type ChatListMessage = {
@@ -28,37 +30,43 @@ type ChatMessageListProps = {
   currentUserId: string;
   scrollRef: React.RefObject<HTMLDivElement | null>;
   loading?: boolean;
-  emptyText?: string;
+  error?: string | null;
+  onRetry?: () => void;
+  emptyTitle?: string;
+  emptyDescription?: string;
   showSenderNames?: boolean;
   showReadStatus?: boolean;
   canDelete?: boolean;
   deletingId?: string | null;
   onDelete?: (messageId: string) => void;
-  onScrollToBottom?: () => void;
+  searchQuery?: string;
 };
-
-function mapToListMessage(
-  message: ChatListMessage,
-): ChatListMessage {
-  return message;
-}
 
 export function ChatMessageList({
   messages,
   currentUserId,
   scrollRef,
   loading = false,
-  emptyText = "No messages yet.",
+  error = null,
+  onRetry,
+  emptyTitle = "No messages yet",
+  emptyDescription,
   showSenderNames = false,
   showReadStatus = false,
   canDelete = false,
   deletingId = null,
   onDelete,
-  onScrollToBottom,
+  searchQuery = "",
 }: ChatMessageListProps) {
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [unreadBelow, setUnreadBelow] = useState(0);
   const lastSeenCountRef = useRef(messages.length);
+
+  const filteredMessages = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return messages;
+    return messages.filter((message) => message.body.toLowerCase().includes(query));
+  }, [messages, searchQuery]);
 
   const scrollToBottom = useCallback(
     (behavior: ScrollBehavior = "smooth") => {
@@ -68,9 +76,8 @@ export function ChatMessageList({
       setShowScrollDown(false);
       setUnreadBelow(0);
       lastSeenCountRef.current = messages.length;
-      onScrollToBottom?.();
     },
-    [messages.length, onScrollToBottom, scrollRef],
+    [messages.length, scrollRef],
   );
 
   const updateScrollState = useCallback(() => {
@@ -118,65 +125,71 @@ export function ChatMessageList({
 
   return (
     <div className="relative min-h-0 flex-1">
-      <div
-        ref={scrollRef}
-        className="chat-thread-panel absolute inset-0 overflow-y-auto px-2 py-3 sm:px-3"
-      >
-        {loading ? (
-          <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-            <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
-            Loading messages…
-          </div>
-        ) : null}
+      <div ref={scrollRef} className="chat-thread-panel absolute inset-0 overflow-y-auto">
+        <div className="mx-auto w-full max-w-3xl px-3 py-4 sm:px-4">
+          {loading ? <ChatMessagesSkeleton /> : null}
 
-        {!loading && messages.length === 0 ? (
-          <p className="py-16 text-center text-sm text-muted-foreground">{emptyText}</p>
-        ) : null}
+          {!loading && error ? (
+            <InlineErrorState message={error} onRetry={onRetry} />
+          ) : null}
 
-        {!loading
-          ? messages.map((message, index) => {
-              const mapped = mapToListMessage(message);
-              const mine = mapped.senderId === currentUserId;
-              const previous = messages[index - 1];
-              const position = getMessageGroupPosition(messages, index, sameSender);
-              const showDateDivider =
-                index === 0 || !isSameCalendarDay(previous.createdAt, mapped.createdAt);
-              const groupedWithPrevious = groupsWithPrevious(previous, mapped, sameSender);
-              const showAvatar = !mine && (position === "last" || position === "single");
-              const showSenderName =
-                showSenderNames && !mine && (position === "first" || position === "single");
+          {!loading && !error && filteredMessages.length === 0 ? (
+            searchQuery.trim() ? (
+              <EmptyState
+                title="No matching messages"
+                description="Try a different search term."
+              />
+            ) : (
+              <EmptyState title={emptyTitle} description={emptyDescription} />
+            )
+          ) : null}
 
-              return (
-                <div key={mapped.id}>
-                  {showDateDivider ? (
-                    <div className="my-3 flex justify-center px-2">
-                      <span className="rounded-full bg-black/25 px-3 py-1 text-[11px] font-medium text-white/90 backdrop-blur-sm">
-                        {formatDateDivider(mapped.createdAt)}
-                      </span>
+          {!loading && !error
+            ? filteredMessages.map((message, index) => {
+                const mine = message.senderId === currentUserId;
+                const previous = filteredMessages[index - 1];
+                const position = getMessageGroupPosition(filteredMessages, index, sameSender);
+                const showDateDivider =
+                  index === 0 || !isSameCalendarDay(previous.createdAt, message.createdAt);
+                const groupedWithPrevious = groupsWithPrevious(previous, message, sameSender);
+                const showAvatar = !mine && (position === "last" || position === "single");
+                const showSenderName =
+                  showSenderNames && !mine && (position === "first" || position === "single");
+
+                return (
+                  <div key={message.id}>
+                    {showDateDivider ? (
+                      <div className="my-5 flex items-center gap-3 px-1">
+                        <div className="h-px flex-1 bg-border/60" aria-hidden />
+                        <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                          {formatDateDivider(message.createdAt)}
+                        </span>
+                        <div className="h-px flex-1 bg-border/60" aria-hidden />
+                      </div>
+                    ) : null}
+                    <div className={cn("flex", mine ? "justify-end" : "justify-start", groupedWithPrevious ? "mt-1" : "mt-3")}>
+                      <ChatMessageBubble
+                        body={message.body}
+                        createdAt={message.createdAt}
+                        mine={mine}
+                        senderName={message.senderName}
+                        senderImage={message.senderImage}
+                        senderRole={message.senderRole}
+                        showAvatar={showAvatar}
+                        showSenderName={showSenderName}
+                        groupPosition={position}
+                        readAt={message.readAt}
+                        showReadStatus={showReadStatus && mine}
+                        canDelete={canDelete}
+                        deleting={deletingId === message.id}
+                        onDelete={onDelete ? () => onDelete(message.id) : undefined}
+                      />
                     </div>
-                  ) : null}
-                  <div className={cn(groupedWithPrevious ? "mt-0.5" : "mt-2")}>
-                    <ChatMessageBubble
-                      body={mapped.body}
-                      createdAt={mapped.createdAt}
-                      mine={mine}
-                      senderName={mapped.senderName}
-                      senderImage={mapped.senderImage}
-                      senderRole={mapped.senderRole}
-                      showAvatar={showAvatar}
-                      showSenderName={showSenderName}
-                      groupPosition={position}
-                      readAt={mapped.readAt}
-                      showReadStatus={showReadStatus && mine}
-                      canDelete={canDelete}
-                      deleting={deletingId === mapped.id}
-                      onDelete={onDelete ? () => onDelete(mapped.id) : undefined}
-                    />
                   </div>
-                </div>
-              );
-            })
-          : null}
+                );
+              })
+            : null}
+        </div>
       </div>
 
       {showScrollDown ? (

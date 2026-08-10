@@ -94,7 +94,7 @@ export function ChatMessageBubble({
         <div className="size-8 shrink-0" aria-hidden />
       )}
 
-      <div className={cn("flex min-w-0 max-w-[min(100%,520px)] flex-col", mine ? "items-end" : "items-start")}>
+      <div className={cn("flex min-w-0 max-w-[75%] flex-col", mine ? "items-end" : "items-start")}>
         {showSenderName ? (
           <div className="mb-1 flex flex-wrap items-center gap-2 px-1">
             <span className="text-xs font-semibold text-accent">{senderName}</span>

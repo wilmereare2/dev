@@ -5,6 +5,7 @@ import { Crown, Loader2, Search, Shield, UserMinus, UserPlus, X } from "lucide-r
 import { UserAvatar } from "@/components/user/user-avatar";
 import { Button } from "@/components/ui/button";
 import type { GroupMemberPayload, GroupMemberRole, MemberSummaryPayload } from "@/lib/chat/constants";
+import { formatMemberCount } from "@/features/chat/chat-format";
 import { cn } from "@/lib/utils";
 
 type GroupMembersDialogProps = {
@@ -229,7 +230,7 @@ export function GroupMembersDialog({
         </div>
 
         <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-2">
-          <p className="text-xs text-muted-foreground">{members.length} members</p>
+          <p className="text-xs text-muted-foreground">{formatMemberCount(members.length)}</p>
           {canInvite ? (
             <Button type="button" size="sm" variant="secondary" onClick={() => setShowInvite((value) => !value)}>
               <UserPlus className="size-4" aria-hidden />

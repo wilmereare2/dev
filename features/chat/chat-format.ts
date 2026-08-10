@@ -3,10 +3,44 @@ export type MessageGroupPosition = "single" | "first" | "middle" | "last";
 const GROUP_WINDOW_MS = 5 * 60 * 1000;
 
 export function formatBubbleTime(iso: string) {
-  return new Intl.DateTimeFormat(undefined, {
+  return formatMessageTimestamp(iso, { style: "time-only" });
+}
+
+/** List row / bubble timestamps with Today, Yesterday, or date prefix. */
+export function formatMessageTimestamp(
+  iso: string,
+  options?: { style?: "full" | "time-only" },
+) {
+  const date = new Date(iso);
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayDiff = Math.round((startOfToday.getTime() - startOfDate.getTime()) / 86_400_000);
+
+  const time = new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit",
-  }).format(new Date(iso));
+  }).format(date);
+
+  if (options?.style === "time-only" || dayDiff === 0) {
+    return time;
+  }
+
+  if (dayDiff === 1) {
+    return `Yesterday, ${time}`;
+  }
+
+  const dateLabel = new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
+  }).format(date);
+
+  return `${dateLabel}, ${time}`;
+}
+
+export function formatMemberCount(count: number) {
+  return count === 1 ? "1 member" : `${count} members`;
 }
 
 export function formatDateDivider(iso: string) {

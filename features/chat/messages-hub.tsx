@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Session } from "next-auth";
 import {
-  ChevronLeft,
   Loader2,
   MessageSquarePlus,
   MessagesSquare,
@@ -22,6 +21,13 @@ import { ConversationActionsMenu } from "@/features/chat/conversation-actions-me
 import { CreateGroupDialog } from "@/features/chat/create-group-dialog";
 import { GroupActionsMenu } from "@/features/chat/group-actions-menu";
 import { NewMessageDialog } from "@/features/chat/new-message-dialog";
+import { ChatHeader } from "@/features/chat/messages/chat-header";
+import { ConversationItem } from "@/features/chat/messages/conversation-item";
+import { EmptyState } from "@/features/chat/messages/empty-state";
+import { ConversationListSkeleton } from "@/features/chat/messages/loading-skeleton";
+import { MessageNav, type InboxFilter } from "@/features/chat/messages/message-nav";
+import { VisibilityBadge } from "@/features/chat/messages/visibility-badge";
+import { formatMemberCount, formatMessageTimestamp } from "@/features/chat/chat-format";
 import type {
   ChatMessagePayload,
   DirectConversationPayload,
@@ -41,10 +47,7 @@ type ActiveThread =
   | { kind: "group"; groupId: string };
 
 function formatTime(iso: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(iso));
+  return formatMessageTimestamp(iso);
 }
 
 function toCommunityMessages(messages: ChatMessagePayload[]): ChatListMessage[] {
@@ -89,9 +92,10 @@ function isStaff(role?: string | null) {
 }
 
 const INBOX_WIDTH_KEY = "messages-inbox-width";
-const INBOX_MIN_WIDTH = 260;
-const INBOX_MAX_WIDTH = 520;
-const INBOX_DEFAULT_WIDTH = 320;
+const INBOX_MIN_WIDTH = 280;
+const INBOX_MAX_WIDTH = 330;
+const INBOX_DEFAULT_WIDTH = 300;
+const NAV_WIDTH = 220;
 
 export function MessagesHub({ session }: MessagesHubProps) {
   const searchParams = useSearchParams();
@@ -100,6 +104,11 @@ export function MessagesHub({ session }: MessagesHubProps) {
   const [mobileShowThread, setMobileShowThread] = useState(false);
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>("all");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [messageSearch, setMessageSearch] = useState("");
+  const [conversationsLoading, setConversationsLoading] = useState(true);
+  const [groupsLoading, setGroupsLoading] = useState(true);
   const [inboxWidth, setInboxWidth] = useState(INBOX_DEFAULT_WIDTH);
   const inboxWidthRef = useRef(INBOX_DEFAULT_WIDTH);
   const inboxResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -117,7 +126,10 @@ export function MessagesHub({ session }: MessagesHubProps) {
 
   const [communityMessages, setCommunityMessages] = useState<ChatMessagePayload[]>([]);
   const [communityDraft, setCommunityDraft] = useState("");
+  const [communityLoadError, setCommunityLoadError] = useState<string | null>(null);
   const [communityError, setCommunityError] = useState<string | null>(null);
+  const [groupLoadError, setGroupLoadError] = useState<string | null>(null);
+  const [directLoadError, setDirectLoadError] = useState<string | null>(null);
   const [communityLoading, setCommunityLoading] = useState(true);
   const [communityPending, setCommunityPending] = useState(false);
   const [communityLive, setCommunityLive] = useState(false);
@@ -298,6 +310,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
   }, [searchParams]);
 
   const refreshGroups = useCallback(async () => {
+    setGroupsLoading(true);
     try {
       const [mineResponse, discoverResponse] = await Promise.all([
         fetch("/api/chat/groups"),
@@ -309,16 +322,21 @@ export function MessagesHub({ session }: MessagesHubProps) {
       setPublicGroups(discoverPayload.groups ?? []);
     } catch {
       /* ignore */
+    } finally {
+      setGroupsLoading(false);
     }
   }, []);
 
   const refreshConversations = useCallback(async () => {
+    setConversationsLoading(true);
     try {
       const response = await fetch("/api/chat/direct/conversations");
       const payload = (await response.json()) as { conversations?: DirectConversationPayload[] };
       setConversations(payload.conversations ?? []);
     } catch {
       /* ignore */
+    } finally {
+      setConversationsLoading(false);
     }
   }, []);
 
@@ -343,18 +361,19 @@ export function MessagesHub({ session }: MessagesHubProps) {
 
     async function loadCommunity() {
       setCommunityLoading(true);
+      setCommunityLoadError(null);
       try {
         const response = await fetch("/api/chat/messages");
         const payload = (await response.json()) as { messages?: ChatMessagePayload[]; error?: string };
         if (!response.ok) {
-          setCommunityError(payload.error ?? "Could not load community chat.");
+          setCommunityLoadError(payload.error ?? "Could not load community chat.");
           return;
         }
         if (cancelled) return;
         replaceCommunityMessages(payload.messages ?? []);
         window.requestAnimationFrame(() => scrollCommunityToBottom(false));
       } catch {
-        if (!cancelled) setCommunityError("Could not load community chat.");
+        if (!cancelled) setCommunityLoadError("Could not load community chat.");
       } finally {
         if (!cancelled) setCommunityLoading(false);
       }
@@ -417,6 +436,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
     let cancelled = false;
 
     async function loadConversations() {
+      setConversationsLoading(true);
       try {
         const response = await fetch("/api/chat/direct/conversations");
         const payload = (await response.json()) as {
@@ -426,6 +446,8 @@ export function MessagesHub({ session }: MessagesHubProps) {
         setConversations(payload.conversations ?? []);
       } catch {
         /* ignore */
+      } finally {
+        if (!cancelled) setConversationsLoading(false);
       }
     }
 
@@ -462,6 +484,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
 
     let cancelled = false;
     setDirectLoading(true);
+    setDirectLoadError(null);
     setDirectError(null);
 
     fetch(`/api/chat/direct/conversations/${activeConversationId}/messages`)
@@ -469,7 +492,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
       .then((payload: { messages?: DirectMessagePayload[]; error?: string }) => {
         if (cancelled) return;
         if (payload.error) {
-          setDirectError(payload.error);
+          setDirectLoadError(payload.error);
           return;
         }
         const messages = payload.messages ?? [];
@@ -478,7 +501,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         window.requestAnimationFrame(() => scrollDirectToBottom(false));
       })
       .catch(() => {
-        if (!cancelled) setDirectError("Could not load private messages.");
+        if (!cancelled) setDirectLoadError("Could not load private messages.");
       })
       .finally(() => {
         if (!cancelled) setDirectLoading(false);
@@ -516,6 +539,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
 
     let cancelled = false;
     setGroupLoading(true);
+    setGroupLoadError(null);
     setGroupError(null);
 
     fetch(`/api/chat/groups/${activeGroupId}/messages`)
@@ -523,7 +547,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
       .then((payload: { messages?: GroupMessagePayload[]; error?: string }) => {
         if (cancelled) return;
         if (payload.error) {
-          setGroupError(payload.error);
+          setGroupLoadError(payload.error);
           return;
         }
         const messages = payload.messages ?? [];
@@ -532,7 +556,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         window.requestAnimationFrame(() => scrollGroupToBottom(false));
       })
       .catch(() => {
-        if (!cancelled) setGroupError("Could not load group messages.");
+        if (!cancelled) setGroupLoadError("Could not load group messages.");
       })
       .finally(() => {
         if (!cancelled) setGroupLoading(false);
@@ -826,13 +850,132 @@ export function MessagesHub({ session }: MessagesHubProps) {
   const threadSubtitle =
     activeThread.kind === "community"
       ? communityLive
-        ? `Live · ${onlineLabel}`
+        ? `${onlineLabel} · Public`
         : "Reconnecting…"
       : activeThread.kind === "group"
         ? selectedGroup
-          ? `${selectedGroup.memberCount} members · ${selectedGroup.visibility === "public" ? "Public" : "Private"}${selectedGroup.myRole === "creator" ? " · You are creator" : selectedGroup.myRole === "admin" ? " · You are admin" : ""}${selectedGroup.archivedAt ? " · Archived" : ""}`
+          ? `${formatMemberCount(selectedGroup.memberCount)} · ${selectedGroup.visibility === "public" ? "Public" : "Private"}${selectedGroup.archivedAt ? " · Archived" : ""}`
           : "Group chat"
         : "Private message";
+
+  const reloadCommunity = useCallback(async () => {
+    setCommunityLoading(true);
+    setCommunityLoadError(null);
+    try {
+      const response = await fetch("/api/chat/messages");
+      const payload = (await response.json()) as { messages?: ChatMessagePayload[]; error?: string };
+      if (!response.ok) {
+        setCommunityLoadError(payload.error ?? "Could not load community chat.");
+        return;
+      }
+      replaceCommunityMessages(payload.messages ?? []);
+    } catch {
+      setCommunityLoadError("Could not load community chat.");
+    } finally {
+      setCommunityLoading(false);
+    }
+  }, [replaceCommunityMessages]);
+
+  const showCommunityInList = inboxFilter === "all";
+  const showGroupsInList = inboxFilter === "all" || inboxFilter === "groups";
+  const showPrivateInList = inboxFilter === "all" || inboxFilter === "private";
+
+  useEffect(() => {
+    setSearchOpen(false);
+    setMessageSearch("");
+  }, [activeThread]);
+
+  const handleSearchToggle = useCallback(() => {
+    setSearchOpen((open) => {
+      if (open) setMessageSearch("");
+      return !open;
+    });
+  }, []);
+
+  const listLoading = conversationsLoading || groupsLoading;
+
+  const communityListError = communityLoadError;
+  const communityComposerError = communityError;
+
+  const groupListError = groupLoadError;
+  const groupComposerError = groupError;
+
+  const directListError = directLoadError;
+  const directComposerError = directError;
+
+  const reloadGroupMessages = useCallback(async () => {
+    if (activeThread.kind !== "group") return;
+    setGroupLoading(true);
+    setGroupLoadError(null);
+    try {
+      const response = await fetch(`/api/chat/groups/${activeThread.groupId}/messages`);
+      const payload = (await response.json()) as { messages?: GroupMessagePayload[]; error?: string };
+      if (payload.error) {
+        setGroupLoadError(payload.error);
+        return;
+      }
+      setGroupMessages(payload.messages ?? []);
+    } catch {
+      setGroupLoadError("Could not load group messages.");
+    } finally {
+      setGroupLoading(false);
+    }
+  }, [activeThread]);
+
+  const reloadDirectMessages = useCallback(async () => {
+    if (activeThread.kind !== "direct") return;
+    setDirectLoading(true);
+    setDirectLoadError(null);
+    try {
+      const response = await fetch(`/api/chat/direct/conversations/${activeThread.conversationId}/messages`);
+      const payload = (await response.json()) as { messages?: DirectMessagePayload[]; error?: string };
+      if (payload.error) {
+        setDirectLoadError(payload.error);
+        return;
+      }
+      setDirectMessages(payload.messages ?? []);
+    } catch {
+      setDirectLoadError("Could not load private messages.");
+    } finally {
+      setDirectLoading(false);
+    }
+  }, [activeThread]);
+
+  const threadAvatar =
+    activeThread.kind === "direct" && selectedConversation ? (
+      <UserAvatar
+        name={selectedConversation.peer.name}
+        email={null}
+        image={selectedConversation.peer.image}
+        size="sm"
+      />
+    ) : activeThread.kind === "group" ? (
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+        <Users className="size-4" aria-hidden />
+      </div>
+    ) : (
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+        <MessagesSquare className="size-4" aria-hidden />
+      </div>
+    );
+
+  const threadActions =
+    activeThread.kind === "direct" && selectedConversation ? (
+      <ConversationActionsMenu
+        peerId={selectedConversation.peer.id}
+        peerName={selectedConversation.peer.name ?? "Member"}
+        signedIn
+      />
+    ) : activeThread.kind === "group" && selectedGroup ? (
+      <GroupActionsMenu
+        groupId={selectedGroup.id}
+        groupName={selectedGroup.name}
+        myRole={selectedGroup.myRole}
+        archived={Boolean(selectedGroup.archivedAt)}
+        onArchivedChange={handleGroupArchivedChange}
+        onMembersChange={handleGroupMembersChange}
+      />
+    ) : null;
 
   const discoverablePublicGroups = useMemo(
     () => publicGroups.filter((group) => !groups.some((mine) => mine.id === group.id)),
@@ -841,20 +984,27 @@ export function MessagesHub({ session }: MessagesHubProps) {
 
   return (
     <>
-      <section className="mx-auto max-w-6xl px-3 py-4 sm:px-4 lg:px-6">
+      <section className="mx-auto w-full max-w-[1600px] px-3 py-4 sm:px-4 lg:px-6">
         <div className="flex h-[min(720px,calc(100dvh-var(--site-header-offset)-var(--site-bottom-offset)-6rem))] min-h-[480px] flex-col overflow-hidden rounded-2xl border border-border bg-surface/40 shadow-xl md:flex-row">
+          <MessageNav
+            filter={inboxFilter}
+            onFilterChange={setInboxFilter}
+            className="hidden shrink-0 lg:flex"
+            style={{ width: NAV_WIDTH }}
+          />
+
           <aside
-            style={{ width: inboxWidth }}
+            style={{ width: inboxWidth, maxWidth: INBOX_MAX_WIDTH }}
             className={cn(
-              "flex w-full shrink-0 flex-col border-r border-border/60 bg-background/40 md:max-w-[75%]",
+              "flex w-full shrink-0 flex-col border-r border-border/60 bg-background/40",
               mobileShowThread ? "hidden md:flex" : "flex",
             )}
           >
-            <div className="border-b border-border/60 px-4 py-4">
+            <div className="border-b border-border/60 px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h1 className="font-display text-xl font-semibold tracking-tight">Messages</h1>
-                  <p className="text-xs text-muted-foreground">Community, groups & private chats</p>
+                  <h1 className="font-display text-lg font-semibold tracking-tight">Conversations</h1>
+                  <p className="text-xs text-muted-foreground">Recent chats</p>
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <Button
@@ -875,104 +1025,75 @@ export function MessagesHub({ session }: MessagesHubProps) {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <button
-                type="button"
-                onClick={openCommunity}
-                className={cn(
-                  "flex w-full items-center gap-3 border-b border-border/40 px-4 py-3 text-left transition hover:bg-muted/30",
-                  activeThread.kind === "community" && "bg-accent/10",
-                )}
-              >
-                <div className="flex size-10 items-center justify-center rounded-full bg-accent/15 text-accent">
-                  <MessagesSquare className="size-5" aria-hidden />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-sm font-medium">Community lounge</p>
-                    <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
-                      {communityLive ? <Wifi className="size-3 text-accent" /> : <WifiOff className="size-3" />}
-                      {onlineLabel}
-                    </span>
-                  </div>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {communityMessages[communityMessages.length - 1]?.body ?? "Public member channel"}
-                  </p>
-                </div>
-              </button>
+            <MessageNav filter={inboxFilter} onFilterChange={setInboxFilter} layout="tabs" className="lg:hidden" />
 
-              {groups.length > 0 ? (
-                <div className="border-b border-border/40 px-4 py-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Groups</p>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <p className="sticky top-0 z-[1] border-b border-border/40 bg-background/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
+                Recent
+              </p>
+
+              {listLoading ? <ConversationListSkeleton /> : null}
+
+              {!listLoading && showCommunityInList ? (
+                <div className="px-2 py-1">
+                  <ConversationItem
+                    active={activeThread.kind === "community"}
+                    onClick={openCommunity}
+                    icon={
+                      <div className="flex size-10 items-center justify-center rounded-full bg-accent/15 text-accent">
+                        <MessagesSquare className="size-5" aria-hidden />
+                      </div>
+                    }
+                    title="Community lounge"
+                    preview={communityMessages[communityMessages.length - 1]?.body ?? "Public member channel"}
+                    meta={
+                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                        {communityLive ? <Wifi className="size-3 text-accent" /> : <WifiOff className="size-3" />}
+                        {onlineLabel}
+                      </span>
+                    }
+                  />
                 </div>
               ) : null}
 
-              {groups.length > 0 ? (
-                <ul>
+              {!listLoading && showGroupsInList && groups.length > 0 ? (
+                <ul className="space-y-0.5 px-2 py-1">
                   {groups.map((group) => (
                     <li key={group.id}>
-                      <button
-                        type="button"
+                      <ConversationItem
+                        active={activeThread.kind === "group" && activeThread.groupId === group.id}
                         onClick={() => openGroup(group.id)}
-                        className={cn(
-                          "flex w-full items-center gap-3 border-b border-border/40 px-4 py-3 text-left transition hover:bg-muted/30",
-                          activeThread.kind === "group" &&
-                            activeThread.groupId === group.id &&
-                            "bg-accent/10",
-                        )}
-                      >
-                        <div className="flex size-10 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-400">
-                          <Users className="size-5" aria-hidden />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="truncate text-sm font-medium">{group.name}</p>
-                            <div className="flex shrink-0 items-center gap-2">
-                              <span
-                                className={cn(
-                                  "rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                                  group.visibility === "public"
-                                    ? "bg-emerald-500/15 text-emerald-400"
-                                    : "bg-muted text-muted-foreground",
-                                )}
-                              >
-                                {group.visibility}
-                              </span>
-                              {group.lastMessage ? (
-                                <time className="text-[11px] text-muted-foreground">
-                                  {formatTime(group.lastMessage.createdAt)}
-                                </time>
-                              ) : null}
-                            </div>
+                        icon={
+                          <div className="flex size-10 items-center justify-center rounded-full bg-accent/10 text-accent">
+                            <Users className="size-5" aria-hidden />
                           </div>
-                          <p className="mt-1 truncate text-xs text-muted-foreground">
-                            {group.lastMessage?.body ?? `${group.memberCount} members`}
-                          </p>
-                        </div>
-                      </button>
+                        }
+                        title={group.name}
+                        preview={group.lastMessage?.body ?? formatMemberCount(group.memberCount)}
+                        time={group.lastMessage ? formatTime(group.lastMessage.createdAt) : undefined}
+                        badge={<VisibilityBadge visibility={group.visibility} />}
+                      />
                     </li>
                   ))}
                 </ul>
               ) : null}
 
-              {discoverablePublicGroups.length > 0 ? (
+              {!listLoading && showGroupsInList && discoverablePublicGroups.length > 0 ? (
                 <>
-                  <div className="border-b border-border/40 px-4 py-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Public groups
-                    </p>
-                  </div>
-                  <ul>
+                  <p className="border-t border-border/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Discover
+                  </p>
+                  <ul className="space-y-0.5 px-2 py-1">
                     {discoverablePublicGroups.map((group) => (
                       <li key={group.id}>
-                        <div className="flex items-center gap-3 border-b border-border/40 px-4 py-3">
-                          <div className="flex size-10 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
+                        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 hover:bg-muted/35">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
                             <Users className="size-5" aria-hidden />
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium">{group.name}</p>
-                            <p className="mt-1 truncate text-xs text-muted-foreground">
-                              {group.memberCount} members · Open to join
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                              {formatMemberCount(group.memberCount)} · Open to join
                             </p>
                           </div>
                           <Button
@@ -995,79 +1116,58 @@ export function MessagesHub({ session }: MessagesHubProps) {
                 </>
               ) : null}
 
-              <div className="border-b border-border/40 px-4 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Private
-                </p>
-              </div>
-
-              {conversations.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  No private chats yet.
-                  <br />
-                  Tap <span className="font-medium text-foreground">New</span> to message someone.
-                </p>
-              ) : (
-                <ul>
-                  {conversations.map((conversation) => (
-                    <li key={conversation.id}>
-                      <button
-                        type="button"
-                        onClick={() => openDirect(conversation.id)}
-                        className={cn(
-                          "flex w-full items-center gap-3 border-b border-border/40 px-4 py-3 text-left transition hover:bg-muted/30",
-                          activeThread.kind === "direct" &&
-                            activeThread.conversationId === conversation.id &&
-                            "bg-accent/10",
-                        )}
-                      >
-                        <UserAvatar
-                          name={conversation.peer.name}
-                          email={null}
-                          image={conversation.peer.image}
-                          size="md"
+              {!listLoading && showPrivateInList ? (
+                conversations.length > 0 ? (
+                  <ul className="space-y-0.5 px-2 py-1">
+                    {conversations.map((conversation) => (
+                      <li key={conversation.id}>
+                        <ConversationItem
+                          active={
+                            activeThread.kind === "direct" &&
+                            activeThread.conversationId === conversation.id
+                          }
+                          onClick={() => openDirect(conversation.id)}
+                          icon={
+                            <UserAvatar
+                              name={conversation.peer.name}
+                              email={null}
+                              image={conversation.peer.image}
+                              size="md"
+                            />
+                          }
+                          title={conversation.peer.name ?? "Member"}
+                          preview={conversation.lastMessage?.body ?? "Start the conversation"}
+                          time={
+                            conversation.lastMessage
+                              ? formatTime(conversation.lastMessage.createdAt)
+                              : undefined
+                          }
+                          unreadCount={conversation.unreadCount}
                         />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="truncate text-sm font-medium">
-                              {conversation.peer.name ?? "Member"}
-                            </p>
-                            <div className="flex shrink-0 items-center gap-2">
-                              {conversation.unreadCount > 0 ? (
-                                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">
-                                  {conversation.unreadCount}
-                                </span>
-                              ) : null}
-                              {conversation.lastMessage ? (
-                                <time className="text-[11px] text-muted-foreground">
-                                  {formatTime(conversation.lastMessage.createdAt)}
-                                </time>
-                              ) : null}
-                            </div>
-                          </div>
-                          <p
-                            className={cn(
-                              "mt-1 truncate text-xs",
-                              conversation.unreadCount > 0
-                                ? "font-medium text-foreground"
-                                : "text-muted-foreground",
-                            )}
-                          >
-                            {conversation.lastMessage?.body ?? "Start the conversation"}
-                          </p>
-                        </div>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : inboxFilter === "private" ? (
+                  <EmptyState
+                    title="No conversations yet"
+                    description="Start a conversation to see it here."
+                  />
+                ) : null
+              ) : null}
+
+              {!listLoading && inboxFilter === "groups" && groups.length === 0 && discoverablePublicGroups.length === 0 ? (
+                <EmptyState
+                  title="No groups yet"
+                  description="Create a group or join a public one to get started."
+                />
+              ) : null}
             </div>
           </aside>
 
           <div
             role="separator"
             aria-orientation="vertical"
-            aria-label="Resize chat list"
+            aria-label="Resize conversation list"
             onPointerDown={startInboxResize}
             onPointerMove={moveInboxResize}
             onPointerUp={endInboxResize}
@@ -1081,132 +1181,109 @@ export function MessagesHub({ session }: MessagesHubProps) {
               !mobileShowThread ? "hidden md:flex" : "flex",
             )}
           >
-            <header className="flex items-center gap-3 border-b border-border/60 px-3 py-3 sm:px-4">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="md:hidden"
-                onClick={() => setMobileShowThread(false)}
-                aria-label="Back to inbox"
-              >
-                <ChevronLeft className="size-5" />
-              </Button>
+            <div className="mx-auto flex h-full w-full max-w-5xl flex-col">
+              <ChatHeader
+                title={threadTitle}
+                subtitle={threadSubtitle}
+                avatar={threadAvatar}
+                onBack={() => setMobileShowThread(false)}
+                actions={threadActions}
+                searchOpen={searchOpen}
+                searchQuery={messageSearch}
+                onSearchToggle={handleSearchToggle}
+                onSearchChange={setMessageSearch}
+                onSearchClear={() => setMessageSearch("")}
+              />
 
-              {activeThread.kind === "direct" && selectedConversation ? (
-                <UserAvatar
-                  name={selectedConversation.peer.name}
-                  email={null}
-                  image={selectedConversation.peer.image}
-                  size="sm"
-                />
-              ) : activeThread.kind === "group" ? (
-                <div className="flex size-9 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-400">
-                  <Users className="size-4" aria-hidden />
-                </div>
-              ) : (
-                <div className="flex size-9 items-center justify-center rounded-full bg-accent/15 text-accent">
-                  <Users className="size-4" aria-hidden />
-                </div>
-              )}
+              {activeThread.kind === "community" ? (
+                <>
+                  <ChatMessageList
+                    messages={toCommunityMessages(communityMessages)}
+                    currentUserId={session.user.id}
+                    scrollRef={communityScrollRef}
+                    loading={communityLoading}
+                    error={communityListError}
+                    onRetry={() => void reloadCommunity()}
+                    emptyTitle="No messages yet"
+                    emptyDescription="Say hello to the community."
+                    showSenderNames
+                    canDelete={staff}
+                    deletingId={deletingCommunityId}
+                    onDelete={handleDeleteCommunityMessage}
+                    searchQuery={messageSearch}
+                  />
 
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{threadTitle}</p>
-                <p className="truncate text-xs text-muted-foreground">{threadSubtitle}</p>
-              </div>
-
-              {activeThread.kind === "direct" && selectedConversation ? (
-                <ConversationActionsMenu
-                  peerId={selectedConversation.peer.id}
-                  peerName={selectedConversation.peer.name ?? "Member"}
-                  signedIn
-                />
+                  <ChatComposer
+                    id="community-chat-input"
+                    value={communityDraft}
+                    onChange={setCommunityDraft}
+                    onSubmit={handleCommunitySubmit}
+                    pending={communityPending}
+                    error={communityComposerError}
+                    placeholder="Message the community…"
+                  />
+                </>
               ) : activeThread.kind === "group" && selectedGroup ? (
-                <GroupActionsMenu
-                  groupId={selectedGroup.id}
-                  groupName={selectedGroup.name}
-                  myRole={selectedGroup.myRole}
-                  archived={Boolean(selectedGroup.archivedAt)}
-                  onArchivedChange={handleGroupArchivedChange}
-                  onMembersChange={handleGroupMembersChange}
-                />
-              ) : null}
-            </header>
+                <>
+                  <ChatMessageList
+                    messages={toGroupMessages(groupMessages, session.user.id)}
+                    currentUserId={session.user.id}
+                    scrollRef={groupScrollRef}
+                    loading={groupLoading}
+                    error={groupListError}
+                    onRetry={() => void reloadGroupMessages()}
+                    emptyTitle="No messages yet"
+                    emptyDescription={`Say hello to ${selectedGroup.name}.`}
+                    showSenderNames
+                    searchQuery={messageSearch}
+                  />
 
-            {activeThread.kind === "community" ? (
-              <>
-                <ChatMessageList
-                  messages={toCommunityMessages(communityMessages)}
-                  currentUserId={session.user.id}
-                  scrollRef={communityScrollRef}
-                  loading={communityLoading}
-                  emptyText="No messages yet. Say hello to the community."
-                  showSenderNames
-                  canDelete={staff}
-                  deletingId={deletingCommunityId}
-                  onDelete={handleDeleteCommunityMessage}
-                />
+                  <ChatComposer
+                    id="group-chat-input"
+                    value={groupDraft}
+                    onChange={setGroupDraft}
+                    onSubmit={handleGroupSubmit}
+                    pending={groupPending}
+                    error={groupComposerError}
+                    placeholder={`Message ${selectedGroup.name}…`}
+                  />
+                </>
+              ) : activeThread.kind === "direct" && selectedConversation ? (
+                <>
+                  <ChatMessageList
+                    messages={toDirectMessages(directMessages, session.user.id)}
+                    currentUserId={session.user.id}
+                    scrollRef={directScrollRef}
+                    loading={directLoading}
+                    error={directListError}
+                    onRetry={() => void reloadDirectMessages()}
+                    emptyTitle="No messages yet"
+                    emptyDescription={`Send the first message to ${selectedConversation.peer.name ?? "this member"}.`}
+                    showReadStatus
+                    canDelete={staff}
+                    deletingId={deletingDirectId}
+                    onDelete={handleDeleteDirectMessage}
+                    searchQuery={messageSearch}
+                  />
 
-                <ChatComposer
-                  id="community-chat-input"
-                  value={communityDraft}
-                  onChange={setCommunityDraft}
-                  onSubmit={handleCommunitySubmit}
-                  pending={communityPending}
-                  error={communityError}
-                  placeholder="Message the community…"
+                  <ChatComposer
+                    id="direct-chat-input"
+                    value={directDraft}
+                    onChange={setDirectDraft}
+                    onSubmit={handleDirectSubmit}
+                    pending={directPending}
+                    error={directComposerError}
+                    placeholder={`Message ${selectedConversation.peer.name ?? "member"}…`}
+                  />
+                </>
+              ) : (
+                <EmptyState
+                  title="Select a conversation"
+                  description="Choose a chat from your list, or start a new message."
+                  className="flex-1"
                 />
-              </>
-            ) : activeThread.kind === "group" && selectedGroup ? (
-              <>
-                <ChatMessageList
-                  messages={toGroupMessages(groupMessages, session.user.id)}
-                  currentUserId={session.user.id}
-                  scrollRef={groupScrollRef}
-                  loading={groupLoading}
-                  emptyText={`No messages yet. Say hello to ${selectedGroup.name}.`}
-                  showSenderNames
-                />
-
-                <ChatComposer
-                  id="group-chat-input"
-                  value={groupDraft}
-                  onChange={setGroupDraft}
-                  onSubmit={handleGroupSubmit}
-                  pending={groupPending}
-                  error={groupError}
-                  placeholder={`Message ${selectedGroup.name}…`}
-                />
-              </>
-            ) : activeThread.kind === "direct" && selectedConversation ? (
-              <>
-                <ChatMessageList
-                  messages={toDirectMessages(directMessages, session.user.id)}
-                  currentUserId={session.user.id}
-                  scrollRef={directScrollRef}
-                  loading={directLoading}
-                  emptyText={`No messages yet. Send the first message to ${selectedConversation.peer.name ?? "this member"}.`}
-                  showReadStatus
-                  canDelete={staff}
-                  deletingId={deletingDirectId}
-                  onDelete={handleDeleteDirectMessage}
-                />
-
-                <ChatComposer
-                  id="direct-chat-input"
-                  value={directDraft}
-                  onChange={setDirectDraft}
-                  onSubmit={handleDirectSubmit}
-                  pending={directPending}
-                  error={directError}
-                  placeholder={`Message ${selectedConversation.peer.name ?? "member"}…`}
-                />
-              </>
-            ) : (
-              <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                Select a conversation from your inbox, or start a new message.
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </section>
