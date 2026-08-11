@@ -13,17 +13,25 @@ export async function GET(request: Request) {
   const authResult = await requireApiUser();
   if ("error" in authResult) return authResult.error;
 
-  const { searchParams } = new URL(request.url);
-  const after = searchParams.get("after");
-  const sync = searchParams.get("sync") === "1";
+  try {
+    const { searchParams } = new URL(request.url);
+    const after = searchParams.get("after");
+    const sync = searchParams.get("sync") === "1";
 
-  if (sync) {
-    const messages = await syncRecentChatMessages(50);
+    if (sync) {
+      const messages = await syncRecentChatMessages(50);
+      return NextResponse.json({ messages });
+    }
+
+    const messages = after ? await listChatMessagesSince(after) : await getRecentChatMessages(50);
     return NextResponse.json({ messages });
+  } catch (error) {
+    console.error("[chat/messages]", error);
+    return NextResponse.json(
+      { error: "Community chat is temporarily unavailable. Try again in a moment." },
+      { status: 503 },
+    );
   }
-
-  const messages = after ? await listChatMessagesSince(after) : await getRecentChatMessages(50);
-  return NextResponse.json({ messages });
 }
 
 const bodySchema = z.object({

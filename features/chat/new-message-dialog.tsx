@@ -104,7 +104,7 @@ export function NewMessageDialog({ open, onClose, onSelectMember }: NewMessageDi
               autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by name…"
+                placeholder="Search by @username or name…"
               className="h-11 w-full rounded-xl border border-border bg-surface/50 pl-10 pr-3 text-sm outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/20"
             />
           </div>
@@ -169,7 +169,7 @@ function MemberSection({
             >
               <UserAvatar name={member.name} email={null} image={member.image} size="sm" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{member.name ?? "Member"}</p>
+                <p className="truncate text-sm font-medium">{member.displayName ?? member.name ?? "Member"}</p>
                 <p className="truncate text-xs text-muted-foreground capitalize">{member.role.toLowerCase()}</p>
               </div>
               {member.known ? (

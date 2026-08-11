@@ -6,9 +6,9 @@ import type {
   MemberSummaryPayload,
 } from "@/lib/chat/constants";
 import { MEMBER_CHAT_CHANNEL_SLUG } from "@/lib/chat/constants";
-import { PUBLIC_USER_SELECT } from "@/lib/user/public-select";
+import { CHAT_USER_SELECT, chatDisplayName } from "@/lib/user/public-select";
 
-const userSelect = PUBLIC_USER_SELECT;
+const userSelect = CHAT_USER_SELECT;
 
 function pairUserIds(a: string, b: string): [string, string] {
   return a < b ? [a, b] : [b, a];
@@ -16,15 +16,18 @@ function pairUserIds(a: string, b: string): [string, string] {
 
 function serializeUser(user: {
   id: string;
+  username: string | null;
   name: string | null;
   image: string | null;
   role: string;
 }) {
   return {
     id: user.id,
+    username: user.username,
     name: user.name,
     image: user.image,
     role: user.role,
+    displayName: chatDisplayName(user),
   };
 }
 
@@ -33,7 +36,7 @@ function serializeDirectMessage(message: {
   body: string;
   createdAt: Date;
   readAt?: Date | null;
-  sender: { id: string; name: string | null; image: string | null; role: string };
+  sender: { id: string; username: string | null; name: string | null; image: string | null; role: string };
 }): DirectMessagePayload {
   return {
     id: message.id,
@@ -87,14 +90,14 @@ function mapConversation(
     updatedAt: Date;
     userLowId: string;
     userHighId: string;
-    userLow: { id: string; name: string | null; image: string | null; role: string };
-    userHigh: { id: string; name: string | null; image: string | null; role: string };
+    userLow: { id: string; username: string | null; name: string | null; image: string | null; role: string };
+    userHigh: { id: string; username: string | null; name: string | null; image: string | null; role: string };
     messages: Array<{
       id: string;
       body: string;
       createdAt: Date;
       readAt: Date | null;
-      sender: { id: string; name: string | null; image: string | null; role: string };
+      sender: { id: string; username: string | null; name: string | null; image: string | null; role: string };
     }>;
   },
   userId: string,
@@ -404,7 +407,10 @@ export async function searchMembers(
       id: { not: userId },
       ...(trimmed
         ? {
-            name: { contains: trimmed, mode: "insensitive" },
+            OR: [
+              { username: { contains: trimmed, mode: "insensitive" as const } },
+              { name: { contains: trimmed, mode: "insensitive" } },
+            ],
           }
         : {}),
     },

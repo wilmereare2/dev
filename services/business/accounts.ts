@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
-import { PUBLIC_USER_SELECT } from "@/lib/user/public-select";
+import { CHAT_USER_SELECT } from "@/lib/user/public-select";
 
-const memberUserSelect = PUBLIC_USER_SELECT;
+const memberUserSelect = CHAT_USER_SELECT;
 
 export async function getOrCreateBusinessAccount(ownerUserId: string, name: string) {
   const existing = await prisma.businessAccount.findFirst({ where: { ownerUserId } });

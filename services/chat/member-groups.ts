@@ -5,9 +5,9 @@ import type {
   GroupMessagePayload,
   MemberGroupPayload,
 } from "@/lib/chat/constants";
-import { PUBLIC_USER_SELECT } from "@/lib/user/public-select";
+import { CHAT_USER_SELECT, chatDisplayName } from "@/lib/user/public-select";
 
-const userSelect = PUBLIC_USER_SELECT;
+const userSelect = CHAT_USER_SELECT;
 const MAX_GROUP_MEMBERS = 25;
 const MAX_GROUP_NAME = 80;
 
@@ -29,15 +29,18 @@ function canManageArchive(role: GroupMemberRole) {
 
 function serializeUser(user: {
   id: string;
+  username: string | null;
   name: string | null;
   image: string | null;
   role: string;
 }) {
   return {
     id: user.id,
+    username: user.username,
     name: user.name,
     image: user.image,
     role: user.role,
+    displayName: chatDisplayName(user),
   };
 }
 
@@ -45,7 +48,13 @@ function serializeGroupMessage(message: {
   id: string;
   body: string;
   createdAt: Date;
-  sender: { id: string; name: string | null; image: string | null; role: string };
+  sender: {
+    id: string;
+    username: string | null;
+    name: string | null;
+    image: string | null;
+    role: string;
+  };
 }): GroupMessagePayload {
   return {
     id: message.id,
@@ -101,7 +110,7 @@ function mapGroup(
       id: string;
       body: string;
       createdAt: Date;
-      sender: { id: string; name: string | null; image: string | null; role: string };
+      sender: { id: string; username: string | null; name: string | null; image: string | null; role: string };
     }>;
   },
   myRole: GroupMemberRole,

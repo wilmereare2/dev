@@ -256,7 +256,7 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
                     onClick={() => toggleMember(member.id)}
                     className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-2 py-1 text-xs font-medium text-foreground"
                   >
-                    {member.name ?? "Member"}
+                    {member.displayName ?? member.name ?? "Member"}
                     <X className="size-3" aria-hidden />
                   </button>
                 ))}
@@ -288,7 +288,7 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
                       >
                         <UserAvatar name={member.name} email={null} image={member.image} size="sm" />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">{member.name ?? "Member"}</p>
+                          <p className="truncate text-sm font-medium">{member.displayName ?? member.name ?? "Member"}</p>
                           <p className="truncate text-xs capitalize text-muted-foreground">
                             {member.role.toLowerCase()}
                           </p>

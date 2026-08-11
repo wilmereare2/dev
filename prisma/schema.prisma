@@ -12,11 +12,19 @@ datasource db {
 // Role values: ADMIN | EDITOR | MODERATOR | VIEWER | USER | CREATOR
 model User {
   id            String         @id @default(cuid())
+  username      String?        @unique
   name          String?
   email         String         @unique
   emailVerified DateTime?
   phone         String?        @unique
   phoneVerified DateTime?
+  gender        String?
+  country       String?
+  race          String?
+  hobbies       String?
+  telegram      String?
+  whatsApp      String?
+  zangi         String?
   image         String?
   passwordHash  String?
   role          String         @default("USER")

@@ -2,9 +2,11 @@ export const MEMBER_CHAT_CHANNEL_SLUG = "members-lounge";
 
 export type ChatUserPayload = {
   id: string;
+  username: string | null;
   name: string | null;
   image: string | null;
   role: string;
+  displayName: string;
 };
 
 export type ChatMessagePayload = {
@@ -36,10 +38,12 @@ export type GroupMemberRole = "creator" | "admin" | "member";
 
 export type MemberSummaryPayload = {
   id: string;
+  username: string | null;
   name: string | null;
   image: string | null;
   role: string;
   known?: boolean;
+  displayName: string;
 };
 
 export type GroupMessagePayload = {

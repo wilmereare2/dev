@@ -8,6 +8,7 @@ import { signIn, signOut } from "next-auth/react";
 import { clearAgeVerificationCookie } from "@/features/compliance/verify-age-form";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { EmailVerificationPanel } from "@/features/auth/email-verification-panel";
+import { RegisterProfileFields } from "@/features/auth/register-profile-fields";
 import { Loader2, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,17 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [gender, setGender] = useState("");
+  const [country, setCountry] = useState("");
+  const [race, setRace] = useState("");
+  const [hobbies, setHobbies] = useState("");
+  const [phone, setPhone] = useState("");
+  const [telegram, setTelegram] = useState("");
+  const [whatsApp, setWhatsApp] = useState("");
+  const [zangi, setZangi] = useState("");
+  const [pendingPhone, setPendingPhone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -203,11 +215,12 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
     return (
       <EmailVerificationPanel
         email={pendingVerificationEmail}
+        registeredPhone={pendingPhone ?? phone}
         notice={notice}
         error={error}
         verificationUrl={verificationUrl}
         emailSent={verificationEmailSent}
-        smsEnabled={process.env.NEXT_PUBLIC_PHONE_VERIFICATION === "true"}
+        smsEnabled
         pending={pending}
         onResend={() => resendVerification(pendingVerificationEmail)}
         onVerified={() => {
@@ -247,10 +260,20 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            username,
+            name: name.trim(),
+            dateOfBirth,
+            gender,
+            country,
+            race,
+            hobbies,
             email,
+            phone,
             password,
-            name: name.trim() || undefined,
-            wantsToCreate: mode === "register" ? wantsToCreate : undefined,
+            telegram,
+            whatsApp,
+            zangi,
+            wantsToCreate,
           }),
         });
 
@@ -284,6 +307,7 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
         }
 
         setPendingVerificationEmail(registeredEmail);
+        setPendingPhone(phone.trim());
         setVerificationUrl(payload.verifyUrl ?? null);
         setVerificationEmailSent(payload.emailSent ?? null);
         if (payload.deliveryError) {
@@ -392,7 +416,7 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
         {mode === "signin"
           ? "Sign in with your email and password."
-          : "Register with your email. We will send a 6-digit verification code before you can sign in."}
+          : "Create your public profile and private contact details. Other members reach you by @username in chat only."}
       </p>
 
       {notice ? (
@@ -433,26 +457,35 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
         onSubmit={handleSubmit}
       >
         {mode === "register" ? (
-          <div>
-            <label htmlFor="name" className="text-sm font-medium text-foreground">
-              Name <span className="text-muted-foreground">(optional)</span>
-            </label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              autoComplete="name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Your name"
-              className={inputClassName}
-            />
-          </div>
+          <RegisterProfileFields
+            username={username}
+            setUsername={setUsername}
+            name={name}
+            setName={setName}
+            dateOfBirth={dateOfBirth}
+            setDateOfBirth={setDateOfBirth}
+            gender={gender}
+            setGender={setGender}
+            country={country}
+            setCountry={setCountry}
+            race={race}
+            setRace={setRace}
+            hobbies={hobbies}
+            setHobbies={setHobbies}
+            phone={phone}
+            setPhone={setPhone}
+            telegram={telegram}
+            setTelegram={setTelegram}
+            whatsApp={whatsApp}
+            setWhatsApp={setWhatsApp}
+            zangi={zangi}
+            setZangi={setZangi}
+          />
         ) : null}
 
         <div>
           <label htmlFor="email" className="text-sm font-medium text-foreground">
-            Email
+            Email {mode === "register" ? <span className="text-muted-foreground">(private, verified)</span> : null}
           </label>
           <input
             id="email"
@@ -531,7 +564,7 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
                 className="mt-1 size-4"
               />
               <span>
-                I want to upload content (photos, videos, text). Enables creator tools after you verify email.
+                I want to upload content (photos, videos, text). Enables creator tools after verification.
               </span>
             </label>
           </>

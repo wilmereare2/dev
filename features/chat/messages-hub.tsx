@@ -57,7 +57,7 @@ function toCommunityMessages(messages: ChatMessagePayload[]): ChatListMessage[] 
     body: message.body,
     createdAt: message.createdAt,
     senderId: message.user.id,
-    senderName: message.user.name ?? "Member",
+    senderName: message.user.displayName ?? message.user.name ?? "Member",
     senderImage: message.user.image,
     senderRole: message.user.role,
   }));
@@ -69,7 +69,7 @@ function toGroupMessages(messages: GroupMessagePayload[], currentUserId: string)
     body: message.body,
     createdAt: message.createdAt,
     senderId: message.sender.id,
-    senderName: message.sender.id === currentUserId ? "You" : (message.sender.name ?? "Member"),
+    senderName: message.sender.id === currentUserId ? "You" : (message.sender.displayName ?? message.sender.name ?? "Member"),
     senderImage: message.sender.image,
     senderRole: message.sender.role,
   }));
@@ -81,7 +81,7 @@ function toDirectMessages(messages: DirectMessagePayload[], currentUserId: strin
     body: message.body,
     createdAt: message.createdAt,
     senderId: message.sender.id,
-    senderName: message.sender.id === currentUserId ? "You" : (message.sender.name ?? "Member"),
+    senderName: message.sender.id === currentUserId ? "You" : (message.sender.displayName ?? message.sender.name ?? "Member"),
     senderImage: message.sender.image,
     senderRole: message.sender.role,
     readAt: message.readAt,

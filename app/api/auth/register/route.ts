@@ -1,13 +1,6 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { registerUser } from "@/lib/auth/register-user";
-
-const registerSchema = z.object({
-  email: z.string().email("Enter a valid email address."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
-  name: z.string().trim().min(1).max(120).optional(),
-  wantsToCreate: z.boolean().optional(),
-});
+import { registerProfileSchema } from "@/lib/user/register-schema";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -18,7 +11,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const parsed = registerSchema.safeParse(body);
+  const parsed = registerProfileSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.errors[0]?.message ?? "Invalid input." },
@@ -32,7 +25,7 @@ export async function POST(request: Request) {
     if (!result.ok) {
       return NextResponse.json(
         { error: result.error, code: result.code },
-        { status: 409 },
+        { status: result.code === "ALREADY_REGISTERED" ? 409 : 400 },
       );
     }
 
@@ -47,6 +40,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       email: result.email,
+      username: result.username,
       devAutoVerified: result.devAutoVerified,
       verifyUrl: result.verifyUrl,
       emailSent: result.emailSent,
@@ -55,7 +49,7 @@ export async function POST(request: Request) {
       message: result.devAutoVerified
         ? "Account created. You can sign in now."
         : result.emailSent
-          ? "Check your email for a 6-digit verification code before signing in."
+          ? "Check your email for a verification code. Phone verification is required before messaging."
           : deliveryError ??
             "Account created, but the verification email could not be delivered yet.",
     });

@@ -1,7 +1,7 @@
 import { generateSecret, generateURI, verify } from "otplib";
 import { prisma } from "@/lib/db/prisma";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import { PUBLIC_USER_SELECT } from "@/lib/user/public-select";
+import { CHAT_USER_SELECT } from "@/lib/user/public-select";
 
 export async function getTwoFactorStatus(userId: string) {
   const record = await prisma.twoFactorAuth.findUnique({ where: { userId } });
@@ -70,7 +70,7 @@ export async function listBlockedUsers(blockerId: string) {
   return prisma.blockedUser.findMany({
     where: { blockerId },
     include: {
-      blocked: { select: PUBLIC_USER_SELECT },
+      blocked: { select: CHAT_USER_SELECT },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -99,7 +99,7 @@ export async function listMutedUsers(muterId: string) {
   return prisma.mutedUser.findMany({
     where: { muterId },
     include: {
-      muted: { select: PUBLIC_USER_SELECT },
+      muted: { select: CHAT_USER_SELECT },
     },
     orderBy: { createdAt: "desc" },
   });

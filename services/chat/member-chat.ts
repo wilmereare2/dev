@@ -1,12 +1,18 @@
 import { prisma } from "@/lib/db/prisma";
 import { MEMBER_CHAT_CHANNEL_SLUG, type ChatMessagePayload } from "@/lib/chat/constants";
-import { PUBLIC_USER_SELECT } from "@/lib/user/public-select";
+import { chatDisplayName, CHAT_USER_SELECT } from "@/lib/user/public-select";
 
 function serializeMessage(message: {
   id: string;
   body: string;
   createdAt: Date;
-  user: { id: string; name: string | null; image: string | null; role: string };
+  user: {
+    id: string;
+    username: string | null;
+    name: string | null;
+    image: string | null;
+    role: string;
+  };
 }): ChatMessagePayload {
   return {
     id: message.id,
@@ -14,14 +20,16 @@ function serializeMessage(message: {
     createdAt: message.createdAt.toISOString(),
     user: {
       id: message.user.id,
+      username: message.user.username,
       name: message.user.name,
       image: message.user.image,
       role: message.user.role,
+      displayName: chatDisplayName(message.user),
     },
   };
 }
 
-const userSelect = PUBLIC_USER_SELECT;
+const userSelect = CHAT_USER_SELECT;
 
 export async function ensureMemberChatChannel() {
   return prisma.chatChannel.upsert({

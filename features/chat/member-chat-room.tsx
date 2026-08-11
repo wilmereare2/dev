@@ -244,7 +244,7 @@ export function MemberChatRoom({ session }: MemberChatRoomProps) {
                 <div className={cn("min-w-0 max-w-[85%]", mine ? "items-end" : "items-start")}>
                   <div className={cn("flex flex-wrap items-center gap-2", mine ? "justify-end" : "")}>
                     <p className="text-sm font-medium text-foreground">
-                      {message.user.name ?? "Member"}
+                      {message.user.displayName ?? message.user.name ?? "Member"}
                     </p>
                     {badge ? (
                       <span className="rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">

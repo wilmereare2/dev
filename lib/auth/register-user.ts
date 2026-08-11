@@ -3,19 +3,58 @@ import { hashPassword } from "@/lib/auth/password";
 import { isDesignatedAdminEmail } from "@/lib/auth/admin-email";
 import { provisionAdministrator } from "@/lib/auth/provision-admin";
 import { sendVerificationEmailForUser } from "@/lib/auth/verification";
+import { normalizePhoneNumber } from "@/lib/auth/verification-codes";
+import { parseDateOfBirth } from "@/lib/compliance/age-rules";
+import type { RegisterProfileInput } from "@/lib/user/register-schema";
+import { normalizeUsername } from "@/lib/user/username";
 
-type RegisterInput = {
-  email: string;
-  password: string;
-  name?: string;
-};
+function buildProfileFields(input: RegisterProfileInput, phone: string) {
+  return {
+    username: normalizeUsername(input.username),
+    name: input.name.trim(),
+    gender: input.gender.trim(),
+    country: input.country.trim(),
+    race: input.race.trim(),
+    hobbies: input.hobbies.trim(),
+    phone,
+    telegram: input.telegram?.trim() || null,
+    whatsApp: input.whatsApp?.trim() || null,
+    zangi: input.zangi?.trim() || null,
+  };
+}
 
-export async function registerUser(input: RegisterInput, appUrl?: string) {
+export async function registerUser(input: RegisterProfileInput, appUrl?: string) {
   const email = input.email.trim().toLowerCase();
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const username = normalizeUsername(input.username);
+  const phone = normalizePhoneNumber(input.phone);
+  if (!phone) {
+    return { ok: false as const, code: "INVALID_PHONE" as const, error: "Enter a valid phone number with country code." };
+  }
 
-  if (existing) {
-    if (existing.emailVerified) {
+  const dobResult = parseDateOfBirth(input.dateOfBirth);
+  if (!dobResult.ok) {
+    return { ok: false as const, code: "INVALID_DOB" as const, error: dobResult.error };
+  }
+
+  const [existingEmail, existingUsername, existingPhone] = await Promise.all([
+    prisma.user.findUnique({ where: { email } }),
+    prisma.user.findUnique({ where: { username } }),
+    prisma.user.findUnique({ where: { phone } }),
+  ]);
+
+  if (existingUsername && existingUsername.email !== email) {
+    return { ok: false as const, code: "USERNAME_TAKEN" as const, error: "That username is already taken." };
+  }
+
+  if (existingPhone && existingPhone.email !== email) {
+    return { ok: false as const, code: "PHONE_TAKEN" as const, error: "That phone number is already linked to another account." };
+  }
+
+  const profileFields = buildProfileFields(input, phone);
+  const passwordHash = await hashPassword(input.password);
+
+  if (existingEmail) {
+    if (existingEmail.emailVerified) {
       return {
         ok: false as const,
         code: "ALREADY_REGISTERED" as const,
@@ -23,13 +62,17 @@ export async function registerUser(input: RegisterInput, appUrl?: string) {
       };
     }
 
-    await prisma.user.update({
-      where: { id: existing.id },
-      data: {
-        passwordHash: await hashPassword(input.password),
-        ...(input.name?.trim() ? { name: input.name.trim() } : {}),
-      },
-    });
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: existingEmail.id },
+        data: { ...profileFields, passwordHash, phoneVerified: null },
+      }),
+      prisma.userSettings.upsert({
+        where: { userId: existingEmail.id },
+        create: { userId: existingEmail.id, dateOfBirth: dobResult.date },
+        update: { dateOfBirth: dobResult.date },
+      }),
+    ]);
 
     const sendResult = await sendVerificationEmailForUser(email, appUrl).catch((error) => {
       console.error("[register] verification email failed:", error);
@@ -38,8 +81,9 @@ export async function registerUser(input: RegisterInput, appUrl?: string) {
     return {
       ok: true as const,
       email,
+      username,
       devAutoVerified: false,
-      userId: existing.id,
+      userId: existingEmail.id,
       verifyUrl: sendResult.ok ? sendResult.verifyUrl : undefined,
       emailSent: sendResult.ok ? sendResult.sent : false,
       deliveryError: sendResult.ok ? sendResult.deliveryError : sendResult.error,
@@ -53,11 +97,12 @@ export async function registerUser(input: RegisterInput, appUrl?: string) {
   const created = await prisma.user.create({
     data: {
       email,
-      name: input.name?.trim() || null,
-      passwordHash: await hashPassword(input.password),
+      ...profileFields,
+      passwordHash,
       role: assignAdmin ? "ADMIN" : "USER",
       emailVerified: devAutoVerified || assignAdmin ? new Date() : null,
-      settings: { create: {} },
+      phoneVerified: devAutoVerified || assignAdmin ? new Date() : null,
+      settings: { create: { dateOfBirth: dobResult.date } },
     },
   });
 
@@ -85,6 +130,7 @@ export async function registerUser(input: RegisterInput, appUrl?: string) {
   return {
     ok: true as const,
     email,
+    username,
     devAutoVerified,
     userId: created.id,
     verifyUrl,
