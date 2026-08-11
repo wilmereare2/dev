@@ -33,8 +33,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       message: result.sent
-        ? "Verification email sent."
-        : "Email delivery is not configured. Use the verification link below.",
+        ? "Verification code sent to your email."
+        : "Email delivery is not configured. Configure EMAIL_SERVER on your host.",
       verifyUrl: result.verifyUrl,
       emailSent: result.sent,
     });

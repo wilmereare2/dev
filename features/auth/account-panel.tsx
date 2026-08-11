@@ -7,7 +7,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut } from "next-auth/react";
 import { clearAgeVerificationCookie } from "@/features/compliance/verify-age-form";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
-import { Loader2, Mail, Shield } from "lucide-react";
+import { EmailVerificationPanel } from "@/features/auth/email-verification-panel";
+import { Loader2, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -157,92 +158,32 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
 
   if (pendingVerificationEmail) {
     return (
-      <AuthSplitLayout>
-        <div className="rounded-2xl border border-border/60 bg-surface/70 p-6 shadow-xl backdrop-blur-md sm:p-8">
-          <div className="flex items-center gap-2 text-accent">
-            <Mail className="size-4" aria-hidden />
-            <p className="font-display text-xs font-semibold uppercase tracking-[0.22em]">Verify email</p>
-          </div>
-          <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-            Check your inbox
-          </h1>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-            {verificationEmailSent === false ? (
-              <>
-                Email delivery is not configured yet, so we could not send a message to{" "}
-                <span className="font-medium text-foreground">{pendingVerificationEmail}</span>. Use
-                the verification link below to activate your account, then sign in.
-              </>
-            ) : (
-              <>
-                We sent a verification link to{" "}
-                <span className="font-medium text-foreground">{pendingVerificationEmail}</span>. Open
-                it to activate your account, then sign in.
-              </>
-            )}
-          </p>
-
-          <div className="mt-6 space-y-4">
-            {notice ? (
-              <p className="rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-accent">
-                {notice}
-              </p>
-            ) : null}
-            {error ? (
-              <p className="rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-accent">
-                {error}
-              </p>
-            ) : null}
-
-            {verificationUrl ? (
-            <div className="space-y-2 rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm">
-              <p className="font-medium text-foreground">Verify your account</p>
-              <p className="text-muted-foreground">
-                Configure <code className="text-xs">EMAIL_SERVER</code> on your host to deliver real
-                messages. Until then, use this one-time link:
-              </p>
-              <p>
-                <Link href={verificationUrl} className="font-medium text-accent underline underline-offset-2">
-                  Open verification link
-                </Link>
-              </p>
-            </div>
-          ) : verificationEmailSent ? (
-            <p className="text-sm text-muted-foreground">
-              Did not receive it? Check spam, or click resend below.
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Click resend below to generate a fresh verification link.
-            </p>
-          )}
-
-          <div className="flex flex-wrap gap-3">
-            <Button
-              type="button"
-              disabled={pending}
-              onClick={() => resendVerification(pendingVerificationEmail)}
-            >
-              {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-              Resend verification email
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setPendingVerificationEmail(null);
-                setVerificationUrl(null);
-                setVerificationEmailSent(null);
-                setMode("signin");
-                setEmail(pendingVerificationEmail);
-              }}
-            >
-              Back to sign in
-            </Button>
-          </div>
-          </div>
-        </div>
-      </AuthSplitLayout>
+      <EmailVerificationPanel
+        email={pendingVerificationEmail}
+        notice={notice}
+        error={error}
+        verificationUrl={verificationUrl}
+        emailSent={verificationEmailSent}
+        smsEnabled={process.env.NEXT_PUBLIC_PHONE_VERIFICATION === "true"}
+        pending={pending}
+        onResend={() => resendVerification(pendingVerificationEmail)}
+        onVerified={() => {
+          setPendingVerificationEmail(null);
+          setVerificationUrl(null);
+          setVerificationEmailSent(null);
+          setMode("signin");
+          setEmail(pendingVerificationEmail);
+          setNotice("Email verified. Sign in to continue.");
+          setError(null);
+        }}
+        onBackToSignIn={() => {
+          setPendingVerificationEmail(null);
+          setVerificationUrl(null);
+          setVerificationEmailSent(null);
+          setMode("signin");
+          setEmail(pendingVerificationEmail);
+        }}
+      />
     );
   }
 
@@ -404,7 +345,7 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
         {mode === "signin"
           ? "Sign in with your email and password."
-          : "Register with your email. We will send a verification link before you can sign in."}
+          : "Register with your email. We will send a 6-digit verification code before you can sign in."}
       </p>
 
       {notice ? (

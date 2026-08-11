@@ -1,10 +1,17 @@
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/db/prisma";
+import { createEmailVerificationCode } from "@/lib/auth/verification-codes";
+import { allowDevVerificationFallback } from "@/lib/auth/verification-delivery";
+import { sendVerificationCodeEmail } from "@/lib/email/send-verification-code-email";
 
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
+function linkIdentifier(email: string) {
+  return `email-link:${email.trim().toLowerCase()}`;
+}
+
 export async function createEmailVerificationToken(email: string) {
-  const identifier = email.trim().toLowerCase();
+  const identifier = linkIdentifier(email);
   const token = randomBytes(32).toString("hex");
   const expires = new Date(Date.now() + TOKEN_TTL_MS);
 
@@ -17,9 +24,12 @@ export async function createEmailVerificationToken(email: string) {
 }
 
 export async function verifyEmailToken(email: string, token: string) {
-  const identifier = email.trim().toLowerCase();
+  const normalizedEmail = email.trim().toLowerCase();
   const record = await prisma.verificationToken.findFirst({
-    where: { identifier, token },
+    where: {
+      token,
+      identifier: { in: [linkIdentifier(email), normalizedEmail] },
+    },
   });
 
   if (!record) {
@@ -27,11 +37,13 @@ export async function verifyEmailToken(email: string, token: string) {
   }
 
   if (record.expires < new Date()) {
-    await prisma.verificationToken.deleteMany({ where: { identifier, token } });
+    await prisma.verificationToken.deleteMany({
+      where: { identifier: record.identifier, token },
+    });
     return { ok: false as const, error: "This verification link has expired." };
   }
 
-  const user = await prisma.user.findUnique({ where: { email: identifier } });
+  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (!user) {
     return { ok: false as const, error: "Account not found." };
   }
@@ -41,8 +53,12 @@ export async function verifyEmailToken(email: string, token: string) {
       where: { id: user.id },
       data: { emailVerified: new Date() },
     }),
-    prisma.verificationToken.delete({
-      where: { identifier_token: { identifier, token } },
+    prisma.verificationToken.deleteMany({
+      where: {
+        identifier: {
+          in: [record.identifier, linkIdentifier(email), `email-code:${normalizedEmail}`],
+        },
+      },
     }),
   ]);
 
@@ -50,8 +66,8 @@ export async function verifyEmailToken(email: string, token: string) {
 }
 
 export async function sendVerificationEmailForUser(email: string, appUrl?: string) {
-  const identifier = email.trim().toLowerCase();
-  const user = await prisma.user.findUnique({ where: { email: identifier } });
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
   if (!user) {
     return { ok: false as const, error: "No account found for this email." };
@@ -61,21 +77,30 @@ export async function sendVerificationEmailForUser(email: string, appUrl?: strin
     return { ok: false as const, error: "This email is already verified." };
   }
 
-  const token = await createEmailVerificationToken(identifier);
-  const { buildVerificationUrl, sendVerificationEmail } = await import(
-    "@/lib/email/send-verification-email"
-  );
-  const verifyUrl = buildVerificationUrl(identifier, token, appUrl);
-  const emailResult = await sendVerificationEmail({
-    email: identifier,
-    token,
+  const code = await createEmailVerificationCode(normalizedEmail);
+  let verifyUrl: string | undefined;
+
+  if (allowDevVerificationFallback()) {
+    const token = await createEmailVerificationToken(normalizedEmail);
+    const { buildVerificationUrl } = await import("@/lib/email/send-verification-email");
+    verifyUrl = buildVerificationUrl(normalizedEmail, token, appUrl);
+  }
+
+  const emailResult = await sendVerificationCodeEmail({
+    email: normalizedEmail,
+    code,
     name: user.name,
-    appUrl,
+    verifyUrl,
   });
+
+  const delivered = !("dev" in emailResult && emailResult.dev);
 
   return {
     ok: true as const,
-    sent: !("dev" in emailResult && emailResult.dev),
-    verifyUrl: "dev" in emailResult && emailResult.dev ? verifyUrl : undefined,
+    sent: delivered,
+    codeSent: delivered,
+    verifyUrl: allowDevVerificationFallback() && !delivered ? verifyUrl : undefined,
   };
 }
+
+export { verifyEmailVerificationCode } from "@/lib/auth/verification-codes";

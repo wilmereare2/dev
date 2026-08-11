@@ -52,11 +52,11 @@ export async function POST(request: Request) {
         ? "Account created. You can sign in now."
         : "resumed" in result && result.resumed
           ? result.emailSent
-            ? "We sent a fresh verification link to your email. Open it to finish setup."
-            : "Your account is waiting for verification. Use the link below to finish setup."
+            ? "We sent a fresh verification code to your email. Open it to finish setup."
+            : "Your account is waiting for verification. Configure email delivery or use the dev link below."
           : result.emailSent
-            ? "Check your email for a verification link before signing in."
-            : "Account created. Use the verification link below to activate your account.",
+            ? "Check your email for a 6-digit verification code before signing in."
+            : "Account created. Configure EMAIL_SERVER to deliver your verification code.",
     });
   } catch (error) {
     console.error("[register]", error);
