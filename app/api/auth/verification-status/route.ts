@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
   email: z.string().email("Enter a valid email address."),
 });
 
 export async function POST(request: Request) {
+  const ip = clientIp(request);
+  const limit = rateLimit(`verification-status:${ip}`, 30, 60_000);
+  if (!limit.allowed) {
+    return NextResponse.json({ error: "Too many requests. Try again shortly." }, { status: 429 });
+  }
+
   let body: unknown;
 
   try {

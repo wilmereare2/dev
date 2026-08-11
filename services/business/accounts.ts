@@ -1,4 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
+import { PUBLIC_USER_SELECT } from "@/lib/user/public-select";
+
+const memberUserSelect = PUBLIC_USER_SELECT;
 
 export async function getOrCreateBusinessAccount(ownerUserId: string, name: string) {
   const existing = await prisma.businessAccount.findFirst({ where: { ownerUserId } });
@@ -24,7 +27,7 @@ export async function getOrCreateBusinessAccount(ownerUserId: string, name: stri
 export async function getBusinessAccountForUser(userId: string) {
   const owned = await prisma.businessAccount.findFirst({
     where: { ownerUserId: userId },
-    include: { members: { include: { user: { select: { id: true, name: true, email: true } } } } },
+    include: { members: { include: { user: { select: memberUserSelect } } } },
   });
   if (owned) return owned;
 
@@ -32,7 +35,7 @@ export async function getBusinessAccountForUser(userId: string) {
     where: { userId },
     include: {
       business: {
-        include: { members: { include: { user: { select: { id: true, name: true, email: true } } } } },
+        include: { members: { include: { user: { select: memberUserSelect } } } },
       },
     },
   });

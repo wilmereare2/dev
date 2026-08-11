@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { MEMBER_CHAT_CHANNEL_SLUG, type ChatMessagePayload } from "@/lib/chat/constants";
+import { PUBLIC_USER_SELECT } from "@/lib/user/public-select";
 
 function serializeMessage(message: {
   id: string;
@@ -20,7 +21,7 @@ function serializeMessage(message: {
   };
 }
 
-const userSelect = { id: true, name: true, image: true, role: true } as const;
+const userSelect = PUBLIC_USER_SELECT;
 
 export async function ensureMemberChatChannel() {
   return prisma.chatChannel.upsert({

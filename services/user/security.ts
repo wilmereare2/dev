@@ -1,6 +1,7 @@
 import { generateSecret, generateURI, verify } from "otplib";
 import { prisma } from "@/lib/db/prisma";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { PUBLIC_USER_SELECT } from "@/lib/user/public-select";
 
 export async function getTwoFactorStatus(userId: string) {
   const record = await prisma.twoFactorAuth.findUnique({ where: { userId } });
@@ -69,7 +70,7 @@ export async function listBlockedUsers(blockerId: string) {
   return prisma.blockedUser.findMany({
     where: { blockerId },
     include: {
-      blocked: { select: { id: true, name: true, email: true, image: true } },
+      blocked: { select: PUBLIC_USER_SELECT },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -98,7 +99,7 @@ export async function listMutedUsers(muterId: string) {
   return prisma.mutedUser.findMany({
     where: { muterId },
     include: {
-      muted: { select: { id: true, name: true, email: true, image: true } },
+      muted: { select: PUBLIC_USER_SELECT },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -121,9 +122,18 @@ export async function exportUserData(userId: string) {
     },
   });
 
+  if (!user) {
+    return {
+      exportedAt: new Date().toISOString(),
+      user: null,
+    };
+  }
+
+  const { passwordHash: _passwordHash, ...safeUser } = user;
+
   return {
     exportedAt: new Date().toISOString(),
-    user,
+    user: safeUser,
   };
 }
 

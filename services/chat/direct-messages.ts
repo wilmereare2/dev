@@ -6,8 +6,9 @@ import type {
   MemberSummaryPayload,
 } from "@/lib/chat/constants";
 import { MEMBER_CHAT_CHANNEL_SLUG } from "@/lib/chat/constants";
+import { PUBLIC_USER_SELECT } from "@/lib/user/public-select";
 
-const userSelect = { id: true, name: true, image: true, role: true } as const;
+const userSelect = PUBLIC_USER_SELECT;
 
 function pairUserIds(a: string, b: string): [string, string] {
   return a < b ? [a, b] : [b, a];
@@ -379,7 +380,7 @@ export async function listKnownMembers(userId: string): Promise<MemberSummaryPay
   const members = await prisma.user.findMany({
     where: { id: { in: [...knownIds] } },
     select: userSelect,
-    orderBy: [{ name: "asc" }, { email: "asc" }],
+    orderBy: [{ name: "asc" }, { id: "asc" }],
     take: 50,
   });
 
@@ -403,15 +404,12 @@ export async function searchMembers(
       id: { not: userId },
       ...(trimmed
         ? {
-            OR: [
-              { name: { contains: trimmed, mode: "insensitive" } },
-              { email: { contains: trimmed, mode: "insensitive" } },
-            ],
+            name: { contains: trimmed, mode: "insensitive" },
           }
         : {}),
     },
     select: userSelect,
-    orderBy: [{ name: "asc" }, { email: "asc" }],
+    orderBy: [{ name: "asc" }, { id: "asc" }],
     take,
   });
 

@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 type SafetyUser = {
   id: string;
   name: string | null;
-  email: string | null;
   image: string | null;
 };
 
@@ -162,10 +161,9 @@ function SafetyList({
       {items.map((item) => (
         <li key={item.id} className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3 last:border-b-0">
           <div className="flex min-w-0 items-center gap-3">
-            <UserAvatar name={item.user.name} email={item.user.email} image={item.user.image} size="sm" />
+            <UserAvatar name={item.user.name} email={null} image={item.user.image} size="sm" />
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{item.user.name ?? "Member"}</p>
-              <p className="truncate text-xs text-muted-foreground">{item.user.email}</p>
             </div>
           </div>
           <Button

@@ -243,7 +243,7 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
                 id="group-member-search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search by name or email…"
+                placeholder="Search by name…"
                 className="h-11 w-full rounded-xl border border-border bg-surface/50 pl-10 pr-3 text-sm outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/20"
               />
             </div>

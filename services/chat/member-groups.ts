@@ -5,8 +5,9 @@ import type {
   GroupMessagePayload,
   MemberGroupPayload,
 } from "@/lib/chat/constants";
+import { PUBLIC_USER_SELECT } from "@/lib/user/public-select";
 
-const userSelect = { id: true, name: true, image: true, role: true } as const;
+const userSelect = PUBLIC_USER_SELECT;
 const MAX_GROUP_MEMBERS = 25;
 const MAX_GROUP_NAME = 80;
 
