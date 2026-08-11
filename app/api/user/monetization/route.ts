@@ -1,50 +1,76 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiUser } from "@/lib/api/require-user";
-import { purchaseContent, sendTip, subscribeToCreator } from "@/services/creator/monetization";
+import {
+  CREATOR_MONETIZATION_UNAVAILABLE,
+  isCreatorMonetizationEnabled,
+} from "@/services/billing/creator-monetization";
+import { startCreatorCheckout } from "@/services/billing/creator-checkout";
+import { prisma } from "@/lib/db/prisma";
 
-const purchaseSchema = z.object({ uploadId: z.string().min(1) });
-const tipSchema = z.object({
-  creatorUserId: z.string().min(1),
-  amountCents: z.number().int().min(100),
+function monetizationUnavailableResponse() {
+  return NextResponse.json(
+    { error: CREATOR_MONETIZATION_UNAVAILABLE, code: "BILLING_NOT_CONFIGURED" },
+    { status: 503 },
+  );
+}
+
+const bodySchema = z.object({
+  action: z.enum(["purchase", "subscribe", "tip"]),
+  uploadId: z.string().min(1).optional(),
+  creatorUserId: z.string().min(1).optional(),
+  amountCents: z.number().int().min(100).optional(),
   message: z.string().trim().max(500).optional(),
+  returnPath: z.string().trim().max(500).optional(),
 });
-const subscribeSchema = z.object({ creatorUserId: z.string().min(1) });
 
 export async function POST(request: Request) {
   const auth = await requireApiUser();
   if ("error" in auth) return auth.error;
 
+  if (!isCreatorMonetizationEnabled()) {
+    return monetizationUnavailableResponse();
+  }
+
   const body = await request.json().catch(() => null);
-  const action = typeof body === "object" && body ? String((body as { action?: string }).action) : "";
-
-  if (action === "purchase") {
-    const parsed = purchaseSchema.safeParse(body);
-    if (!parsed.success) return NextResponse.json({ error: "Invalid purchase." }, { status: 400 });
-    const result = await purchaseContent(auth.userId, parsed.data.uploadId);
-    if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
-    return NextResponse.json({ purchase: result.purchase });
+  const parsed = bodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid payment request." }, { status: 400 });
   }
 
-  if (action === "tip") {
-    const parsed = tipSchema.safeParse(body);
-    if (!parsed.success) return NextResponse.json({ error: "Invalid tip." }, { status: 400 });
-    const result = await sendTip(
-      auth.userId,
-      parsed.data.creatorUserId,
-      parsed.data.amountCents,
-      parsed.data.message,
-    );
-    if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
-    return NextResponse.json({ tip: result.tip });
+  const user = await prisma.user.findUnique({ where: { id: auth.userId } });
+  if (!user?.email) {
+    return NextResponse.json({ error: "Email required for checkout." }, { status: 400 });
   }
 
-  if (action === "subscribe") {
-    const parsed = subscribeSchema.safeParse(body);
-    if (!parsed.success) return NextResponse.json({ error: "Invalid subscription." }, { status: 400 });
-    const sub = await subscribeToCreator(auth.userId, parsed.data.creatorUserId);
-    return NextResponse.json({ subscription: sub });
+  const origin = new URL(request.url).origin;
+  const result = await startCreatorCheckout({
+    userId: auth.userId,
+    email: user.email,
+    origin,
+    action: parsed.data.action,
+    uploadId: parsed.data.uploadId,
+    creatorUserId: parsed.data.creatorUserId,
+    amountCents: parsed.data.amountCents,
+    message: parsed.data.message,
+    returnPath: parsed.data.returnPath,
+  });
+
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
-  return NextResponse.json({ error: "Unknown action." }, { status: 400 });
+  if ("checkoutUrl" in result) {
+    return NextResponse.json({
+      checkoutUrl: result.checkoutUrl,
+      provider: result.provider,
+      checkoutRef: result.checkoutRef,
+    });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    devCheckout: true,
+    redirectUrl: result.redirectUrl,
+  });
 }

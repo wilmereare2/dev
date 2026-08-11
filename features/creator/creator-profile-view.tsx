@@ -12,6 +12,7 @@ import { formatCompactNumber } from "@/utils/format";
 
 type CreatorProfileViewProps = {
   profile: CreatorPublicProfile;
+  monetizationEnabled: boolean;
 };
 
 function StatPill({
@@ -29,7 +30,7 @@ function StatPill({
   );
 }
 
-export function CreatorProfileView({ profile }: CreatorProfileViewProps) {
+export function CreatorProfileView({ profile, monetizationEnabled }: CreatorProfileViewProps) {
   const sanityAvatar = sanityImageUrl(profile.avatar, 512);
   const platformAvatar = profile.platformAvatar;
   const displayName = profile.name;
@@ -145,12 +146,15 @@ export function CreatorProfileView({ profile }: CreatorProfileViewProps) {
             <div className="rounded-2xl border border-border/60 bg-surface/50 p-5 backdrop-blur-sm">
               <h2 className="font-display text-lg font-semibold">Support</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Subscribe, send a tip, or message this creator directly.
+                {monetizationEnabled
+                  ? "Subscribe, send a tip, or message this creator directly."
+                  : "Message this creator directly. Paid support options open once checkout is configured."}
               </p>
               <div className="mt-4">
                 <CreatorSupportActions
                   creatorUserId={profile.platformUserId}
                   subscriptionPriceCents={profile.subscriptionPriceCents ?? null}
+                  monetizationEnabled={monetizationEnabled}
                 />
               </div>
             </div>

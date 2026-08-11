@@ -64,7 +64,8 @@ export function parseCcbillEvent(body: Record<string, string>) {
   const eventType = body.eventType || body.subscriptionEventType || body.action || "";
   const userId = body.customerId || body["X-customerId"] || "";
   const subscriptionId = body.subscriptionId || body.subscription_id || "";
+  const checkoutRef = body["X-checkoutRef"] || body.XcheckoutRef || body.checkoutRef || "";
   const planSlug = body.planSlug || (body.initialPeriod === "365" ? "premium-yearly" : "premium-monthly");
 
-  return { eventType, userId, subscriptionId, planSlug, raw: body };
+  return { eventType, userId, subscriptionId, checkoutRef, planSlug, raw: body };
 }

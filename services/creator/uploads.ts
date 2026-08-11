@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db/prisma";
 import { deserializeTags, serializeTags } from "@/lib/creator/media";
 import { scanContentForModeration } from "@/lib/moderation/ai-scan";
 import { getSanityWriteClient } from "@/lib/sanity/write-client";
+import { resolveMemberPostAccess } from "@/services/creator/monetization";
 import { ensureSanityCreatorDoc } from "@/services/creator/profile";
 import type { ContentStatus, ContentVisibility, MediaType } from "@/types";
 
@@ -70,6 +71,10 @@ const publicPostInclude = {
   },
 } as const;
 
+export function stripMemberPostMedia(post: ReturnType<typeof mapPublicMemberPost>) {
+  return { ...post, mediaUrl: null };
+}
+
 export async function listPublishedMemberPosts(limit = 48) {
   const items = await prisma.creatorUpload.findMany({
     where: {
@@ -80,7 +85,7 @@ export async function listPublishedMemberPosts(limit = 48) {
     take: Math.min(Math.max(limit, 1), 100),
     include: publicPostInclude,
   });
-  return items.map((item) => mapPublicMemberPost(item));
+  return items.map((item) => stripMemberPostMedia(mapPublicMemberPost(item)));
 }
 
 export async function getPublicMemberPost(id: string) {
@@ -94,6 +99,33 @@ export async function getPublicMemberPost(id: string) {
   });
   if (!item) return null;
   return mapPublicMemberPost(item);
+}
+
+export async function getMemberPostView(id: string, userId?: string) {
+  const item = await prisma.creatorUpload.findFirst({
+    where: {
+      id,
+      status: "published",
+      visibility: { in: ["public", "followers", "subscribers"] },
+    },
+    include: publicPostInclude,
+  });
+  if (!item) return null;
+
+  const post = mapPublicMemberPost(item);
+  const access = await resolveMemberPostAccess(userId, {
+    id: post.id,
+    creatorUserId: item.creatorUserId,
+    visibility: post.visibility,
+    isPremium: post.isPremium,
+    ppvPriceCents: post.ppvPriceCents,
+  });
+
+  if (access.canAccess) {
+    return { post, access };
+  }
+
+  return { post: stripMemberPostMedia(post), access };
 }
 
 type PublishedMemberPostRecord = NonNullable<

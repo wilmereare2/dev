@@ -1,4 +1,5 @@
 import { validateAgeVerificationInput } from "@/lib/compliance/age-rules";
+import { isUserVendorAgeVerified } from "@/lib/compliance/age-verification-policy";
 import { prisma } from "@/lib/db/prisma";
 
 export { MIN_AGE_YEARS, calculateAge, formatDateOfBirthInput, isAdult, parseDateOfBirth, parseDisplayDateOfBirth, toIsoDateString, validateAgeVerificationInput } from "@/lib/compliance/age-rules";
@@ -15,7 +16,10 @@ export async function getComplianceStatus(userId: string) {
     }),
   ]);
 
-  const ageVerified = Boolean(settings?.ageVerifiedAt && settings.dateOfBirth);
+  const ageVerified = Boolean(
+    settings?.ageVerifiedAt &&
+      (settings.dateOfBirth || isUserVendorAgeVerified(settings.ageVerificationMethod)),
+  );
   const termsAccepted =
     latestTerms?.termsVersion === CURRENT_TERMS_VERSION &&
     latestTerms?.privacyVersion === CURRENT_PRIVACY_VERSION;
@@ -26,6 +30,7 @@ export async function getComplianceStatus(userId: string) {
     compliant: ageVerified && termsAccepted,
     dateOfBirth: settings?.dateOfBirth ?? null,
     ageVerifiedAt: settings?.ageVerifiedAt ?? null,
+    ageVerificationMethod: settings?.ageVerificationMethod ?? null,
   };
 }
 
@@ -51,6 +56,13 @@ export async function logAgeVerificationAttempt(input: {
 }
 
 async function persistUserVerification(userId: string, dateOfBirth: Date, ipAddress?: string) {
+  const existing = await prisma.userSettings.findUnique({
+    where: { userId },
+    select: { ageVerificationMethod: true },
+  });
+
+  const preserveVendorMethod = isUserVendorAgeVerified(existing?.ageVerificationMethod);
+
   await prisma.$transaction([
     prisma.userSettings.upsert({
       where: { userId },
@@ -63,7 +75,7 @@ async function persistUserVerification(userId: string, dateOfBirth: Date, ipAddr
       update: {
         dateOfBirth,
         ageVerifiedAt: new Date(),
-        ageVerificationMethod: "dob-self-attestation",
+        ...(preserveVendorMethod ? {} : { ageVerificationMethod: "dob-self-attestation" }),
       },
     }),
     prisma.termsAcceptance.create({
@@ -118,6 +130,17 @@ export function logFailedAgeVerification(input: {
     ipAddress: input.ipAddress,
     rememberDevice: input.rememberDevice,
   }).catch(() => undefined);
+}
+
+export async function recordTermsAcceptanceForUser(userId: string, ipAddress?: string) {
+  await prisma.termsAcceptance.create({
+    data: {
+      userId,
+      termsVersion: CURRENT_TERMS_VERSION,
+      privacyVersion: CURRENT_PRIVACY_VERSION,
+      ipAddress: ipAddress ?? null,
+    },
+  });
 }
 
 /** @deprecated Use validateAgeVerificationRequest + persistAgeVerificationInBackground */

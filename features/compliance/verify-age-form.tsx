@@ -18,6 +18,12 @@ import { cn } from "@/lib/utils";
 type VerifyAgeFormProps = {
   redirectTo?: string;
   alreadyVerified?: boolean;
+  vendorPending?: boolean;
+  signedIn?: boolean;
+  selfAttestationAllowed?: boolean;
+  vendorVerificationConfigured?: boolean;
+  strictVerification?: boolean;
+  requiresSignIn?: boolean;
 };
 
 const checkboxClassName =
@@ -25,7 +31,16 @@ const checkboxClassName =
 
 const checkboxRowClassName = "flex min-h-11 items-start gap-3 text-sm leading-relaxed";
 
-export function VerifyAgeForm({ redirectTo = "/", alreadyVerified = false }: VerifyAgeFormProps) {
+export function VerifyAgeForm({
+  redirectTo = "/",
+  alreadyVerified = false,
+  vendorPending = false,
+  signedIn = false,
+  selfAttestationAllowed = true,
+  vendorVerificationConfigured = false,
+  strictVerification = false,
+  requiresSignIn = false,
+}: VerifyAgeFormProps) {
   const { data: session } = useSession();
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
@@ -73,6 +88,35 @@ export function VerifyAgeForm({ redirectTo = "/", alreadyVerified = false }: Ver
     acceptPrivacy &&
     dateOfBirth.replace(/\D/g, "").length === 8 &&
     !dateIssue;
+
+  async function startVendorVerification() {
+    setPending(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/user/age-verification", { method: "POST" });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        verificationUrl?: string;
+      };
+
+      if (!response.ok) {
+        setError(payload.error ?? "Could not start ID verification.");
+        return;
+      }
+
+      if (payload.verificationUrl) {
+        window.location.assign(payload.verificationUrl);
+        return;
+      }
+
+      setError("Verification provider did not return a session URL.");
+    } catch {
+      setError("Could not reach the server. Try again.");
+    } finally {
+      setPending(false);
+    }
+  }
 
   async function restoreVerification() {
     setPending(true);
@@ -169,6 +213,13 @@ export function VerifyAgeForm({ redirectTo = "/", alreadyVerified = false }: Ver
           Your account is already age-verified. Restore access on this device to continue browsing.
         </p>
 
+        {vendorPending ? (
+          <p className="mt-4 rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-sm text-muted-foreground">
+            We are processing your ID verification. If this message persists, refresh in a moment or contact
+            support.
+          </p>
+        ) : null}
+
         <div className="mt-8 space-y-5">
           <label className={checkboxRowClassName}>
             <input
@@ -215,6 +266,42 @@ export function VerifyAgeForm({ redirectTo = "/", alreadyVerified = false }: Ver
     );
   }
 
+  if (requiresSignIn) {
+    const signInHref = `/account?redirect=${encodeURIComponent(`/verify-age?redirect=${encodeURIComponent(redirectTo)}`)}`;
+
+    return (
+      <div className="w-full max-w-[420px] rounded-2xl border border-border/60 bg-surface/70 p-6 shadow-2xl backdrop-blur-md sm:p-8">
+        <div className="flex items-center gap-2 text-accent">
+          <ShieldCheck className="size-4" aria-hidden />
+          <p className="font-display text-xs font-semibold uppercase tracking-[0.22em]">Age verification</p>
+        </div>
+
+        <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+          Sign in to verify your age
+        </h1>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          This site requires ID-based age verification. Sign in to your account, then complete verification with our
+          secure provider.
+        </p>
+
+        <div className="mt-8 space-y-4">
+          <Button asChild variant="premium" className="w-full">
+            <Link href={signInHref}>Sign in to continue</Link>
+          </Button>
+          <p className="text-center text-sm text-muted-foreground">
+            New here?{" "}
+            <Link href={signInHref} className="font-medium text-accent hover:underline">
+              Create an account
+            </Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const showSelfAttestation = selfAttestationAllowed;
+  const showVendorVerification = vendorVerificationConfigured && signedIn;
+
   return (
     <div className="w-full max-w-[420px] rounded-2xl border border-border/60 bg-surface/70 p-6 shadow-2xl backdrop-blur-md sm:p-8">
       <div className="flex items-center gap-2 text-accent">
@@ -226,11 +313,89 @@ export function VerifyAgeForm({ redirectTo = "/", alreadyVerified = false }: Ver
         Confirm you are 18+
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-        manuelaX is adults-only. Enter your date of birth and accept our policies to continue. Your date of birth is
-        used only for age verification and is not shown on your public profile.
+        {strictVerification
+          ? "Complete ID verification to continue. Your verification status is stored on your account and is not shown publicly."
+          : "manuelaX is adults-only. Enter your date of birth and accept our policies to continue. Your date of birth is used only for age verification and is not shown on your public profile."}
       </p>
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
+      {showVendorVerification ? (
+        <div className="mt-8 space-y-4 rounded-2xl border border-border/60 bg-background/40 p-4">
+          <p className="text-sm font-medium text-foreground">
+            {strictVerification ? "Verify with government ID" : "Prefer stronger verification?"}
+          </p>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Use our secure identity provider to confirm you are 18 or older.
+          </p>
+
+          {!showSelfAttestation ? (
+            <fieldset
+              className={cn(
+                "space-y-3 rounded-xl border bg-background/40 p-4",
+                policyIssue ? "border-red-500/30" : "border-border/50",
+              )}
+            >
+              <legend className="px-1 text-sm font-medium text-foreground">Before you continue</legend>
+              <label className={checkboxRowClassName}>
+                <input
+                  type="checkbox"
+                  className={checkboxClassName}
+                  checked={acceptTerms}
+                  onChange={(event) => {
+                    setAcceptTerms(event.target.checked);
+                    setTouched(true);
+                    setError(null);
+                  }}
+                />
+                <span>
+                  I agree to the{" "}
+                  <Link href="/terms" className="font-medium text-accent hover:underline">
+                    Terms of Service
+                  </Link>
+                </span>
+              </label>
+              <label className={checkboxRowClassName}>
+                <input
+                  type="checkbox"
+                  className={checkboxClassName}
+                  checked={acceptPrivacy}
+                  onChange={(event) => {
+                    setAcceptPrivacy(event.target.checked);
+                    setTouched(true);
+                    setError(null);
+                  }}
+                />
+                <span>
+                  I agree to the{" "}
+                  <Link href="/privacy" className="font-medium text-accent hover:underline">
+                    Privacy Policy
+                  </Link>
+                </span>
+              </label>
+              {policyIssue ? <p className="text-sm text-red-400">{policyIssue}</p> : null}
+            </fieldset>
+          ) : null}
+
+          <Button
+            type="button"
+            variant="premium"
+            className="w-full"
+            disabled={pending || (!showSelfAttestation && (!acceptTerms || !acceptPrivacy))}
+            onClick={() => void startVendorVerification()}
+          >
+            {pending ? (
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Starting verification...
+              </>
+            ) : (
+              "Verify with ID"
+            )}
+          </Button>
+        </div>
+      ) : null}
+
+      {showSelfAttestation ? (
+      <form onSubmit={onSubmit} className={cn("space-y-5", showVendorVerification ? "mt-6" : "mt-8")} noValidate>
         <div>
           <label htmlFor="dob" className="text-sm font-medium">
             Date of birth
@@ -356,6 +521,22 @@ export function VerifyAgeForm({ redirectTo = "/", alreadyVerified = false }: Ver
           </p>
         )}
       </form>
+      ) : null}
+
+      {!showSelfAttestation && !showVendorVerification ? (
+        <p className="mt-8 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+          Age verification is temporarily unavailable. Please try again later or contact support.
+        </p>
+      ) : null}
+
+      {error && !showSelfAttestation ? (
+        <p
+          role="alert"
+          className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400"
+        >
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { ArrowLeft, Crown } from "lucide-react";
+import { BillingReturnBanner } from "@/components/billing/billing-return-banner";
 import { UserAvatar } from "@/components/user/user-avatar";
 import { Button } from "@/components/ui/button";
-import { getPublicMemberPost } from "@/services/creator/uploads";
+import { MemberPostAccessGate } from "@/features/creator/member-post-access-gate";
+import { auth } from "@/lib/auth/auth";
+import { isCreatorMonetizationEnabled } from "@/services/billing/creator-monetization";
+import { getMemberPostView, getPublicMemberPost } from "@/services/creator/uploads";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +24,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function MemberPostPage({ params }: PageProps) {
   const { id } = await params;
-  const post = await getPublicMemberPost(id);
-  if (!post) notFound();
+  const session = await auth();
+  const userId = session?.user?.id;
+  const view = await getMemberPostView(id, userId);
+  if (!view) notFound();
 
-  const imageSrc = post.thumbnailUrl ?? (post.mediaType === "photo" ? post.mediaUrl : null);
+  const { post, access } = view;
+  const canAccess = access.canAccess;
+  const redirectPath = `/posts/${id}`;
+
+  const imageSrc =
+    canAccess && post.mediaUrl
+      ? post.thumbnailUrl ?? (post.mediaType === "photo" ? post.mediaUrl : null)
+      : post.thumbnailUrl;
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+      <Suspense fallback={null}>
+        <BillingReturnBanner successMessage="Purchase complete. Your content is unlocked." />
+      </Suspense>
       <Link
         href="/promotions"
         className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-surface/40 px-3 py-2 text-sm text-muted-foreground transition hover:border-accent/40 hover:text-foreground"
@@ -61,18 +78,53 @@ export default async function MemberPostPage({ params }: PageProps) {
 
       {post.description ? <p className="mt-4 text-base leading-relaxed text-muted-foreground">{post.description}</p> : null}
 
-      {imageSrc ? (
-        <div className="mt-8 overflow-hidden rounded-2xl border border-border/60 bg-surface/40">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageSrc} alt="" className="max-h-[720px] w-full object-contain" />
-        </div>
-      ) : null}
-
-      {post.mediaUrl && post.mediaType === "video" ? (
-        <div className="mt-8 overflow-hidden rounded-2xl border border-border/60 bg-surface/40 p-4">
-          <video controls className="w-full rounded-xl" src={post.mediaUrl} />
-        </div>
-      ) : null}
+      <div className="mt-8 overflow-hidden rounded-2xl border border-border/60 bg-surface/40">
+        {canAccess ? (
+          <>
+            {imageSrc ? (
+              <div className="overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageSrc} alt="" className="max-h-[720px] w-full object-contain" />
+              </div>
+            ) : null}
+            {post.mediaUrl && post.mediaType === "video" ? (
+              <div className="p-4">
+                <video controls className="w-full rounded-xl" src={post.mediaUrl} />
+              </div>
+            ) : null}
+            {post.mediaUrl && post.mediaType === "photo" && !imageSrc ? (
+              <div className="overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={post.mediaUrl} alt="" className="max-h-[720px] w-full object-contain" />
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className="relative">
+            {post.thumbnailUrl ? (
+              <div className="relative max-h-[420px] overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={post.thumbnailUrl}
+                  alt=""
+                  className="max-h-[420px] w-full scale-105 object-cover blur-xl"
+                />
+                <div className="absolute inset-0 bg-background/50" aria-hidden />
+              </div>
+            ) : null}
+            <MemberPostAccessGate
+              uploadId={post.id}
+              creatorUserId={post.creator.id}
+              creatorSlug={post.creator.slug}
+              reason={access.reason}
+              ppvPriceCents={post.ppvPriceCents}
+              signedIn={Boolean(userId)}
+              redirectPath={redirectPath}
+              monetizationEnabled={isCreatorMonetizationEnabled()}
+            />
+          </div>
+        )}
+      </div>
 
       <div className="mt-8 flex flex-wrap gap-3">
         {post.creator.slug ? (

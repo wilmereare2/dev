@@ -5,10 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Heart, Loader2, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { applyMonetizationResponse } from "@/lib/billing/monetization-client";
+import { CREATOR_MONETIZATION_UNAVAILABLE } from "@/services/billing/creator-monetization";
 
 type CreatorSupportActionsProps = {
   creatorUserId: string;
   subscriptionPriceCents: number | null;
+  monetizationEnabled: boolean;
 };
 
 const TIP_PRESETS = [500, 1000, 2500];
@@ -16,6 +19,7 @@ const TIP_PRESETS = [500, 1000, 2500];
 export function CreatorSupportActions({
   creatorUserId,
   subscriptionPriceCents,
+  monetizationEnabled,
 }: CreatorSupportActionsProps) {
   const router = useRouter();
   const [pending, setPending] = useState<"subscribe" | "tip" | "message" | null>(null);
@@ -37,12 +41,17 @@ export function CreatorSupportActions({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "subscribe", creatorUserId }),
       });
-      const payload = (await response.json()) as { error?: string };
+      const payload = (await response.json()) as Parameters<typeof applyMonetizationResponse>[0];
       if (!response.ok) {
         setMessage(payload.error ?? "Could not subscribe.");
         return;
       }
-      setMessage("Subscribed successfully.");
+      const applied = applyMonetizationResponse(payload, router);
+      if (applied.ok) {
+        setMessage("Subscribed successfully.");
+      } else {
+        setMessage(applied.error ?? "Could not subscribe.");
+      }
     } finally {
       setPending(null);
     }
@@ -57,9 +66,14 @@ export function CreatorSupportActions({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "tip", creatorUserId, amountCents }),
       });
-      const payload = (await response.json()) as { error?: string };
+      const payload = (await response.json()) as Parameters<typeof applyMonetizationResponse>[0];
       if (!response.ok) {
         setMessage(payload.error ?? "Could not send tip.");
+        return;
+      }
+      const applied = applyMonetizationResponse(payload, router);
+      if (!applied.ok) {
+        setMessage(applied.error ?? "Could not send tip.");
         return;
       }
       setMessage("Tip sent. Thank you for supporting this creator.");
@@ -92,20 +106,28 @@ export function CreatorSupportActions({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-3">
-        <Button type="button" variant="secondary" disabled={pending === "subscribe"} onClick={handleSubscribe}>
-          {pending === "subscribe" ? <Loader2 className="size-4 animate-spin" /> : subscriptionLabel}
-        </Button>
-        <Button type="button" variant="outline" disabled={pending === "tip"} onClick={() => setShowTip((value) => !value)}>
-          {pending === "tip" ? <Loader2 className="size-4 animate-spin" /> : <Heart className="size-4" />}
-          Send tip
-        </Button>
+        {monetizationEnabled ? (
+          <>
+            <Button type="button" variant="secondary" disabled={pending === "subscribe"} onClick={handleSubscribe}>
+              {pending === "subscribe" ? <Loader2 className="size-4 animate-spin" /> : subscriptionLabel}
+            </Button>
+            <Button type="button" variant="outline" disabled={pending === "tip"} onClick={() => setShowTip((value) => !value)}>
+              {pending === "tip" ? <Loader2 className="size-4 animate-spin" /> : <Heart className="size-4" />}
+              Send tip
+            </Button>
+          </>
+        ) : null}
         <Button type="button" variant="outline" disabled={pending === "message"} onClick={handleMessage}>
           {pending === "message" ? <Loader2 className="size-4 animate-spin" /> : <MessageSquare className="size-4" />}
           Message
         </Button>
       </div>
 
-      {showTip ? (
+      {!monetizationEnabled ? (
+        <p className="text-xs leading-relaxed text-muted-foreground">{CREATOR_MONETIZATION_UNAVAILABLE}</p>
+      ) : null}
+
+      {showTip && monetizationEnabled ? (
         <div className="rounded-2xl border border-border/60 bg-surface/50 p-4">
           <p className="text-sm font-medium">Choose a tip amount</p>
           <div className="mt-3 flex flex-wrap gap-2">

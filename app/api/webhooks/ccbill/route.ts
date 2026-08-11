@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseCcbillEvent, verifyCcbillWebhook } from "@/services/billing/ccbill";
+import { fulfillCreatorCheckout } from "@/services/billing/creator-checkout";
 import { activateSubscription, recordPayment } from "@/services/billing/subscriptions";
 import { prisma } from "@/lib/db/prisma";
 
@@ -21,6 +22,13 @@ export async function POST(request: Request) {
 
   const userId = event.userId;
   const eventName = event.eventType.toLowerCase();
+
+  if (event.checkoutRef) {
+    if (eventName.includes("new") || eventName.includes("success")) {
+      await fulfillCreatorCheckout(event.checkoutRef, event.subscriptionId || undefined);
+    }
+    return NextResponse.json({ ok: true, creatorCheckout: true });
+  }
 
   if (eventName.includes("new") || eventName.includes("renew") || eventName.includes("success")) {
     await activateSubscription({

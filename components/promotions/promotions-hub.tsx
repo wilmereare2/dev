@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ExternalLink, Search } from "lucide-react";
 import { UserAvatar } from "@/components/user/user-avatar";
 import { PageHeader } from "@/components/layout/page-header";
+import { BillingReturnBanner } from "@/components/billing/billing-return-banner";
 import { Badge, visibilityBadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -57,6 +58,7 @@ export function PromotionsHub({ entries }: PromotionsHubProps) {
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <BillingReturnBanner successMessage="Payment complete. Your access has been updated." />
       <PageHeader
         eyebrow="Promotions"
         title="Deals & member posts"

@@ -6,6 +6,7 @@ import {
   AGE_VERIFIED_COOKIE,
   createAgeVerifiedCookie,
 } from "@/lib/auth/age-cookie";
+import { isSelfAttestationAllowed } from "@/lib/compliance/age-verification-policy";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import {
   logFailedAgeVerification,
@@ -31,6 +32,16 @@ export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid verification data." }, { status: 400 });
+  }
+
+  if (!isSelfAttestationAllowed()) {
+    return NextResponse.json(
+      {
+        error: "ID verification is required. Sign in and complete verification with a supported provider.",
+        code: "STRICT_AGE_VERIFICATION",
+      },
+      { status: 403 },
+    );
   }
 
   const validated = validateAgeVerificationRequest(parsed.data);
