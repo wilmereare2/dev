@@ -30,7 +30,10 @@ export async function POST(request: Request) {
     const appUrl = new URL(request.url).origin;
     const result = await registerUser(parsed.data, appUrl);
     if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: 409 });
+      return NextResponse.json(
+        { error: result.error, code: result.code },
+        { status: 409 },
+      );
     }
 
     if (parsed.data.wantsToCreate && result.userId) {
@@ -44,11 +47,16 @@ export async function POST(request: Request) {
       devAutoVerified: result.devAutoVerified,
       verifyUrl: result.verifyUrl,
       emailSent: result.emailSent,
+      resumed: "resumed" in result && result.resumed,
       message: result.devAutoVerified
         ? "Account created. You can sign in now."
-        : result.emailSent
-          ? "Check your email for a verification link before signing in."
-          : "Account created. Use the verification link below to activate your account.",
+        : "resumed" in result && result.resumed
+          ? result.emailSent
+            ? "We sent a fresh verification link to your email. Open it to finish setup."
+            : "Your account is waiting for verification. Use the link below to finish setup."
+          : result.emailSent
+            ? "Check your email for a verification link before signing in."
+            : "Account created. Use the verification link below to activate your account.",
     });
   } catch (error) {
     if (process.env.NODE_ENV === "development") {

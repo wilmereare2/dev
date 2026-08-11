@@ -167,34 +167,34 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
             Check your inbox
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-          {verificationEmailSent === false ? (
-            <>
-              Email delivery is not configured yet, so we could not send a message to{" "}
-              <span className="font-medium text-foreground">{pendingVerificationEmail}</span>. Use
-              the verification link below to activate your account, then sign in.
-            </>
-          ) : (
-            <>
-              We sent a verification link to{" "}
-              <span className="font-medium text-foreground">{pendingVerificationEmail}</span>. Open
-              it to activate your account, then sign in.
-            </>
-          )}
-        </p>
+            {verificationEmailSent === false ? (
+              <>
+                Email delivery is not configured yet, so we could not send a message to{" "}
+                <span className="font-medium text-foreground">{pendingVerificationEmail}</span>. Use
+                the verification link below to activate your account, then sign in.
+              </>
+            ) : (
+              <>
+                We sent a verification link to{" "}
+                <span className="font-medium text-foreground">{pendingVerificationEmail}</span>. Open
+                it to activate your account, then sign in.
+              </>
+            )}
+          </p>
 
-        <div className="mt-6 space-y-4">
-          {notice ? (
-            <p className="rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-accent">
-              {notice}
-            </p>
-          ) : null}
-          {error ? (
-            <p className="rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-accent">
-              {error}
-            </p>
-          ) : null}
+          <div className="mt-6 space-y-4">
+            {notice ? (
+              <p className="rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-accent">
+                {notice}
+              </p>
+            ) : null}
+            {error ? (
+              <p className="rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-accent">
+                {error}
+              </p>
+            ) : null}
 
-          {verificationUrl ? (
+            {verificationUrl ? (
             <div className="space-y-2 rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm">
               <p className="font-medium text-foreground">Verify your account</p>
               <p className="text-muted-foreground">
@@ -240,7 +240,7 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
               Back to sign in
             </Button>
           </div>
-        </div>
+          </div>
         </div>
       </AuthSplitLayout>
     );
@@ -272,13 +272,20 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
 
         const payload = (await response.json()) as {
           error?: string;
+          code?: string;
           email?: string;
           devAutoVerified?: boolean;
           verifyUrl?: string;
           emailSent?: boolean;
           message?: string;
+          resumed?: boolean;
         };
         if (!response.ok) {
+          if (payload.code === "ALREADY_REGISTERED") {
+            setMode("signin");
+            setNotice(payload.error ?? "This email is already registered. Sign in to continue.");
+            return;
+          }
           setError(payload.error ?? "Could not create account.");
           return;
         }
@@ -342,7 +349,8 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
 
         if (status?.exists && !status?.verified) {
           setPendingVerificationEmail(normalizedEmail);
-          setError("Verify your email before signing in.");
+          setError(null);
+          setNotice("Almost there — check your email for the verification link, or resend below.");
           return;
         }
 

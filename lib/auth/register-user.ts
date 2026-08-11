@@ -15,9 +15,31 @@ export async function registerUser(input: RegisterInput, appUrl?: string) {
   const existing = await prisma.user.findUnique({ where: { email } });
 
   if (existing) {
+    if (existing.emailVerified) {
+      return {
+        ok: false as const,
+        code: "ALREADY_REGISTERED" as const,
+        error: "This email is already registered. Sign in to continue.",
+      };
+    }
+
+    await prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        passwordHash: await hashPassword(input.password),
+        ...(input.name?.trim() ? { name: input.name.trim() } : {}),
+      },
+    });
+
+    const sendResult = await sendVerificationEmailForUser(email, appUrl);
     return {
-      ok: false as const,
-      error: "An account with this email already exists. Sign in instead.",
+      ok: true as const,
+      email,
+      devAutoVerified: false,
+      userId: existing.id,
+      verifyUrl: sendResult.ok ? sendResult.verifyUrl : undefined,
+      emailSent: sendResult.ok ? sendResult.sent : false,
+      resumed: true as const,
     };
   }
 
