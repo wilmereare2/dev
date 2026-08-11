@@ -30,14 +30,20 @@ export default async function VerifyAgePage({ searchParams }: PageProps) {
   let vendorPending = false;
 
   if (session?.user) {
-    const userId = await resolveDbUserId({
-      id: session.user.id,
-      email: session.user.email,
-    });
-    if (userId) {
-      const compliance = await getComplianceStatus(userId);
-      alreadyVerified = compliance.ageVerified;
-      vendorPending = vendorComplete && !alreadyVerified;
+    try {
+      const userId = await resolveDbUserId({
+        id: session.user.id,
+        email: session.user.email,
+      });
+      if (userId) {
+        const compliance = await getComplianceStatus(userId);
+        alreadyVerified = compliance.ageVerified;
+        vendorPending = vendorComplete && !alreadyVerified;
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[verify-age] compliance lookup failed:", error);
+      }
     }
   }
 

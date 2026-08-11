@@ -33,8 +33,15 @@ export default function GlobalError({
           </p>
           <h1 style={{ fontSize: "2rem", fontWeight: 600, marginTop: "1rem" }}>Something went wrong</h1>
           <p style={{ marginTop: "1rem", fontSize: "0.875rem", opacity: 0.75 }}>
-            Try again. If the problem persists, refresh the page or restart the dev server.
+            {process.env.NODE_ENV === "development"
+              ? "Try again. If the problem persists, refresh the page or restart the dev server."
+              : "Try again in a moment. If this keeps happening, clear site cookies for manuelax.com and reload."}
           </p>
+          {error.digest ? (
+            <p style={{ marginTop: "0.75rem", fontSize: "0.75rem", opacity: 0.55 }}>
+              Reference: {error.digest}
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={reset}

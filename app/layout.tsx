@@ -5,9 +5,9 @@ import { I18nProvider } from "@/components/providers/i18n-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { PwaRegister } from "@/components/providers/pwa-register";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
-import { auth } from "@/lib/auth/auth";
-import { resolveDbUserId } from "@/lib/auth/resolve-db-user";
+import { resolveRootSessionContext } from "@/lib/auth/safe-session-context";
 import { resolveAppLocale } from "@/lib/i18n/resolve-app-locale";
+import { resolveMetadataBaseUrl } from "@/lib/site/app-url";
 import "./globals.css";
 
 const display = Sora({
@@ -23,7 +23,7 @@ const body = Figtree({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+  metadataBase: resolveMetadataBaseUrl(),
   title: {
     default: APP_NAME,
     template: `%s · ${APP_NAME}`,
@@ -66,10 +66,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
-  const userId = session?.user
-    ? await resolveDbUserId({ id: session.user.id, email: session.user.email })
-    : null;
+  const { userId } = await resolveRootSessionContext();
   const locale = await resolveAppLocale(userId);
 
   return (
