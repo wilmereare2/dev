@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node -e \"try{require('fs').rmSync('.next',{recursive:true,force:true})}catch(e){}\" && next dev --turbopack",
     "dev:fast": "next dev --turbopack",
+    "dev:stable": "next dev",
     "dev:fresh": "node -e \"try{require('fs').rmSync('.next',{recursive:true,force:true})}catch(e){}\" && next dev --turbopack",
     "build": "prisma generate && node scripts/migrate-deploy.mjs && next build",
     "build:app": "prisma generate && next build",

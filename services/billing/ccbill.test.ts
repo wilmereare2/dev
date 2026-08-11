@@ -18,7 +18,7 @@ describe("ccbill webhooks", () => {
     expect(verifyCcbillWebhook(payload, "bad-signature")).toBe(false);
   });
 
-  it("parses subscription events", () => {
+  it("parses subscription events with annual default slug", () => {
     const event = parseCcbillEvent({
       eventType: "NewSaleSuccess",
       customerId: "user-123",
@@ -28,6 +28,17 @@ describe("ccbill webhooks", () => {
 
     expect(event.userId).toBe("user-123");
     expect(event.subscriptionId).toBe("sub-456");
-    expect(event.planSlug).toBe("premium-yearly");
+    expect(event.planSlug).toBe("annual");
+  });
+
+  it("defaults monthly slug when initialPeriod is not annual", () => {
+    const event = parseCcbillEvent({
+      eventType: "NewSaleSuccess",
+      customerId: "user-123",
+      subscriptionId: "sub-789",
+      initialPeriod: "30",
+    });
+
+    expect(event.planSlug).toBe("monthly");
   });
 });
