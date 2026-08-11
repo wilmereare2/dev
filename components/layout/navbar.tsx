@@ -110,7 +110,7 @@ export function Navbar({ navItems }: NavbarProps) {
               className="overflow-hidden border-t border-border/50 md:hidden"
               aria-label="Mobile"
             >
-              <div className="space-y-1 px-4 py-3">
+              <div className="space-y-1 px-4 py-3" class="my-add">
                 <button
                   type="button"
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
