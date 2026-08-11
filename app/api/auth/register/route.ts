@@ -41,22 +41,23 @@ export async function POST(request: Request) {
       await onboardAsCreator(result.userId, parsed.data.name).catch(() => null);
     }
 
+    const deliveryError =
+      "deliveryError" in result ? result.deliveryError : undefined;
+
     return NextResponse.json({
       ok: true,
       email: result.email,
       devAutoVerified: result.devAutoVerified,
       verifyUrl: result.verifyUrl,
       emailSent: result.emailSent,
+      deliveryError,
       resumed: "resumed" in result && result.resumed,
       message: result.devAutoVerified
         ? "Account created. You can sign in now."
-        : "resumed" in result && result.resumed
-          ? result.emailSent
-            ? "We sent a fresh verification code to your email. Open it to finish setup."
-            : "Your account is waiting for verification. Configure email delivery or use the dev link below."
-          : result.emailSent
-            ? "Check your email for a 6-digit verification code before signing in."
-            : "Account created. Configure EMAIL_SERVER to deliver your verification code.",
+        : result.emailSent
+          ? "Check your email for a 6-digit verification code before signing in."
+          : deliveryError ??
+            "Account created, but the verification email could not be delivered yet.",
     });
   } catch (error) {
     console.error("[register]", error);

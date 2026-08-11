@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Mail, Smartphone } from "lucide-react";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,13 @@ export function EmailVerificationPanel({
   const [localNotice, setLocalNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [phoneStep, setPhoneStep] = useState<"idle" | "sent">("idle");
+  const autoSentRef = useRef(false);
+
+  useEffect(() => {
+    if (autoSentRef.current || emailSent === true) return;
+    autoSentRef.current = true;
+    void onResend();
+  }, [emailSent, onResend]);
 
   async function verifyEmailCode(event: React.FormEvent) {
     event.preventDefault();
@@ -127,18 +134,23 @@ export function EmailVerificationPanel({
           Enter your verification code
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-          {emailSent === false ? (
-            <>
-              We could not deliver email to{" "}
-              <span className="font-medium text-foreground">{email}</span> yet. Fix{" "}
-              <code className="text-xs">EMAIL_SERVER</code> on your host, then resend. Account
-              activation requires a delivered code in production.
-            </>
-          ) : (
+          {emailSent === true ? (
             <>
               We sent a 6-digit code to{" "}
               <span className="font-medium text-foreground">{email}</span>. Enter it below to
-              activate your account.
+              activate your account. Check spam if you do not see it within a minute.
+            </>
+          ) : emailSent === false ? (
+            <>
+              We could not deliver email to{" "}
+              <span className="font-medium text-foreground">{email}</span> yet. Add{" "}
+              <code className="text-xs">RESEND_API_KEY</code> or fix{" "}
+              <code className="text-xs">EMAIL_SERVER</code> in Vercel, then click Resend code.
+            </>
+          ) : (
+            <>
+              Sending a verification code to{" "}
+              <span className="font-medium text-foreground">{email}</span>…
             </>
           )}
         </p>

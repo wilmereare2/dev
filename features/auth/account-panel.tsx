@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Session } from "next-auth";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -40,6 +40,15 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
   const passwordResetComplete = searchParams.get("reset") === "1";
 
   useEffect(() => {
+    if (searchParams.get("password")) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("password");
+      const next = params.toString();
+      router.replace(next ? `/account?${next}` : "/account");
+    }
+  }, [searchParams, router]);
+
+  useEffect(() => {
     if (searchParams.get("verified") === "1") {
       setNotice("Email verified. You can sign in now.");
       setPendingVerificationEmail(null);
@@ -65,12 +74,38 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
     if (verificationError === "verification-failed" && failedEmail) {
       setError("That verification link is invalid or expired.");
       setPendingVerificationEmail(failedEmail);
+      setVerificationEmailSent(null);
       setEmail(failedEmail);
       setMode("signin");
     }
+
+    const urlEmail = failedEmail?.trim().toLowerCase();
+    if (urlEmail && !verificationError && searchParams.get("verified") !== "1") {
+      setEmail(urlEmail);
+      void (async () => {
+        try {
+          const statusResponse = await fetch("/api/auth/verification-status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: urlEmail }),
+          });
+          const status = (await statusResponse.json()) as {
+            exists?: boolean;
+            verified?: boolean;
+          };
+          if (status.exists && !status.verified) {
+            setPendingVerificationEmail(urlEmail);
+            setVerificationEmailSent(null);
+            setError(null);
+          }
+        } catch {
+          // Ignore — user can still sign in or register manually.
+        }
+      })();
+    }
   }, [searchParams]);
 
-  async function resendVerification(targetEmail: string) {
+  const resendVerification = useCallback(async (targetEmail: string) => {
     setError(null);
     setNotice(null);
     setPending(true);
@@ -86,6 +121,7 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
         message?: string;
         verifyUrl?: string;
         emailSent?: boolean;
+        deliveryError?: string;
       };
 
       if (!response.ok) {
@@ -93,17 +129,24 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
         return;
       }
 
-      setNotice(payload.message ?? `Verification email sent to ${targetEmail}.`);
+      setNotice(
+        payload.emailSent
+          ? (payload.message ?? `Verification code sent to ${targetEmail}.`)
+          : (payload.deliveryError ?? payload.message ?? "Could not deliver verification email."),
+      );
       setVerificationEmailSent(payload.emailSent ?? false);
       if (payload.verifyUrl) {
         setVerificationUrl(payload.verifyUrl);
+      }
+      if (payload.emailSent === false && payload.deliveryError) {
+        setError(payload.deliveryError);
       }
     } catch {
       setError("Could not resend verification email.");
     } finally {
       setPending(false);
     }
-  }
+  }, []);
 
   if (session?.user) {
     return (
@@ -218,6 +261,7 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
           devAutoVerified?: boolean;
           verifyUrl?: string;
           emailSent?: boolean;
+          deliveryError?: string;
           message?: string;
           resumed?: boolean;
         };
@@ -242,7 +286,9 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
         setPendingVerificationEmail(registeredEmail);
         setVerificationUrl(payload.verifyUrl ?? null);
         setVerificationEmailSent(payload.emailSent ?? null);
-        if (payload.message) {
+        if (payload.deliveryError) {
+          setError(payload.deliveryError);
+        } else if (payload.message) {
           setNotice(payload.message);
         }
         return;
@@ -290,8 +336,9 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
 
         if (status?.exists && !status?.verified) {
           setPendingVerificationEmail(normalizedEmail);
+          setVerificationEmailSent(null);
           setError(null);
-          setNotice("Almost there — check your email for the verification link, or resend below.");
+          setNotice(null);
           return;
         }
 

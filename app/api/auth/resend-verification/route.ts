@@ -34,9 +34,11 @@ export async function POST(request: Request) {
       ok: true,
       message: result.sent
         ? "Verification code sent to your email."
-        : "Email delivery is not configured. Configure EMAIL_SERVER on your host.",
+        : result.deliveryError ??
+          "Email delivery is not configured. Add RESEND_API_KEY or EMAIL_SERVER in Vercel.",
       verifyUrl: result.verifyUrl,
       emailSent: result.sent,
+      deliveryError: result.deliveryError,
     });
   } catch {
     return NextResponse.json(

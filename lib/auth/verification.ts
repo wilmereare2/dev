@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { createEmailVerificationCode } from "@/lib/auth/verification-codes";
 import { allowDevVerificationFallback } from "@/lib/auth/verification-delivery";
 import { sendVerificationCodeEmail } from "@/lib/email/send-verification-code-email";
+import { emailWasDelivered } from "@/lib/email/send-email";
 
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -93,12 +94,19 @@ export async function sendVerificationEmailForUser(email: string, appUrl?: strin
     verifyUrl,
   });
 
-  const delivered = !("dev" in emailResult && emailResult.dev);
+  const delivered = emailWasDelivered(emailResult);
+
+  const deliveryError = delivered
+    ? undefined
+    : !emailResult.ok
+      ? emailResult.error
+      : "Email could not be delivered. Check Resend domain verification and redeploy after updating Vercel env vars.";
 
   return {
     ok: true as const,
     sent: delivered,
     codeSent: delivered,
+    deliveryError,
     verifyUrl: allowDevVerificationFallback() && !delivered ? verifyUrl : undefined,
   };
 }

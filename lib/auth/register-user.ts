@@ -42,6 +42,7 @@ export async function registerUser(input: RegisterInput, appUrl?: string) {
       userId: existing.id,
       verifyUrl: sendResult.ok ? sendResult.verifyUrl : undefined,
       emailSent: sendResult.ok ? sendResult.sent : false,
+      deliveryError: sendResult.ok ? sendResult.deliveryError : sendResult.error,
       resumed: true as const,
     };
   }
@@ -66,12 +67,14 @@ export async function registerUser(input: RegisterInput, appUrl?: string) {
 
   let verifyUrl: string | undefined;
   let emailSent = false;
+  let deliveryError: string | undefined;
 
   if (!devAutoVerified) {
     try {
       const sendResult = await sendVerificationEmailForUser(email, appUrl);
       verifyUrl = sendResult.ok ? sendResult.verifyUrl : undefined;
       emailSent = sendResult.ok ? sendResult.sent : false;
+      deliveryError = sendResult.ok ? sendResult.deliveryError : undefined;
     } catch (error) {
       console.error("[register] verification email failed:", error);
     }
@@ -86,5 +89,6 @@ export async function registerUser(input: RegisterInput, appUrl?: string) {
     userId: created.id,
     verifyUrl,
     emailSent,
+    deliveryError,
   };
 }
