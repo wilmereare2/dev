@@ -31,7 +31,10 @@ export async function registerUser(input: RegisterInput, appUrl?: string) {
       },
     });
 
-    const sendResult = await sendVerificationEmailForUser(email, appUrl);
+    const sendResult = await sendVerificationEmailForUser(email, appUrl).catch((error) => {
+      console.error("[register] verification email failed:", error);
+      return { ok: false as const, error: "Could not send verification email." };
+    });
     return {
       ok: true as const,
       email,
@@ -65,9 +68,13 @@ export async function registerUser(input: RegisterInput, appUrl?: string) {
   let emailSent = false;
 
   if (!devAutoVerified) {
-    const sendResult = await sendVerificationEmailForUser(email, appUrl);
-    verifyUrl = sendResult.ok ? sendResult.verifyUrl : undefined;
-    emailSent = sendResult.ok ? sendResult.sent : false;
+    try {
+      const sendResult = await sendVerificationEmailForUser(email, appUrl);
+      verifyUrl = sendResult.ok ? sendResult.verifyUrl : undefined;
+      emailSent = sendResult.ok ? sendResult.sent : false;
+    } catch (error) {
+      console.error("[register] verification email failed:", error);
+    }
   } else {
     console.info(`[dev] Auto-verified ${email}. Sign in is enabled immediately.`);
   }

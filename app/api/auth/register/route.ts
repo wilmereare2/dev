@@ -59,9 +59,7 @@ export async function POST(request: Request) {
             : "Account created. Use the verification link below to activate your account.",
     });
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("[register]", error);
-    }
+    console.error("[register]", error);
     return NextResponse.json(
       { error: "Could not create account. Try again in a moment." },
       { status: 500 },

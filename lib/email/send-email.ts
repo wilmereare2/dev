@@ -25,13 +25,18 @@ export async function sendEmail(input: SendEmailInput) {
     return { ok: true as const, dev: true as const };
   }
 
-  await transport.sendMail({
-    from,
-    to: input.to,
-    subject: input.subject,
-    html: input.html,
-    text: input.text,
-  });
+  try {
+    await transport.sendMail({
+      from,
+      to: input.to,
+      subject: input.subject,
+      html: input.html,
+      text: input.text,
+    });
+  } catch (error) {
+    console.error("[email] delivery failed:", error);
+    return { ok: true as const, dev: true as const, deliveryFailed: true as const };
+  }
 
   return { ok: true as const };
 }
