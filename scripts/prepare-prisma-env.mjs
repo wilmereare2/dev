@@ -14,6 +14,12 @@ export function ensurePrismaDatabaseEnv() {
     console.log("[prisma-env] DIRECT_URL not set; using DATABASE_URL.");
   }
 
+  if (process.env.DIRECT_URL.includes("-pooler.")) {
+    console.warn(
+      "[prisma-env] DIRECT_URL looks like a Neon pooler URL. Migrations need the unpooled host (no -pooler).",
+    );
+  }
+
   return { ok: true };
 }
 
