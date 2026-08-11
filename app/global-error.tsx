@@ -13,6 +13,19 @@ export default function GlobalError({
     console.error(error);
   }, [error]);
 
+  function clearSiteData() {
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith("manuelax") || key === "theme") {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    window.location.href = "/account";
+  }
+
   return (
     <html lang="en">
       <body
@@ -42,22 +55,55 @@ export default function GlobalError({
               Reference: {error.digest}
             </p>
           ) : null}
-          <button
-            type="button"
-            onClick={reset}
-            style={{
-              marginTop: "2rem",
-              padding: "0.625rem 1.25rem",
-              borderRadius: "0.5rem",
-              border: "none",
-              background: "#e11d48",
-              color: "white",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Retry
-          </button>
+          <div style={{ marginTop: "2rem", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "0.75rem" }}>
+            <button
+              type="button"
+              onClick={reset}
+              style={{
+                padding: "0.625rem 1.25rem",
+                borderRadius: "0.5rem",
+                border: "none",
+                background: "#e11d48",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = "/verify-age";
+              }}
+              style={{
+                padding: "0.625rem 1.25rem",
+                borderRadius: "0.5rem",
+                border: "1px solid rgba(255,255,255,0.2)",
+                background: "transparent",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              Age verification
+            </button>
+            <button
+              type="button"
+              onClick={clearSiteData}
+              style={{
+                padding: "0.625rem 1.25rem",
+                borderRadius: "0.5rem",
+                border: "1px solid rgba(255,255,255,0.2)",
+                background: "transparent",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              Clear saved data
+            </button>
+          </div>
         </div>
       </body>
     </html>

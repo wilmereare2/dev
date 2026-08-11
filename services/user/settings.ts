@@ -1,7 +1,14 @@
 import { prisma } from "@/lib/db/prisma";
 
 export async function getUserSettings(userId: string) {
-  return prisma.userSettings.findUnique({ where: { userId } });
+  try {
+    return await prisma.userSettings.findUnique({ where: { userId } });
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[settings] getUserSettings failed:", error);
+    }
+    return null;
+  }
 }
 
 export async function getUserProfile(userId: string) {
