@@ -5,6 +5,8 @@ import { provisionAdministrator } from "@/lib/auth/provision-admin";
 import { sendVerificationEmailForUser } from "@/lib/auth/verification";
 import { normalizePhoneNumber } from "@/lib/auth/verification-codes";
 import { parseDateOfBirth } from "@/lib/compliance/age-rules";
+import { mapPrismaErrorMessage } from "@/lib/db/prisma-error-message";
+import { databaseUnavailableMessage, withDbRetry } from "@/lib/db/connection-error";
 import type { RegisterProfileInput } from "@/lib/user/register-schema";
 import { normalizeUsername } from "@/lib/user/username";
 
@@ -24,6 +26,22 @@ function buildProfileFields(input: RegisterProfileInput, phone: string) {
 }
 
 export async function registerUser(input: RegisterProfileInput, appUrl?: string) {
+  try {
+    return await registerUserInternal(input, appUrl);
+  } catch (error) {
+    console.error("[registerUser]", error);
+    return {
+      ok: false as const,
+      code: "SERVER_ERROR" as const,
+      error: mapPrismaErrorMessage(error, {
+        fallback: "Could not create account. Try again in a moment.",
+        connectionMessage: databaseUnavailableMessage(),
+      }),
+    };
+  }
+}
+
+async function registerUserInternal(input: RegisterProfileInput, appUrl?: string) {
   const email = input.email.trim().toLowerCase();
   const username = normalizeUsername(input.username);
   const phone = normalizePhoneNumber(input.phone);
@@ -36,11 +54,13 @@ export async function registerUser(input: RegisterProfileInput, appUrl?: string)
     return { ok: false as const, code: "INVALID_DOB" as const, error: dobResult.error };
   }
 
-  const [existingEmail, existingUsername, existingPhone] = await Promise.all([
-    prisma.user.findUnique({ where: { email } }),
-    prisma.user.findUnique({ where: { username } }),
-    prisma.user.findUnique({ where: { phone } }),
-  ]);
+  const [existingEmail, existingUsername, existingPhone] = await withDbRetry(() =>
+    Promise.all([
+      prisma.user.findUnique({ where: { email } }),
+      prisma.user.findUnique({ where: { username } }),
+      prisma.user.findUnique({ where: { phone } }),
+    ]),
+  );
 
   if (existingUsername && existingUsername.email !== email) {
     return { ok: false as const, code: "USERNAME_TAKEN" as const, error: "That username is already taken." };

@@ -1,16 +1,44 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { isPrismaConnectionError } from "@/lib/db/connection-error";
+import {
+  isPrismaConnectionError,
+  publicDatabaseHealthMessage,
+  withDbRetry,
+} from "@/lib/db/connection-error";
+import { isSchemaDriftError } from "@/lib/db/prisma-error-message";
+
+async function checkDatabase() {
+  await withDbRetry(async () => {
+    await prisma.$queryRaw`SELECT 1`;
+    await prisma.user.findFirst({
+      select: {
+        username: true,
+        phone: true,
+        gender: true,
+        country: true,
+        race: true,
+        hobbies: true,
+      },
+    });
+  });
+}
 
 export async function GET() {
   let database: "connected" | "unreachable" | "error" = "connected";
   let databaseMessage: string | undefined;
+  let detail: string | undefined;
 
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await checkDatabase();
   } catch (error) {
     database = isPrismaConnectionError(error) ? "unreachable" : "error";
-    databaseMessage = error instanceof Error ? error.message : "Database check failed.";
+    detail = error instanceof Error ? error.message : "Database check failed.";
+
+    if (isSchemaDriftError(error)) {
+      detail = "Database schema is out of date. Run npx prisma migrate deploy against production Neon.";
+    }
+
+    databaseMessage = publicDatabaseHealthMessage(database, detail);
   }
 
   const ok = database === "connected";

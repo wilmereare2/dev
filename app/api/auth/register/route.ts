@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { registerUser } from "@/lib/auth/register-user";
 import { registerProfileSchema } from "@/lib/user/register-schema";
+import { mapPrismaErrorMessage } from "@/lib/db/prisma-error-message";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -23,10 +24,13 @@ export async function POST(request: Request) {
     const appUrl = new URL(request.url).origin;
     const result = await registerUser(parsed.data, appUrl);
     if (!result.ok) {
-      return NextResponse.json(
-        { error: result.error, code: result.code },
-        { status: result.code === "ALREADY_REGISTERED" ? 409 : 400 },
-      );
+      const status =
+        result.code === "ALREADY_REGISTERED"
+          ? 409
+          : result.code === "SERVER_ERROR"
+            ? 503
+            : 400;
+      return NextResponse.json({ error: result.error, code: result.code }, { status });
     }
 
     if (parsed.data.wantsToCreate && result.userId) {
@@ -56,8 +60,13 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("[register]", error);
     return NextResponse.json(
-      { error: "Could not create account. Try again in a moment." },
-      { status: 500 },
+      {
+        error: mapPrismaErrorMessage(error, {
+          fallback: "Could not create account. Try again in a moment.",
+        }),
+        code: "SERVER_ERROR",
+      },
+      { status: 503 },
     );
   }
 }
