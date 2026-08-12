@@ -3,11 +3,25 @@ import { cn } from "@/lib/utils";
 
 type AuthSplitLayoutProps = {
   children: React.ReactNode;
-  variant?: "account" | "verify";
+  variant?: "account" | "verify" | "register";
   className?: string;
 };
 
 export function AuthSplitLayout({ children, variant = "account", className }: AuthSplitLayoutProps) {
+  if (variant === "register") {
+    return (
+      <section
+        className={cn(
+          "relative mx-auto w-full max-w-xl px-4 py-8 sm:px-6 lg:py-10",
+          className,
+        )}
+      >
+        <AuthMarketingPanel variant="account" compact className="mb-6" />
+        {children}
+      </section>
+    );
+  }
+
   return (
     <section
       className={cn(

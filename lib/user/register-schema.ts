@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isValidUsername, normalizeUsername } from "@/lib/user/username";
 import { parseDateOfBirth } from "@/lib/compliance/age-rules";
+import { COUNTRY_SET, GENDER_SET, RACE_SET } from "@/lib/user/profile-options";
 
 export const registerProfileSchema = z.object({
   username: z
@@ -13,9 +14,21 @@ export const registerProfileSchema = z.object({
     .string()
     .trim()
     .refine((value) => parseDateOfBirth(value).ok, "Enter a valid date of birth."),
-  gender: z.string().trim().min(1, "Gender is required.").max(40),
-  country: z.string().trim().min(1, "Country is required.").max(80),
-  race: z.string().trim().min(1, "Race is required.").max(80),
+  gender: z
+    .string()
+    .trim()
+    .min(1, "Gender is required.")
+    .refine((value) => GENDER_SET.has(value), "Select a valid gender."),
+  country: z
+    .string()
+    .trim()
+    .min(1, "Country is required.")
+    .refine((value) => COUNTRY_SET.has(value), "Select a valid country."),
+  race: z
+    .string()
+    .trim()
+    .min(1, "Race is required.")
+    .refine((value) => RACE_SET.has(value), "Select a valid race or ethnicity."),
   hobbies: z.string().trim().min(1, "Hobbies are required.").max(500),
   email: z.string().email("Enter a valid email address."),
   phone: z.string().trim().min(10, "Enter a valid phone number with country code.").max(20),

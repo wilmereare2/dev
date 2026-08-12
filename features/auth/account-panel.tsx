@@ -8,7 +8,7 @@ import { signIn, signOut } from "next-auth/react";
 import { clearAgeVerificationCookie } from "@/features/compliance/verify-age-form";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { EmailVerificationPanel } from "@/features/auth/email-verification-panel";
-import { RegisterProfileFields } from "@/features/auth/register-profile-fields";
+import { RegisterOnboarding, type RegisterFormValues } from "@/features/auth/register-onboarding";
 import { Loader2, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,24 @@ type AuthMode = "signin" | "register";
 const inputClassName =
   "mt-2 h-11 w-full rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground outline-none transition focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30 disabled:opacity-60";
 
+const emptyRegisterValues: RegisterFormValues = {
+  username: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
+  name: "",
+  dateOfBirth: "",
+  gender: "",
+  country: "",
+  race: "",
+  hobbies: "",
+  phone: "",
+  telegram: "",
+  whatsApp: "",
+  zangi: "",
+  wantsToCreate: false,
+};
+
 function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPanelProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -30,25 +48,14 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [name, setName] = useState("");
-  const [username, setUsername] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
-  const [gender, setGender] = useState("");
-  const [country, setCountry] = useState("");
-  const [race, setRace] = useState("");
-  const [hobbies, setHobbies] = useState("");
-  const [phone, setPhone] = useState("");
-  const [telegram, setTelegram] = useState("");
-  const [whatsApp, setWhatsApp] = useState("");
-  const [zangi, setZangi] = useState("");
-  const [pendingPhone, setPendingPhone] = useState<string | null>(null);
+  const [registerValues, setRegisterValues] = useState<RegisterFormValues>(emptyRegisterValues);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
   const [verificationEmailSent, setVerificationEmailSent] = useState<boolean | null>(null);
-  const [wantsToCreate, setWantsToCreate] = useState(false);
+  const [pendingPhone, setPendingPhone] = useState<string | null>(null);
   const passwordResetComplete = searchParams.get("reset") === "1";
 
   useEffect(() => {
@@ -215,7 +222,7 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
     return (
       <EmailVerificationPanel
         email={pendingVerificationEmail}
-        registeredPhone={pendingPhone ?? phone}
+        registeredPhone={pendingPhone ?? registerValues.phone}
         notice={notice}
         error={error}
         verificationUrl={verificationUrl}
@@ -243,81 +250,86 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
     );
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleRegisterSubmit() {
+    setError(null);
+    setNotice(null);
+    setPending(true);
+
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: registerValues.username,
+          name: registerValues.name.trim(),
+          dateOfBirth: registerValues.dateOfBirth,
+          gender: registerValues.gender,
+          country: registerValues.country,
+          race: registerValues.race,
+          hobbies: registerValues.hobbies,
+          email: registerValues.email.trim().toLowerCase(),
+          phone: registerValues.phone,
+          password: registerValues.password,
+          telegram: registerValues.telegram,
+          whatsApp: registerValues.whatsApp,
+          zangi: registerValues.zangi,
+          wantsToCreate: registerValues.wantsToCreate,
+        }),
+      });
+
+      const payload = (await response.json()) as {
+        error?: string;
+        code?: string;
+        email?: string;
+        devAutoVerified?: boolean;
+        verifyUrl?: string;
+        emailSent?: boolean;
+        deliveryError?: string;
+        message?: string;
+        resumed?: boolean;
+      };
+      if (!response.ok) {
+        if (payload.code === "ALREADY_REGISTERED") {
+          setMode("signin");
+          setEmail(registerValues.email.trim().toLowerCase());
+          setNotice(payload.error ?? "This email is already registered. Sign in to continue.");
+          return;
+        }
+        setError(payload.error ?? "Could not create account.");
+        return;
+      }
+
+      const registeredEmail = payload.email ?? registerValues.email.trim().toLowerCase();
+      if (payload.devAutoVerified) {
+        setNotice(payload.message ?? "Account created. You can sign in now.");
+        setMode("signin");
+        setEmail(registeredEmail);
+        return;
+      }
+
+      setPendingVerificationEmail(registeredEmail);
+      setPendingPhone(registerValues.phone.trim());
+      setVerificationUrl(payload.verifyUrl ?? null);
+      setVerificationEmailSent(payload.emailSent ?? null);
+      if (payload.deliveryError) {
+        setError(payload.deliveryError);
+      } else if (payload.message) {
+        setNotice(payload.message);
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleSignInSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setNotice(null);
     setPending(true);
 
     try {
-      if (mode === "register") {
-        if (password !== confirmPassword) {
-          setError("Passwords do not match.");
-          return;
-        }
-
-        const response = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username,
-            name: name.trim(),
-            dateOfBirth,
-            gender,
-            country,
-            race,
-            hobbies,
-            email,
-            phone,
-            password,
-            telegram,
-            whatsApp,
-            zangi,
-            wantsToCreate,
-          }),
-        });
-
-        const payload = (await response.json()) as {
-          error?: string;
-          code?: string;
-          email?: string;
-          devAutoVerified?: boolean;
-          verifyUrl?: string;
-          emailSent?: boolean;
-          deliveryError?: string;
-          message?: string;
-          resumed?: boolean;
-        };
-        if (!response.ok) {
-          if (payload.code === "ALREADY_REGISTERED") {
-            setMode("signin");
-            setNotice(payload.error ?? "This email is already registered. Sign in to continue.");
-            return;
-          }
-          setError(payload.error ?? "Could not create account.");
-          return;
-        }
-
-        const registeredEmail = payload.email ?? email.trim().toLowerCase();
-        if (payload.devAutoVerified) {
-          setNotice(payload.message ?? "Account created. You can sign in now.");
-          setMode("signin");
-          setEmail(registeredEmail);
-          return;
-        }
-
-        setPendingVerificationEmail(registeredEmail);
-        setPendingPhone(phone.trim());
-        setVerificationUrl(payload.verifyUrl ?? null);
-        setVerificationEmailSent(payload.emailSent ?? null);
-        if (payload.deliveryError) {
-          setError(payload.deliveryError);
-        } else if (payload.message) {
-          setNotice(payload.message);
-        }
-        return;
-      }
-
       let result: Awaited<ReturnType<typeof signIn>> | null = null;
 
       try {
@@ -400,11 +412,13 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
     setMode(nextMode);
     setError(null);
     setNotice(null);
-    setConfirmPassword("");
+    if (nextMode === "signin") {
+      setConfirmPassword("");
+    }
   }
 
   return (
-    <AuthSplitLayout>
+    <AuthSplitLayout variant={mode === "register" ? "register" : "account"}>
       <div className="rounded-2xl border border-border/60 bg-surface/70 p-6 shadow-xl backdrop-blur-md sm:p-8">
       <div className="flex items-center gap-2 text-accent">
         <Shield className="size-4" aria-hidden />
@@ -416,7 +430,7 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
         {mode === "signin"
           ? "Sign in with your email and password."
-          : "Create your public profile and private contact details. Other members reach you by @username in chat only."}
+          : "Set up your account in three quick steps. Other members reach you by @username in chat only."}
       </p>
 
       {notice ? (
@@ -452,141 +466,80 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
         </button>
       </div>
 
-      <form
-        className="mt-6 space-y-4"
-        onSubmit={handleSubmit}
-      >
-        {mode === "register" ? (
-          <RegisterProfileFields
-            username={username}
-            setUsername={setUsername}
-            name={name}
-            setName={setName}
-            dateOfBirth={dateOfBirth}
-            setDateOfBirth={setDateOfBirth}
-            gender={gender}
-            setGender={setGender}
-            country={country}
-            setCountry={setCountry}
-            race={race}
-            setRace={setRace}
-            hobbies={hobbies}
-            setHobbies={setHobbies}
-            phone={phone}
-            setPhone={setPhone}
-            telegram={telegram}
-            setTelegram={setTelegram}
-            whatsApp={whatsApp}
-            setWhatsApp={setWhatsApp}
-            zangi={zangi}
-            setZangi={setZangi}
-          />
-        ) : null}
-
-        <div>
-          <label htmlFor="email" className="text-sm font-medium text-foreground">
-            Email {mode === "register" ? <span className="text-muted-foreground">(private, verified)</span> : null}
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
-            className={inputClassName}
+      {mode === "register" ? (
+        <div className="mt-6">
+          <RegisterOnboarding
+            values={registerValues}
+            onChange={(patch) => setRegisterValues((current) => ({ ...current, ...patch }))}
+            onSubmit={handleRegisterSubmit}
+            pending={pending}
+            error={error}
           />
         </div>
-
-        <div>
-          <div className="flex items-center justify-between gap-3">
-            <label htmlFor="password" className="text-sm font-medium text-foreground">
-              Password
+      ) : (
+        <form className="mt-6 space-y-4" onSubmit={handleSignInSubmit}>
+          <div>
+            <label htmlFor="email" className="text-sm font-medium text-foreground">
+              Email
             </label>
-            {mode === "signin" ? (
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
+              className={inputClassName}
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="password" className="text-sm font-medium text-foreground">
+                Password
+              </label>
               <Link href="/account/forgot-password" className="text-xs text-accent hover:underline">
                 Forgot password?
               </Link>
+            </div>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete={passwordResetComplete ? "new-password" : "current-password"}
+              required
+              minLength={8}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder={
+                passwordResetComplete
+                  ? "Enter the new password you just created"
+                  : "Your password"
+              }
+              className={inputClassName}
+              key={passwordResetComplete ? "fresh-password" : "password"}
+            />
+            {passwordResetComplete ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Clear this field and type your new password manually. Do not rely on saved autofill.
+              </p>
             ) : null}
           </div>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete={passwordResetComplete ? "new-password" : mode === "signin" ? "current-password" : "new-password"}
-            required
-            minLength={8}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder={
-              passwordResetComplete
-                ? "Enter the new password you just created"
-                : mode === "register"
-                  ? "At least 8 characters"
-                  : "Your password"
-            }
-            className={inputClassName}
-            key={passwordResetComplete ? "fresh-password" : "password"}
-          />
-          {passwordResetComplete ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Clear this field and type your new password manually. Do not rely on saved autofill.
+
+          {error ? (
+            <p className="rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-accent" role="alert">
+              {error}
             </p>
           ) : null}
-        </div>
 
-        {mode === "register" ? (
-          <>
-            <div>
-              <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
-                Confirm password
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                minLength={8}
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder="Repeat your password"
-                className={inputClassName}
-              />
-            </div>
-            <label className="flex items-start gap-3 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={wantsToCreate}
-                onChange={(event) => setWantsToCreate(event.target.checked)}
-                className="mt-1 size-4"
-              />
-              <span>
-                I want to upload content (photos, videos, text). Enables creator tools after verification.
-              </span>
-            </label>
-          </>
-        ) : null}
-
-        {error ? (
-          <p className="rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-accent">
-            {error}
-          </p>
-        ) : null}
-
-        <Button type="submit" disabled={pending} className="w-full" variant={mode === "signin" ? "premium" : "default"}>
-          {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-          {pending
-            ? mode === "signin"
-              ? "Signing in…"
-              : "Creating account…"
-            : mode === "signin"
-              ? "Sign in"
-              : "Create account"}
-        </Button>
-      </form>
+          <Button type="submit" disabled={pending} className="w-full" variant="premium">
+            {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+            {pending ? "Signing in…" : "Sign in"}
+          </Button>
+        </form>
+      )}
 
       {googleAuthEnabled ? (
         <div className="mt-4">
