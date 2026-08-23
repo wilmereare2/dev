@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isValidUsername, normalizeUsername } from "@/lib/user/username";
 import { parseDateOfBirth } from "@/lib/compliance/age-rules";
 import { COUNTRY_SET, GENDER_SET, RACE_SET } from "@/lib/user/profile-options";
+import { normalizePhoneNumber } from "@/lib/auth/verification-codes";
 
 export const registerProfileSchema = z.object({
   username: z
@@ -31,7 +32,16 @@ export const registerProfileSchema = z.object({
     .refine((value) => RACE_SET.has(value), "Select a valid race or ethnicity."),
   hobbies: z.string().trim().min(1, "Hobbies are required.").max(500),
   email: z.string().email("Enter a valid email address."),
-  phone: z.string().trim().min(10, "Enter a valid phone number with country code.").max(20),
+  phone: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => value ?? "")
+    .refine(
+      (value) => value === "" || normalizePhoneNumber(value) !== null,
+      "Enter a valid phone number with country code.",
+    ),
   password: z.string().min(8, "Password must be at least 8 characters."),
   telegram: z.string().trim().max(80).optional().or(z.literal("")),
   whatsApp: z.string().trim().max(80).optional().or(z.literal("")),

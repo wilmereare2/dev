@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 type AccountPanelProps = {
   session: Session | null;
   googleAuthEnabled?: boolean;
+  phoneVerificationRequired?: boolean;
+  smsVerificationAvailable?: boolean;
 };
 
 type AuthMode = "signin" | "register";
@@ -41,7 +43,12 @@ const emptyRegisterValues: RegisterFormValues = {
   wantsToCreate: false,
 };
 
-function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPanelProps) {
+function AccountPanelContent({
+  session,
+  googleAuthEnabled = false,
+  phoneVerificationRequired = false,
+  smsVerificationAvailable = false,
+}: AccountPanelProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<AuthMode>("signin");
@@ -167,6 +174,51 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
     }
   }, []);
 
+  const completeRegistrationSignIn = useCallback(
+    async (targetEmail: string, registrationPassword: string) => {
+      setPendingVerificationEmail(null);
+      setVerificationUrl(null);
+      setVerificationEmailSent(null);
+      setPendingPhone(null);
+      setError(null);
+      setEmail(targetEmail);
+      setMode("signin");
+
+      if (!registrationPassword) {
+        setNotice("Account ready. Sign in with your email and password.");
+        return;
+      }
+
+      setPending(true);
+      try {
+        let result: Awaited<ReturnType<typeof signIn>> | null = null;
+
+        try {
+          result = await signIn("credentials", {
+            email: targetEmail.trim().toLowerCase(),
+            password: registrationPassword,
+            redirect: false,
+          });
+        } catch {
+          result = { error: "CredentialsSignin", ok: false, status: 401, url: null, code: undefined };
+        }
+
+        if (result?.ok) {
+          setRegisterValues(emptyRegisterValues);
+          router.push("/");
+          router.refresh();
+          return;
+        }
+
+        setPassword(registrationPassword);
+        setNotice("Email verified. Sign in to continue.");
+      } finally {
+        setPending(false);
+      }
+    },
+    [router],
+  );
+
   if (session?.user) {
     return (
       <AuthSplitLayout>
@@ -222,22 +274,17 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
     return (
       <EmailVerificationPanel
         email={pendingVerificationEmail}
-        registeredPhone={pendingPhone ?? registerValues.phone}
+        registeredPhone={pendingPhone}
         notice={notice}
         error={error}
         verificationUrl={verificationUrl}
         emailSent={verificationEmailSent}
-        smsEnabled
+        smsEnabled={smsVerificationAvailable}
+        phoneVerificationRequired={phoneVerificationRequired}
         pending={pending}
         onResend={() => resendVerification(pendingVerificationEmail)}
         onVerified={() => {
-          setPendingVerificationEmail(null);
-          setVerificationUrl(null);
-          setVerificationEmailSent(null);
-          setMode("signin");
-          setEmail(pendingVerificationEmail);
-          setNotice("Email verified. Sign in to continue.");
-          setError(null);
+          void completeRegistrationSignIn(pendingVerificationEmail, registerValues.password);
         }}
         onBackToSignIn={() => {
           setPendingVerificationEmail(null);
@@ -245,6 +292,7 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
           setVerificationEmailSent(null);
           setMode("signin");
           setEmail(pendingVerificationEmail);
+          setPassword(registerValues.password);
         }}
       />
     );
@@ -301,14 +349,12 @@ function AccountPanelContent({ session, googleAuthEnabled = false }: AccountPane
 
       const registeredEmail = payload.email ?? registerValues.email.trim().toLowerCase();
       if (payload.devAutoVerified) {
-        setNotice(payload.message ?? "Account created. You can sign in now.");
-        setMode("signin");
-        setEmail(registeredEmail);
+        await completeRegistrationSignIn(registeredEmail, registerValues.password);
         return;
       }
 
       setPendingVerificationEmail(registeredEmail);
-      setPendingPhone(registerValues.phone.trim());
+      setPendingPhone(registerValues.phone.trim() || null);
       setVerificationUrl(payload.verifyUrl ?? null);
       setVerificationEmailSent(payload.emailSent ?? null);
       if (payload.deliveryError) {

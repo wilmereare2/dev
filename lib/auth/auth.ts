@@ -7,6 +7,7 @@ import { parseRole } from "@/lib/auth/roles";
 import { ensureDesignatedAdminAccess } from "@/lib/auth/provision-admin";
 import { isDesignatedAdminEmail } from "@/lib/auth/admin-email";
 import { verifyPassword } from "@/lib/auth/password";
+import { isPhoneVerificationRequired } from "@/lib/auth/phone-verification-policy";
 import { resolveDbUserId } from "@/lib/auth/resolve-db-user";
 import { avatarSessionUrl, clampAvatarFocus, clampAvatarScale, normalizeAvatarFraming } from "@/lib/user/avatar";
 import { getComplianceStatus } from "@/services/user/compliance";
@@ -66,7 +67,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (!valid) return null;
 
           if (!user.emailVerified) return null;
-          if (process.env.NODE_ENV === "production" && user.phone && !user.phoneVerified) return null;
+          if (isPhoneVerificationRequired() && user.phone && !user.phoneVerified) return null;
 
           return {
             id: user.id,

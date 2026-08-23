@@ -14,6 +14,7 @@ type EmailVerificationPanelProps = {
   verificationUrl?: string | null;
   emailSent?: boolean | null;
   smsEnabled?: boolean;
+  phoneVerificationRequired?: boolean;
   onResend: () => Promise<void>;
   onVerified: () => void;
   onBackToSignIn: () => void;
@@ -27,7 +28,8 @@ export function EmailVerificationPanel({
   error,
   verificationUrl,
   emailSent,
-  smsEnabled = true,
+  smsEnabled = false,
+  phoneVerificationRequired = false,
   onResend,
   onVerified,
   onBackToSignIn,
@@ -71,6 +73,18 @@ export function EmailVerificationPanel({
         return;
       }
       setEmailVerified(true);
+      const hasRegisteredPhone = Boolean(registeredPhone?.trim());
+      const showPhoneStep = smsEnabled && hasRegisteredPhone;
+
+      if (!showPhoneStep || !phoneVerificationRequired) {
+        if (!showPhoneStep) {
+          onVerified();
+          return;
+        }
+        setLocalNotice("Email verified. Verify your phone now (optional) or skip to sign in.");
+        return;
+      }
+
       setLocalNotice("Email verified. Next, verify your phone number by SMS.");
     } catch {
       setLocalError("Could not verify code. Try again.");
@@ -214,17 +228,20 @@ export function EmailVerificationPanel({
               </Button>
             </div>
           </>
-        ) : smsEnabled ? (
+        ) : smsEnabled && registeredPhone?.trim() ? (
           <>
             <div className="flex items-center gap-2 text-accent">
               <Smartphone className="size-4" aria-hidden />
-              <p className="font-display text-xs font-semibold uppercase tracking-[0.22em]">Verify phone</p>
+              <p className="font-display text-xs font-semibold uppercase tracking-[0.22em]">
+                {phoneVerificationRequired ? "Verify phone" : "Verify phone (optional)"}
+              </p>
             </div>
             <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-              Confirm your phone number
+              {phoneVerificationRequired ? "Confirm your phone number" : "Verify your phone number"}
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
               Your phone stays private. We only use it for account security — never shown to other members.
+              {!phoneVerificationRequired ? " You can skip this step and verify later in settings." : null}
             </p>
 
             <form
@@ -267,8 +284,26 @@ export function EmailVerificationPanel({
                 {phoneStep === "sent" ? "Verify phone and finish" : "Send SMS code"}
               </Button>
             </form>
+
+            {!phoneVerificationRequired ? (
+              <div className="mt-4">
+                <Button type="button" variant="outline" className="w-full" onClick={onVerified}>
+                  Skip for now
+                </Button>
+              </div>
+            ) : null}
           </>
-        ) : null}
+        ) : (
+          <>
+            <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight sm:text-3xl">You&apos;re all set</h1>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Email verified. Continue to your account.
+            </p>
+            <Button type="button" className="mt-6 w-full" onClick={onVerified}>
+              Continue
+            </Button>
+          </>
+        )}
       </div>
     </AuthSplitLayout>
   );

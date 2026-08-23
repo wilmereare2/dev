@@ -10,7 +10,7 @@ import { databaseUnavailableMessage, withDbRetry } from "@/lib/db/connection-err
 import type { RegisterProfileInput } from "@/lib/user/register-schema";
 import { normalizeUsername } from "@/lib/user/username";
 
-function buildProfileFields(input: RegisterProfileInput, phone: string) {
+function buildProfileFields(input: RegisterProfileInput, phone: string | null) {
   return {
     username: normalizeUsername(input.username),
     name: input.name.trim(),
@@ -44,8 +44,9 @@ export async function registerUser(input: RegisterProfileInput, appUrl?: string)
 async function registerUserInternal(input: RegisterProfileInput, appUrl?: string) {
   const email = input.email.trim().toLowerCase();
   const username = normalizeUsername(input.username);
-  const phone = normalizePhoneNumber(input.phone);
-  if (!phone) {
+  const phoneInput = input.phone.trim();
+  const phone = phoneInput ? normalizePhoneNumber(phoneInput) : null;
+  if (phoneInput && !phone) {
     return { ok: false as const, code: "INVALID_PHONE" as const, error: "Enter a valid phone number with country code." };
   }
 
@@ -54,13 +55,12 @@ async function registerUserInternal(input: RegisterProfileInput, appUrl?: string
     return { ok: false as const, code: "INVALID_DOB" as const, error: dobResult.error };
   }
 
-  const [existingEmail, existingUsername, existingPhone] = await withDbRetry(() =>
-    Promise.all([
-      prisma.user.findUnique({ where: { email } }),
-      prisma.user.findUnique({ where: { username } }),
-      prisma.user.findUnique({ where: { phone } }),
-    ]),
-  );
+  const [existingEmail, existingUsername, existingPhone] = await withDbRetry(async () => {
+    const byEmail = await prisma.user.findUnique({ where: { email } });
+    const byUsername = await prisma.user.findUnique({ where: { username } });
+    const byPhone = phone ? await prisma.user.findUnique({ where: { phone } }) : null;
+    return [byEmail, byUsername, byPhone] as const;
+  });
 
   if (existingUsername && existingUsername.email !== email) {
     return { ok: false as const, code: "USERNAME_TAKEN" as const, error: "That username is already taken." };
@@ -121,7 +121,7 @@ async function registerUserInternal(input: RegisterProfileInput, appUrl?: string
       passwordHash,
       role: assignAdmin ? "ADMIN" : "USER",
       emailVerified: devAutoVerified || assignAdmin ? new Date() : null,
-      phoneVerified: devAutoVerified || assignAdmin ? new Date() : null,
+      phoneVerified: (devAutoVerified || assignAdmin) && phone ? new Date() : null,
       settings: { create: { dateOfBirth: dobResult.date } },
     },
   });

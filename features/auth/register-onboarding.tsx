@@ -146,7 +146,8 @@ function validateStep(step: number, values: RegisterFormValues): string | null {
   }
 
   if (step === 3) {
-    if (values.phone.replace(/\D/g, "").length < 10) {
+    const digits = values.phone.replace(/\D/g, "");
+    if (values.phone.trim() && digits.length < 10) {
       return "Enter a valid phone number with country code.";
     }
     return null;
@@ -347,7 +348,7 @@ export function RegisterOnboarding({ values, onChange, onSubmit, pending, error 
               only — communicate on-site using your @username.
             </p>
             <div>
-              <FieldLabel htmlFor="register-phone" hint="(required, verified by SMS)">
+              <FieldLabel htmlFor="register-phone" hint="(optional)">
                 Phone
               </FieldLabel>
               <input
@@ -360,6 +361,9 @@ export function RegisterOnboarding({ values, onChange, onSubmit, pending, error 
                 placeholder="+1 555 123 4567"
                 className={registerInputClassName}
               />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Optional. If provided, you can verify by SMS after email confirmation.
+              </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <div>

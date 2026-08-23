@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       message: result.devAutoVerified
         ? "Account created. You can sign in now."
         : result.emailSent
-          ? "Check your email for a verification code. Phone verification is required before messaging."
+          ? "Check your email for a verification code."
           : deliveryError ??
             "Account created, but the verification email could not be delivered yet.",
     });
