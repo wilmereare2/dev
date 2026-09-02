@@ -24,14 +24,20 @@ type MessageNavProps = {
 export function MessageNav({ filter, onFilterChange, layout = "sidebar", className, style, actions }: MessageNavProps) {
   if (layout === "tabs") {
     return (
-      <nav aria-label="Message filters" className={cn("flex gap-1 border-b border-border/60 px-3 py-2", className)}>
+      <nav
+        aria-label="Message filters"
+        className={cn(
+          "flex gap-1 overflow-x-auto border-b border-border/60 px-2 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          className,
+        )}
+      >
         {FILTERS.map(({ id, label }) => (
           <button
             key={id}
             type="button"
             onClick={() => onFilterChange(id)}
             className={cn(
-              "rounded-lg px-3 py-1.5 text-xs font-medium transition",
+              "shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition sm:px-3 sm:text-xs",
               filter === id
                 ? "bg-accent/15 text-accent"
                 : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",

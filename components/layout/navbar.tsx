@@ -47,21 +47,24 @@ export function Navbar({ navItems }: NavbarProps) {
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background shadow-sm supports-[backdrop-filter]:bg-background/95 supports-[backdrop-filter]:backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-8">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-6 lg:gap-8">
             <Link
               href="/"
-              className="font-display text-xl font-bold tracking-tight sm:text-2xl"
+              className="shrink-0 font-display text-lg font-bold tracking-tight sm:text-xl lg:text-2xl"
               onClick={() => setOpen(false)}
             >
               manuela<span className="text-accent">X</span>
             </Link>
 
-            <nav className="hidden items-center gap-0.5 md:flex" aria-label="Primary">
+            <nav
+              className="hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto md:flex [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              aria-label="Primary"
+            >
               {navItems.map((item) => {
                 const active = isActive(item.href);
                 return (
-                  <Link key={item.href} href={item.href} className={linkClass(item.href, active)}>
+                  <Link key={item.href} href={item.href} className={cn(linkClass(item.href, active), "shrink-0 whitespace-nowrap")}>
                     {navLabel(item)}
                     {item.comingSoon ? (
                       <span className="ml-1.5 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

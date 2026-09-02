@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { ComplianceGateShell } from "@/components/layout/compliance-gate-shell";
 import { SiteShell } from "@/components/layout/site-shell";
 import { shouldShowAppSidebar } from "@/components/layout/app-sidebar";
+import { resolveSiteLayoutMode } from "@/lib/site/layout-mode";
 import { resolvePageBackground } from "@/lib/site/page-theme";
 import type { NavItem } from "@/types";
 
@@ -23,6 +24,7 @@ export function SiteLayoutClient({
   const pathname = usePathname();
   const isComplianceGate = pathname === "/verify-age";
   const pageBackground = resolvePageBackground(pathname);
+  const layoutMode = resolveSiteLayoutMode(pathname);
 
   if (isComplianceGate) {
     return <ComplianceGateShell>{children}</ComplianceGateShell>;
@@ -35,6 +37,10 @@ export function SiteLayoutClient({
       compactFooter={compactFooter}
       pageBackground={pageBackground}
       showSidebar={shouldShowAppSidebar(pathname)}
+      wide={layoutMode.wide}
+      flush={layoutMode.flush}
+      hideFooter={layoutMode.hideFooter}
+      fillViewport={layoutMode.fillViewport}
     >
       {children}
     </SiteShell>

@@ -100,7 +100,7 @@ export function NavActions() {
   );
 
   return (
-    <div className="hidden items-center gap-1 sm:flex">
+    <div className="flex items-center gap-0.5 sm:gap-1">
       <div ref={rootRef} className="relative">
         <Button
           type="button"
@@ -182,17 +182,17 @@ export function NavActions() {
       </Button>
 
       {canUpload ? (
-        <Button asChild size="sm" variant="secondary" className="hidden md:inline-flex">
+        <Button asChild size="sm" variant="secondary" className="hidden lg:inline-flex">
           <Link href="/create/upload">
             <Upload className="size-4" />
-            Upload
+            <span className="hidden xl:inline">Upload</span>
           </Link>
         </Button>
       ) : (
-        <Button asChild size="sm" variant="secondary" className="hidden md:inline-flex">
+        <Button asChild size="sm" variant="secondary" className="hidden lg:inline-flex">
           <Link href="/create">
             <Upload className="size-4" />
-            Create
+            <span className="hidden xl:inline">Create</span>
           </Link>
         </Button>
       )}

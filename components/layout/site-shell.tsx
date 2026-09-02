@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { PageBackground } from "@/components/layout/page-background";
 import { AgeGateBanner } from "@/components/layout/age-gate-banner";
 import { CookieConsentBanner } from "@/components/layout/cookie-consent-banner";
+import { cn } from "@/lib/utils";
 import type { PageBackgroundVariant } from "@/lib/site/page-theme";
 import type { NavItem } from "@/types";
 
@@ -14,6 +15,10 @@ type SiteShellProps = {
   compactFooter?: boolean;
   pageBackground?: PageBackgroundVariant;
   showSidebar?: boolean;
+  wide?: boolean;
+  flush?: boolean;
+  hideFooter?: boolean;
+  fillViewport?: boolean;
 };
 
 export function SiteShell({
@@ -23,6 +28,10 @@ export function SiteShell({
   compactFooter,
   pageBackground = "default",
   showSidebar = true,
+  wide = false,
+  flush = false,
+  hideFooter = false,
+  fillViewport = false,
 }: SiteShellProps) {
   return (
     <div className="relative flex min-h-dvh flex-col">
@@ -33,12 +42,19 @@ export function SiteShell({
       />
       {ageGateText ? <AgeGateBanner message={ageGateText} /> : null}
       <Navbar navItems={navItems} />
-      <div className="relative mx-auto flex w-full max-w-7xl flex-1 items-start gap-0 px-4 sm:px-6 lg:gap-8 lg:px-8">
+      <div
+        className={cn(
+          "relative mx-auto flex w-full flex-1 items-stretch gap-0",
+          wide ? "max-w-[1600px]" : "max-w-7xl",
+          flush ? "px-0" : "px-4 sm:px-6 lg:gap-8 lg:px-8",
+          fillViewport && "min-h-0",
+        )}
+      >
         {showSidebar ? <AppSidebar /> : null}
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className={cn("min-w-0 flex-1", fillViewport && "flex min-h-0 flex-col")}>{children}</main>
       </div>
       <CookieConsentBanner />
-      <Footer compact={compactFooter} />
+      {hideFooter ? null : <Footer compact={compactFooter} />}
     </div>
   );
 }

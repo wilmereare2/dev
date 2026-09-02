@@ -242,11 +242,25 @@ export function MessagesHub({ session }: MessagesHubProps) {
   }, []);
 
   useEffect(() => {
-    const media = window.matchMedia("(min-width: 768px)");
-    const sync = () => setInboxResizable(media.matches);
+    const desktopMedia = window.matchMedia("(min-width: 1024px)");
+    const tabletMedia = window.matchMedia("(min-width: 768px)");
+
+    const sync = () => {
+      setInboxResizable(tabletMedia.matches);
+      if (!desktopMedia.matches && inboxWidthRef.current > 280) {
+        const next = 280;
+        setInboxWidth(next);
+        inboxWidthRef.current = next;
+      }
+    };
+
     sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
+    desktopMedia.addEventListener("change", sync);
+    tabletMedia.addEventListener("change", sync);
+    return () => {
+      desktopMedia.removeEventListener("change", sync);
+      tabletMedia.removeEventListener("change", sync);
+    };
   }, []);
 
   useEffect(() => {
@@ -1025,8 +1039,8 @@ export function MessagesHub({ session }: MessagesHubProps) {
 
   return (
     <>
-      <section className="mx-auto w-full max-w-[1600px] px-3 py-4 sm:px-4 lg:px-6">
-        <div className="flex h-[min(720px,calc(100dvh-var(--site-header-offset)-var(--site-bottom-offset)-6rem))] min-h-[480px] flex-col overflow-hidden rounded-2xl border border-border bg-surface/40 shadow-xl md:flex-row">
+      <section className="flex min-h-0 flex-1 flex-col px-2 py-2 sm:px-3 sm:py-3 lg:px-4">
+        <div className="flex h-[calc(100dvh-var(--site-header-offset)-var(--site-bottom-offset)-0.75rem)] max-h-[900px] min-h-[320px] flex-1 flex-col overflow-hidden rounded-xl border border-border bg-surface/40 shadow-xl sm:min-h-[420px] sm:rounded-2xl md:flex-row">
           <MessageNav
             filter={inboxFilter}
             onFilterChange={setInboxFilter}
@@ -1235,12 +1249,12 @@ export function MessagesHub({ session }: MessagesHubProps) {
             onPointerMove={moveInboxResize}
             onPointerUp={endInboxResize}
             onPointerCancel={endInboxResize}
-            className="relative z-0 hidden shrink-0 cursor-col-resize bg-border/40 transition hover:bg-accent/40 md:block md:w-1.5"
+            className="relative z-0 hidden shrink-0 cursor-col-resize bg-border/40 transition hover:bg-accent/40 lg:block lg:w-1.5"
           />
 
           <div
             className={cn(
-              "relative z-[1] flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background/20",
+              "relative z-[1] flex min-h-0 min-w-[min(100%,280px)] flex-1 flex-col overflow-hidden bg-background/20",
               !mobileShowThread ? "hidden md:flex" : "flex",
             )}
           >

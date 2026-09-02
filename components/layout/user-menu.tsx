@@ -27,19 +27,31 @@ export function UserMenu() {
 
   if (status === "loading") {
     return (
-      <div className="hidden size-9 animate-pulse rounded-full bg-muted sm:block" aria-hidden />
+      <>
+        <div className="size-9 animate-pulse rounded-full bg-muted sm:hidden" aria-hidden />
+        <div className="hidden size-9 animate-pulse rounded-full bg-muted sm:block" aria-hidden />
+      </>
     );
   }
 
   if (!session?.user) {
     return (
-      <Link
-        href="/account"
-        className="hidden rounded-full border border-border bg-surface/70 px-4 py-2 text-sm font-medium transition hover:border-accent/40 sm:inline-flex sm:items-center sm:gap-2"
-      >
-        <User className="size-4" />
-        {t("common.signIn")}
-      </Link>
+      <>
+        <Link
+          href="/account"
+          className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-surface/70 sm:hidden"
+          aria-label={t("common.signIn")}
+        >
+          <User className="size-4" />
+        </Link>
+        <Link
+          href="/account"
+          className="hidden rounded-full border border-border bg-surface/70 px-4 py-2 text-sm font-medium transition hover:border-accent/40 sm:inline-flex sm:items-center sm:gap-2"
+        >
+          <User className="size-4" />
+          {t("common.signIn")}
+        </Link>
+      </>
     );
   }
 
@@ -48,10 +60,29 @@ export function UserMenu() {
   const isStaff = user.role === "ADMIN" || user.role === "MODERATOR";
 
   return (
-    <div ref={rootRef} className="relative hidden sm:block">
+    <div ref={rootRef} className="relative">
       <button
         type="button"
-        className="flex items-center gap-2 rounded-full border border-border bg-surface/70 py-1 pl-1 pr-3 transition hover:border-accent/40"
+        className="flex size-9 items-center justify-center rounded-full border border-border bg-surface/70 transition hover:border-accent/40 sm:hidden"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={label}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <UserAvatar
+          name={user.name}
+          email={user.email}
+          image={user.image}
+          size="sm"
+          imageScale={user.avatarScale ?? 100}
+          imageFocusX={user.avatarFocusX ?? 0}
+          imageFocusY={user.avatarFocusY ?? 0}
+        />
+      </button>
+
+      <button
+        type="button"
+        className="hidden max-w-[min(100%,12rem)] items-center gap-2 rounded-full border border-border bg-surface/70 py-1 pl-1 pr-2 transition hover:border-accent/40 sm:flex md:pr-3"
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
@@ -65,70 +96,88 @@ export function UserMenu() {
           imageFocusX={user.avatarFocusX ?? 0}
           imageFocusY={user.avatarFocusY ?? 0}
         />
-        <span className="max-w-[120px] truncate text-sm font-medium">{label}</span>
+        <span className="hidden max-w-[7rem] truncate text-sm font-medium md:inline">{label}</span>
       </button>
 
       {open ? (
-        <div
-          role="menu"
-          className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-border bg-background shadow-xl"
-        >
-          <div className="border-b border-border px-4 py-3">
-            <div className="flex items-center gap-3">
-              <UserAvatar
-                name={user.name}
-                email={user.email}
-                image={user.image}
-                size="md"
-                imageScale={user.avatarScale ?? 100}
-                imageFocusX={user.avatarFocusX ?? 0}
-                imageFocusY={user.avatarFocusY ?? 0}
-              />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{label}</p>
-                {user.email ? <p className="truncate text-xs text-muted-foreground">{user.email}</p> : null}
-              </div>
-            </div>
-          </div>
-          <div className="py-1">
-            <MenuLink href="/create" icon={PenSquare} onClick={() => setOpen(false)}>
-              {t("common.create")}
-            </MenuLink>
-            <MenuLink href="/library" icon={Bookmark} onClick={() => setOpen(false)}>
-              {t("nav.library")}
-            </MenuLink>
-            <MenuLink href="/messages" icon={MessageSquare} onClick={() => setOpen(false)}>
-              {t("nav.messages")}
-            </MenuLink>
-            <MenuLink href="/settings/profile" icon={Settings} onClick={() => setOpen(false)}>
-              {t("nav.settings")}
-            </MenuLink>
-            <MenuLink href="/subscriptions" icon={User} onClick={() => setOpen(false)}>
-              {t("menu.subscriptions")}
-            </MenuLink>
-            {isStaff ? (
-              <MenuLink href="/admin/users" icon={Shield} onClick={() => setOpen(false)}>
-                {t("menu.adminCustomers")}
-              </MenuLink>
-            ) : null}
-          </div>
-          <div className="border-t border-border py-1">
-            <button
-              type="button"
-              role="menuitem"
-              className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              onClick={async () => {
-                setOpen(false);
-                await clearAgeVerificationCookie();
-                await signOut({ callbackUrl: "/account" });
-              }}
-            >
-              <LogOut className="size-4" />
-              {t("common.signOut")}
-            </button>
+        <UserMenuDropdown user={user} label={label} isStaff={isStaff} onClose={() => setOpen(false)} />
+      ) : null}
+    </div>
+  );
+}
+
+function UserMenuDropdown({
+  user,
+  label,
+  isStaff,
+  onClose,
+}: {
+  user: NonNullable<ReturnType<typeof useSession>["data"]>["user"];
+  label: string;
+  isStaff: boolean;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+
+  return (
+    <div
+      role="menu"
+      className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-border bg-background shadow-xl"
+    >
+      <div className="border-b border-border px-4 py-3">
+        <div className="flex items-center gap-3">
+          <UserAvatar
+            name={user.name}
+            email={user.email}
+            image={user.image}
+            size="md"
+            imageScale={user.avatarScale ?? 100}
+            imageFocusX={user.avatarFocusX ?? 0}
+            imageFocusY={user.avatarFocusY ?? 0}
+          />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{label}</p>
+            {user.email ? <p className="truncate text-xs text-muted-foreground">{user.email}</p> : null}
           </div>
         </div>
-      ) : null}
+      </div>
+      <div className="py-1">
+        <MenuLink href="/create" icon={PenSquare} onClick={onClose}>
+          {t("common.create")}
+        </MenuLink>
+        <MenuLink href="/library" icon={Bookmark} onClick={onClose}>
+          {t("nav.library")}
+        </MenuLink>
+        <MenuLink href="/messages" icon={MessageSquare} onClick={onClose}>
+          {t("nav.messages")}
+        </MenuLink>
+        <MenuLink href="/settings/profile" icon={Settings} onClick={onClose}>
+          {t("nav.settings")}
+        </MenuLink>
+        <MenuLink href="/subscriptions" icon={User} onClick={onClose}>
+          {t("menu.subscriptions")}
+        </MenuLink>
+        {isStaff ? (
+          <MenuLink href="/admin/users" icon={Shield} onClick={onClose}>
+            {t("menu.adminCustomers")}
+          </MenuLink>
+        ) : null}
+      </div>
+      <div className="border-t border-border py-1">
+        <button
+          type="button"
+          role="menuitem"
+          className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          onClick={async () => {
+            onClose();
+            await clearAgeVerificationCookie();
+            await signOut({ callbackUrl: "/account" });
+          }}
+        >
+          <LogOut className="size-4" />
+          {t("common.signOut")}
+        </button>
+      </div>
     </div>
   );
 }
