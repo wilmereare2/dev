@@ -44,7 +44,7 @@ export const content = defineType({
       name: "videoUrl",
       title: "Video URL",
       type: "url",
-      description: "Hosted stream or direct MP4 link (YouTube, CDN, etc.).",
+      description: "YouTube, Vimeo, Pexels page link, or direct MP4/CDN URL.",
       components: { input: VideoUrlInput },
     }),
     defineField({

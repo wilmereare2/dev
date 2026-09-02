@@ -15,6 +15,12 @@ type ContentPlayerProps = {
   hasSubscription?: boolean;
 };
 
+type PlaybackPayload = {
+  playbackUrl?: string | null;
+  embedUrl?: string | null;
+  provider?: "youtube" | "vimeo" | null;
+};
+
 export function ContentPlayer({
   contentId,
   slug,
@@ -26,23 +32,46 @@ export function ContentPlayer({
   hasSubscription = false,
 }: ContentPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(playbackUrl ?? null);
+  const [directUrl, setDirectUrl] = useState<string | null>(null);
+  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [loading, setLoading] = useState(Boolean(playbackUrl));
 
   useEffect(() => {
     if (isPremium && !hasSubscription) {
-      setResolvedUrl(null);
+      setDirectUrl(null);
+      setEmbedUrl(null);
+      setLoading(false);
       return;
     }
 
-    if (playbackUrl) {
-      setResolvedUrl(playbackUrl);
+    if (!playbackUrl) {
+      setDirectUrl(null);
+      setEmbedUrl(null);
+      setLoading(false);
       return;
     }
+
+    setLoading(true);
+    setLoadError(false);
+    setDirectUrl(null);
+    setEmbedUrl(null);
 
     void fetch(`/api/stream/playback?slug=${encodeURIComponent(slug)}`)
       .then((response) => response.json())
-      .then((payload: { playbackUrl?: string }) => setResolvedUrl(payload.playbackUrl ?? null))
-      .catch(() => setResolvedUrl(null));
+      .then((payload: PlaybackPayload) => {
+        if (payload.embedUrl) {
+          setEmbedUrl(payload.embedUrl);
+          return;
+        }
+        setDirectUrl(payload.playbackUrl ?? null);
+      })
+      .catch(() => {
+        setDirectUrl(null);
+        setEmbedUrl(null);
+        setLoadError(true);
+      })
+      .finally(() => setLoading(false));
   }, [hasSubscription, isPremium, playbackUrl, slug]);
 
   useEffect(() => {
@@ -56,10 +85,10 @@ export function ContentPlayer({
     };
     video.addEventListener("loadedmetadata", setTime);
     return () => video.removeEventListener("loadedmetadata", setTime);
-  }, [initialProgressMs, resolvedUrl]);
+  }, [initialProgressMs, directUrl]);
 
   useEffect(() => {
-    if (!signedIn || !resolvedUrl) return;
+    if (!signedIn || !directUrl) return;
     const video = videoRef.current;
     if (!video) return;
 
@@ -80,7 +109,7 @@ export function ContentPlayer({
       window.clearInterval(interval);
       video.removeEventListener("pause", saveProgress);
     };
-  }, [contentId, resolvedUrl, signedIn]);
+  }, [contentId, directUrl, signedIn]);
 
   if (isPremium && !hasSubscription) {
     return (
@@ -93,10 +122,33 @@ export function ContentPlayer({
     );
   }
 
-  if (!resolvedUrl) {
+  if (loading) {
     return (
       <div className="flex h-full min-h-[240px] items-center justify-center text-muted-foreground">
-        Add a video URL or file in Sanity Studio
+        Loading video…
+      </div>
+    );
+  }
+
+  if (embedUrl) {
+    return (
+      <iframe
+        className="h-full w-full border-0"
+        src={embedUrl}
+        title="Video player"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+      />
+    );
+  }
+
+  if (!directUrl || loadError) {
+    return (
+      <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-2 px-6 text-center text-muted-foreground">
+        <p>{loadError ? "Could not load this video URL." : "Add a video URL or file in Sanity Studio"}</p>
+        {loadError ? (
+          <p className="text-xs">Use a Pexels page link, YouTube/Vimeo URL, or a direct MP4 link.</p>
+        ) : null}
       </div>
     );
   }
@@ -106,8 +158,10 @@ export function ContentPlayer({
       ref={videoRef}
       className="h-full w-full object-contain"
       controls
+      playsInline
       poster={poster}
-      src={resolvedUrl}
+      src={directUrl}
+      onError={() => setLoadError(true)}
     />
   );
 }

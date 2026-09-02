@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { resolveVideoUrl, type ResolvedVideo } from "@/lib/streaming/video-url";
 
 type PlaybackInput = {
   playbackUrl?: string;
@@ -8,16 +9,27 @@ type PlaybackInput = {
   hasSubscription?: boolean;
 };
 
-export async function resolvePlaybackUrl(input: PlaybackInput) {
+export type PlaybackResult = ResolvedVideo | { kind: "direct"; url: string };
+
+export async function resolvePlayback(input: PlaybackInput): Promise<PlaybackResult | null> {
   if (input.isPremium && !input.hasSubscription) {
     return null;
   }
 
   if (input.streamAssetId && process.env.MUX_TOKEN_ID && process.env.MUX_SIGNING_KEY) {
-    return signMuxPlaybackUrl(input.streamAssetId);
+    const muxUrl = signMuxPlaybackUrl(input.streamAssetId);
+    return muxUrl ? { kind: "direct", url: muxUrl } : null;
   }
 
-  return input.playbackUrl ?? null;
+  if (!input.playbackUrl) return null;
+  return resolveVideoUrl(input.playbackUrl);
+}
+
+/** @deprecated Use resolvePlayback — kept for callers expecting a plain URL string. */
+export async function resolvePlaybackUrl(input: PlaybackInput) {
+  const resolved = await resolvePlayback(input);
+  if (!resolved) return null;
+  return resolved.kind === "embed" ? resolved.embedUrl : resolved.url;
 }
 
 function signMuxPlaybackUrl(playbackId: string) {

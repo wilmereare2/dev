@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth/auth";
 import { userHasActiveSubscription } from "@/lib/auth/entitlements";
-import { resolvePlaybackUrl } from "@/lib/streaming/playback";
+import { resolvePlayback } from "@/lib/streaming/playback";
 import { fetchContentBySlug } from "@/services/sanity/content";
 import { decodeRouteParam } from "@/lib/site/route-params";
 
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   const hasSubscription = session?.user?.id ? await userHasActiveSubscription(session.user.id) : false;
   const isPremium = Boolean((item as { isPremium?: boolean }).isPremium);
 
-  const playbackUrl = await resolvePlaybackUrl({
+  const playback = await resolvePlayback({
     playbackUrl: item.playbackUrl,
     streamAssetId: (item as { streamAssetId?: string }).streamAssetId,
     userId: session?.user?.id,
@@ -32,9 +32,25 @@ export async function GET(request: Request) {
     hasSubscription,
   });
 
-  if (!playbackUrl && isPremium && !hasSubscription) {
+  if (!playback && isPremium && !hasSubscription) {
     return NextResponse.json({ error: "Premium subscription required." }, { status: 403 });
   }
 
-  return NextResponse.json({ playbackUrl });
+  if (!playback) {
+    return NextResponse.json({ playbackUrl: null, embedUrl: null, provider: null });
+  }
+
+  if (playback.kind === "embed") {
+    return NextResponse.json({
+      playbackUrl: null,
+      embedUrl: playback.embedUrl,
+      provider: playback.provider,
+    });
+  }
+
+  return NextResponse.json({
+    playbackUrl: playback.url,
+    embedUrl: null,
+    provider: null,
+  });
 }
