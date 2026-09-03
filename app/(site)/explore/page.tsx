@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Clock } from "lucide-react";
 import { ContentCard, ContentCardSkeleton } from "@/components/content/content-card";
+import { AdSlot } from "@/components/ads/ad-slot";
 import { fetchExploreContent } from "@/services/sanity/content";
 import { Button } from "@/components/ui/button";
 
@@ -24,6 +25,7 @@ export default async function ExplorePage() {
           Premium creator content coming soon — new releases every week.
         </p>
       )}
+      <AdSlot placement="listing" className="mt-6" />
       <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {items.length
           ? items.map((item) => <ContentCard key={item._id} item={item} />)

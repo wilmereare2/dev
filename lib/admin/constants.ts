@@ -21,6 +21,13 @@ export const ADMIN_CHAT_CHANNELS = [
 
 export const ADMIN_MANAGEMENT_CATEGORIES = [
   {
+    id: "advertisements",
+    slug: "advertisements",
+    name: "Advertisements",
+    description: "Create and schedule platform-owned ad placements.",
+    href: "/admin/advertisements",
+  },
+  {
     id: "promotions-monitoring",
     slug: "promotions-monitoring",
     name: "Promotions monitoring",

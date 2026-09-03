@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ContentCard } from "@/components/content/content-card";
 import { ContentActions } from "@/components/content/content-actions";
 import { ContentPlayer } from "@/components/content/content-player";
+import { AdSlot } from "@/components/ads/ad-slot";
 import { ReportContentForm } from "@/features/content/report-content-form";
 import { ContentComments } from "@/features/content/content-comments";
 import { SanityImage } from "@/components/media/sanity-image";
@@ -96,6 +97,7 @@ export default async function ContentDetailPage({ params }: PageProps) {
         {item.synopsis ? (
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:mt-6 sm:text-base">{item.synopsis}</p>
         ) : null}
+        <AdSlot placement="in_content" className="mt-6" />
         <div className="mt-4 sm:mt-6">
           <ContentActions contentId={item._id} signedIn={Boolean(userId)} />
         </div>

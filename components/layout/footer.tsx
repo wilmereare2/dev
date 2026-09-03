@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { APP_NAME, FOOTER_LINKS, PAYMENT_BADGES, SOCIAL_LINKS } from "@/lib/constants";
+import { AdSlot } from "@/components/ads/ad-slot";
 import { FooterNewsletter } from "@/components/layout/footer-newsletter";
 import { TrustBar } from "@/components/layout/trust-bar";
 import { useI18n } from "@/components/providers/i18n-provider";
@@ -18,6 +19,9 @@ export function Footer({ compact = false }: { compact?: boolean }) {
       }`}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
+      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+        <AdSlot placement="footer" />
+      </div>
       <div
         className={`mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 md:grid-cols-2 lg:grid-cols-5 lg:px-8 ${
           compact ? "py-10" : "py-14"

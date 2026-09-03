@@ -69,6 +69,7 @@ model User {
   memberGroupsCreated     MemberGroup[]        @relation("GroupCreator")
   memberGroupMemberships  MemberGroupMember[]
   groupMessagesSent       GroupMessage[]
+  advertisementsCreated   Advertisement[] @relation("AdsCreated")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -666,4 +667,44 @@ model GroupMessage {
 
   @@index([groupId, createdAt])
   @@index([senderId, createdAt])
+}
+
+model Advertisement {
+  id             String   @id @default(cuid())
+  title          String
+  advertiserName String
+  destinationUrl String
+  placement      String
+  status         String   @default("draft")
+  priority       Int      @default(0)
+  startAt        DateTime?
+  endAt          DateTime?
+  imageUrl       String?
+  imageUrlTablet String?
+  imageUrlMobile String?
+  altText        String?
+  impressions    Int      @default(0)
+  clicks         Int      @default(0)
+  lastServedAt   DateTime?
+  createdById    String?
+  archivedAt     DateTime?
+  createdBy      User?    @relation("AdsCreated", fields: [createdById], references: [id], onDelete: SetNull)
+  impressionKeys AdImpressionKey[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([placement, status, priority])
+  @@index([status, startAt, endAt])
+  @@index([createdAt])
+}
+
+model AdImpressionKey {
+  id        String        @id @default(cuid())
+  adId      String
+  dedupeKey String
+  createdAt DateTime      @default(now())
+  ad        Advertisement @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@unique([adId, dedupeKey])
+  @@index([createdAt])
 }

@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth/guards";
 
 const links = [
   { href: "/admin", label: "Overview" },
+  { href: "/admin/advertisements", label: "Advertisements" },
   { href: "/admin/promotions", label: "Promotions" },
   { href: "/admin/content", label: "Content moderation" },
   { href: "/admin/creators", label: "Creators" },

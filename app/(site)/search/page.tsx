@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ContentCard } from "@/components/content/content-card";
+import { AdSlot } from "@/components/ads/ad-slot";
 import { searchContent } from "@/services/sanity/catalog";
 import { SearchForm } from "@/features/search/search-form";
 
@@ -23,6 +24,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
       <div className="mt-6 max-w-xl">
         <SearchForm initialQuery={q} />
       </div>
+      <AdSlot placement="listing" className="mt-6" />
       {q ? (
         <>
           <p className="mt-8 text-sm text-secondary">

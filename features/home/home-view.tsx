@@ -11,6 +11,7 @@ import {
   SectionHeader,
 } from "@/components/content/content-sections";
 import { HeroTrustStrip } from "@/components/home/hero-trust-strip";
+import { AdSlot } from "@/components/ads/ad-slot";
 import { TrustBar } from "@/components/layout/trust-bar";
 import { HomeLaunchSections } from "@/features/home/home-launch-sections";
 import { Button } from "@/components/ui/button";
@@ -148,6 +149,10 @@ export function HomeView({ data, defaults }: HomeViewProps) {
 
       <TrustBar />
 
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <AdSlot placement="homepage_top" className="mt-6" />
+      </section>
+
       <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <SectionHeader title="Member promotions" href="/promotions" />
         <Link
@@ -187,27 +192,34 @@ export function HomeView({ data, defaults }: HomeViewProps) {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <SectionHeader
-          title={hasContent ? "Latest releases" : "Upcoming releases"}
-          href={hasContent ? "/newest" : undefined}
-        />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-          {hasContent ? (
-            data.latest.map((item, i) => <ContentCard key={item._id} item={item} priority={i < 4} />)
-          ) : (
-            <>
-              {Array.from({ length: 4 }).map((_, i) => (
-                <ContentCardSkeleton key={i} label="Coming soon" />
-              ))}
-              <div className="col-span-2 flex items-center justify-center rounded-2xl border border-dashed border-border/80 bg-surface/80 p-6 sm:col-span-3 lg:col-span-4">
-                <p className="max-w-md text-center text-sm leading-relaxed text-muted-foreground">
-                  Premium creator content is on the way.{" "}
-                  <span className="text-foreground">New creators are joining every week.</span>
-                </p>
-              </div>
-            </>
-          )}
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <div>
+            <SectionHeader
+              title={hasContent ? "Latest releases" : "Upcoming releases"}
+              href={hasContent ? "/newest" : undefined}
+            />
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-3">
+              {hasContent ? (
+                data.latest.map((item, i) => <ContentCard key={item._id} item={item} priority={i < 4} />)
+              ) : (
+                <>
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <ContentCardSkeleton key={i} label="Coming soon" />
+                  ))}
+                  <div className="col-span-2 flex items-center justify-center rounded-2xl border border-dashed border-border/80 bg-surface/80 p-6 sm:col-span-3">
+                    <p className="max-w-md text-center text-sm leading-relaxed text-muted-foreground">
+                      Premium creator content is on the way.{" "}
+                      <span className="text-foreground">New creators are joining every week.</span>
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="hidden lg:block">
+            <AdSlot placement="homepage_sidebar" />
+          </div>
         </div>
       </section>
 
