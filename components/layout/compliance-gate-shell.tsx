@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Shield } from "lucide-react";
-import { AuthMarketingPanel } from "@/components/auth/auth-marketing-panel";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 type ComplianceGateShellProps = {
@@ -20,20 +19,21 @@ export function ComplianceGateShell({ children }: ComplianceGateShellProps) {
       />
 
       <header className="relative z-10 border-b border-border/40 bg-background/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="font-display text-xl font-bold tracking-tight sm:text-2xl">
-            manuela<span className="text-accent">X</span>
-          </Link>
+        <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <Link href="/" className="font-display text-xl font-bold tracking-tight sm:text-2xl">
+              manuela<span className="text-accent">X</span>
+            </Link>
+            <span className="rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
+              18+
+            </span>
+          </div>
           <ThemeToggle />
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)] lg:items-center lg:gap-14">
-          <AuthMarketingPanel variant="verify" compact className="lg:hidden" />
-          <AuthMarketingPanel variant="verify" className="hidden lg:block" />
-          <div className="w-full lg:justify-self-end">{children}</div>
-        </div>
+      <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
+        <div className="w-full max-w-md">{children}</div>
       </main>
 
       <footer className="relative z-10 border-t border-border/40 bg-background/50 px-4 py-5 text-center backdrop-blur-sm sm:px-6">

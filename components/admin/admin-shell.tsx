@@ -22,7 +22,7 @@ export async function AdminShell({ children }: { children: React.ReactNode }) {
             Dashboard
           </Link>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6">{children}</main>
       </div>
     </div>
   );

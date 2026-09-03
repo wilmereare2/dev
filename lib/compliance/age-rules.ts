@@ -127,6 +127,47 @@ export function toIsoDateString(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+export function parseDateOfBirthParts(
+  day: string,
+  month: string,
+  year: string,
+): DateValidationResult {
+  const trimmedDay = day.trim();
+  const trimmedMonth = month.trim();
+  const trimmedYear = year.trim();
+
+  if (!trimmedDay || !trimmedMonth || !trimmedYear) {
+    return { ok: false, error: "Enter your date of birth." };
+  }
+
+  if (!/^\d{1,2}$/.test(trimmedDay) || !/^\d{1,2}$/.test(trimmedMonth) || !/^\d{4}$/.test(trimmedYear)) {
+    return { ok: false, error: "Enter a valid date of birth." };
+  }
+
+  return validateDateParts(Number(trimmedYear), Number(trimmedMonth), Number(trimmedDay));
+}
+
+export function validateAgeVerificationParts(input: {
+  day: string;
+  month: string;
+  year: string;
+  acceptTerms: boolean;
+  acceptPrivacy: boolean;
+}): DateValidationResult | { ok: false; error: string } {
+  if (!input.acceptTerms || !input.acceptPrivacy) {
+    return { ok: false, error: "You must accept the Terms of Service and Privacy Policy." };
+  }
+
+  const parsed = parseDateOfBirthParts(input.day, input.month, input.year);
+  if (!parsed.ok) return parsed;
+
+  if (!isAdult(parsed.date)) {
+    return { ok: false, error: "You must be at least 18 years old to use manuelaX." };
+  }
+
+  return parsed;
+}
+
 export function validateAgeVerificationInput(input: {
   dateOfBirth: string;
   acceptTerms: boolean;

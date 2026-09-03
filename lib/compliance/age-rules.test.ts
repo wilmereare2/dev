@@ -4,9 +4,11 @@ import {
   formatDateOfBirthInput,
   isAdult,
   parseDateOfBirth,
+  parseDateOfBirthParts,
   parseDisplayDateOfBirth,
   toIsoDateString,
   validateAgeVerificationInput,
+  validateAgeVerificationParts,
 } from "@/lib/compliance/age-rules";
 
 describe("age-rules", () => {
@@ -56,5 +58,27 @@ describe("age-rules", () => {
 
   it("formats date input progressively", () => {
     expect(formatDateOfBirthInput("15051990")).toBe("15 / 05 / 1990");
+  });
+
+  it("parses separate day, month, and year fields", () => {
+    const result = parseDateOfBirthParts("15", "5", "1990");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(toIsoDateString(result.date)).toBe("1990-05-15");
+    }
+  });
+
+  it("validates policy acceptance from date parts", () => {
+    const result = validateAgeVerificationParts({
+      day: "01",
+      month: "01",
+      year: "2010",
+      acceptTerms: true,
+      acceptPrivacy: true,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toContain("18");
+    }
   });
 });
