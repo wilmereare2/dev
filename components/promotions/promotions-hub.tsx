@@ -51,7 +51,7 @@ export function PromotionsHub({ entries }: PromotionsHubProps) {
   }, [entries, filter, query]);
 
   return (
-    <section className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6 lg:px-8">
+    <section className="w-full py-8">
       <BillingReturnBanner successMessage="Payment complete. Your access has been updated." />
       <PageHeader
         eyebrow="Promotions"
@@ -103,7 +103,7 @@ export function PromotionsHub({ entries }: PromotionsHubProps) {
             description="Try another filter or check back later for new deals and member posts."
           />
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((entry, index) => (
               <PromotionGalleryCard
                 key={`${entry.kind}-${entry.item.id}`}

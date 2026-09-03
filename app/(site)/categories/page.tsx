@@ -26,7 +26,7 @@ export default async function CategoriesPage() {
   }
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <section className="w-full py-10">
       <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Categories</h1>
       <p className="mt-2 text-secondary">{categories.length} categories</p>
 

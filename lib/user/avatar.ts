@@ -1,4 +1,6 @@
 export const MAX_AVATAR_BYTES = 1024 * 1024;
+/** Base64 data URLs above this are rejected to keep DB writes reliable on serverless. */
+export const MAX_AVATAR_DATA_URL_CHARS = 450_000;
 
 export const AVATAR_SCALE_MIN = 75;
 export const AVATAR_SCALE_MAX = 150;
@@ -51,6 +53,22 @@ export function validateAvatarUpload(file: File) {
 
 export function bufferToDataUrl(buffer: Buffer, mimeType: string) {
   return `data:${mimeType};base64,${buffer.toString("base64")}`;
+}
+
+export function prepareAvatarDataUrl(buffer: Buffer, mimeType: string) {
+  const normalizedMime = mimeType === "image/png" || mimeType === "image/webp" || mimeType === "image/gif"
+    ? mimeType
+    : "image/jpeg";
+  const dataUrl = bufferToDataUrl(buffer, normalizedMime);
+
+  if (dataUrl.length > MAX_AVATAR_DATA_URL_CHARS) {
+    return {
+      ok: false as const,
+      error: "Photo is too large to save. Crop closer or choose a smaller image.",
+    };
+  }
+
+  return { ok: true as const, dataUrl };
 }
 
 export function parseDataUrl(dataUrl: string) {

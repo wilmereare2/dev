@@ -30,7 +30,7 @@ export function LibraryView({ favorites, watchLater, history }: LibraryViewProps
     tab === "favorites" ? favorites : tab === "watchLater" ? watchLater : history.map((h) => h.item);
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <section className="w-full py-10">
       <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Library</h1>
       <p className="mt-2 text-secondary">Favorites, watch later, and recently viewed</p>
 

@@ -11,7 +11,7 @@ export default async function TagsPage() {
   const tags = await fetchTagsIndex();
 
   return (
-    <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+    <section className="w-full py-10">
       <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Tags</h1>
       <p className="mt-2 text-secondary">Faceted discovery by tag</p>
       <div className="mt-8 flex flex-wrap gap-2">

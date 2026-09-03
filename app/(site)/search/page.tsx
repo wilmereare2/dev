@@ -22,7 +22,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
   if (!q) {
     return (
-      <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
+      <div className="w-full py-8">
         <header className="border-b border-border/60 pb-5">
           <p className="font-display text-xs font-semibold uppercase tracking-[0.22em] text-accent">Discover</p>
           <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight sm:text-4xl">Search</h1>
@@ -47,7 +47,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
         activeTab="/explore"
         initialSearchQuery={q}
       />
-      <div className="mx-auto max-w-[1400px] px-4 pb-10 sm:px-6 lg:px-8">
+      <div className="w-full pb-10">
         <AdSlot placement="listing" />
       </div>
     </>

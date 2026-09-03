@@ -16,6 +16,7 @@ type SiteShellProps = {
   pageBackground?: PageBackgroundVariant;
   showSidebar?: boolean;
   wide?: boolean;
+  fullWidth?: boolean;
   flush?: boolean;
   hideFooter?: boolean;
   fillViewport?: boolean;
@@ -29,6 +30,7 @@ export function SiteShell({
   pageBackground = "default",
   showSidebar = true,
   wide = false,
+  fullWidth = false,
   flush = false,
   hideFooter = false,
   fillViewport = false,
@@ -44,9 +46,13 @@ export function SiteShell({
       <Navbar navItems={navItems} />
       <div
         className={cn(
-          "relative mx-auto flex w-full flex-1 items-stretch gap-0",
-          wide ? "max-w-[1600px]" : "max-w-7xl",
-          flush ? "px-0" : "px-4 sm:px-6 lg:gap-8 lg:px-8",
+          "relative mx-auto flex w-full flex-1 items-stretch",
+          fullWidth ? "max-w-none" : wide ? "max-w-[1600px]" : "max-w-7xl",
+          fullWidth
+            ? "gap-4 px-4 sm:gap-6 sm:px-6 lg:gap-8 lg:px-8 xl:px-10"
+            : flush
+              ? "gap-0 px-0"
+              : "gap-0 px-4 sm:px-6 lg:gap-8 lg:px-8",
           fillViewport && "min-h-0",
         )}
       >

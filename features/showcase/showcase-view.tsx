@@ -29,7 +29,7 @@ export function ShowcaseView({
         emptyMessage={emptyMessage}
         activeTab={activeTab}
       />
-      <div className="mx-auto max-w-[1400px] px-4 pb-10 sm:px-6 lg:px-8">
+      <div className="w-full pb-10">
         <AdSlot placement="listing" className="mt-2" />
       </div>
     </>

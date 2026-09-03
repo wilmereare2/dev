@@ -11,8 +11,19 @@ describe("layout-mode", () => {
     });
   });
 
+  it("uses full-width gallery layout for discovery pages", () => {
+    expect(resolveSiteLayoutMode("/promotions")).toEqual({
+      fullWidth: true,
+      flush: true,
+    });
+    expect(resolveSiteLayoutMode("/explore")).toEqual({
+      fullWidth: true,
+      flush: true,
+    });
+  });
+
   it("uses default layout for other routes", () => {
     expect(resolveSiteLayoutMode("/")).toEqual({});
-    expect(resolveSiteLayoutMode("/library")).toEqual({});
+    expect(resolveSiteLayoutMode("/settings/profile")).toEqual({});
   });
 });

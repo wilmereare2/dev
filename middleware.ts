@@ -74,6 +74,11 @@ export async function middleware(request: NextRequest) {
     return applyLocaleCookie(request, response);
   }
 
+  // API routes enforce their own auth; do not redirect them to the age gate.
+  if (pathname.startsWith("/api/")) {
+    return applyLocaleCookie(request, response);
+  }
+
   const cookieValue = request.cookies.get(AGE_VERIFIED_COOKIE)?.value;
   if (await isAgeVerifiedCookie(cookieValue)) {
     return applyLocaleCookie(request, response);

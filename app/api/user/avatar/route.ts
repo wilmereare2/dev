@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { requireApiUser } from "@/lib/api/require-user";
+import { withDbRetry } from "@/lib/db/connection-error";
+import { mapPrismaErrorMessage } from "@/lib/db/prisma-error-message";
 import { prisma } from "@/lib/db/prisma";
-import { bufferToDataUrl, validateAvatarUpload } from "@/lib/user/avatar";
+import { prepareAvatarDataUrl, validateAvatarUpload } from "@/lib/user/avatar";
 
 export async function POST(request: Request) {
   const authResult = await requireApiUser();
@@ -22,16 +24,21 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const image = bufferToDataUrl(buffer, file.type);
+    const prepared = prepareAvatarDataUrl(buffer, file.type || "image/jpeg");
+    if (!prepared.ok) {
+      return NextResponse.json({ error: prepared.error }, { status: 413 });
+    }
 
-    await prisma.user.update({
-      where: { id: authResult.userId },
-      data: { image },
-    });
+    await withDbRetry(() =>
+      prisma.user.update({
+        where: { id: authResult.userId },
+        data: { image: prepared.dataUrl },
+      }),
+    );
 
     const avatarVersion = Date.now();
 
-    return NextResponse.json({ ok: true, image, avatarVersion });
+    return NextResponse.json({ ok: true, image: prepared.dataUrl, avatarVersion });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2025") {
@@ -44,7 +51,14 @@ export async function POST(request: Request) {
 
     console.error("[avatar upload]", error);
     return NextResponse.json(
-      { error: "Could not save avatar. Check your connection and try again." },
+      {
+        error: mapPrismaErrorMessage(error, {
+          fallback: "Could not save avatar. Try again in a moment.",
+          connectionMessage: "Could not reach the database. Try again in a moment.",
+          schemaMessage:
+            "Profile photos are temporarily unavailable while the database is being updated. Try again shortly.",
+        }),
+      },
       { status: 500 },
     );
   }
@@ -55,10 +69,12 @@ export async function DELETE() {
   if ("error" in authResult) return authResult.error;
 
   try {
-    await prisma.user.update({
-      where: { id: authResult.userId },
-      data: { image: null },
-    });
+    await withDbRetry(() =>
+      prisma.user.update({
+        where: { id: authResult.userId },
+        data: { image: null },
+      }),
+    );
 
     return NextResponse.json({ ok: true, image: null, avatarVersion: 0 });
   } catch (error) {
@@ -70,6 +86,14 @@ export async function DELETE() {
     }
 
     console.error("[avatar remove]", error);
-    return NextResponse.json({ error: "Could not remove avatar." }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: mapPrismaErrorMessage(error, {
+          fallback: "Could not remove avatar.",
+          connectionMessage: "Could not reach the database. Try again in a moment.",
+        }),
+      },
+      { status: 500 },
+    );
   }
 }

@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { navMessageKey } from "@/lib/i18n";
+import { resolveSiteLayoutMode } from "@/lib/site/layout-mode";
 import type { NavItem } from "@/types";
 
 type NavbarProps = {
@@ -27,6 +28,7 @@ export function Navbar({ navItems }: NavbarProps) {
   const { open: paletteOpen, setOpen: setPaletteOpen } = useSearchCommandPalette();
   const pathname = usePathname();
   const { t } = useI18n();
+  const layoutMode = resolveSiteLayoutMode(pathname);
 
   function navLabel(item: NavItem) {
     const key = navMessageKey(item.href);
@@ -47,7 +49,12 @@ export function Navbar({ navItems }: NavbarProps) {
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background shadow-sm supports-[backdrop-filter]:bg-background/95 supports-[backdrop-filter]:backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
+        <div
+          className={cn(
+            "mx-auto flex h-16 w-full items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8 xl:px-10",
+            layoutMode.fullWidth ? "max-w-none" : "max-w-7xl",
+          )}
+        >
           <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-6 lg:gap-8">
             <Link
               href="/"

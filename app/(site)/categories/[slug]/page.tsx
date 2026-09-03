@@ -51,7 +51,7 @@ export default async function CategoryDetailPage({ params }: PageProps) {
           <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-muted to-background" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
-        <div className="relative mx-auto flex h-full max-w-7xl items-end px-4 pb-6 sm:px-6 lg:px-8">
+        <div className="relative flex h-full w-full items-end pb-6">
           <div>
             <h1 className="font-display text-3xl font-semibold sm:text-4xl">{category.title}</h1>
             {category.description ? (
@@ -60,7 +60,7 @@ export default async function CategoryDetailPage({ params }: PageProps) {
           </div>
         </div>
       </div>
-      <div className="mx-auto mt-8 grid max-w-7xl grid-cols-2 gap-3 px-4 sm:px-6 lg:grid-cols-4 lg:px-8">
+      <div className="mt-8 grid w-full grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {items.map((item) => (
           <ContentCard key={item._id} item={item} />
         ))}

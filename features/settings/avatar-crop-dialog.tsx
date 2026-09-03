@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const VIEWPORT_SIZE = 280;
-const OUTPUT_SIZE = 512;
+const OUTPUT_SIZE = 384;
 
 type AvatarCropDialogProps = {
   file: File | null;
@@ -250,7 +250,7 @@ function exportCroppedAvatar(
           resolve(blob);
         },
         "image/jpeg",
-        0.92,
+        0.82,
       );
     };
     img.onerror = () => reject(new Error("Image load failed"));

@@ -38,6 +38,7 @@ export function SiteLayoutClient({
       pageBackground={pageBackground}
       showSidebar={shouldShowAppSidebar(pathname)}
       wide={layoutMode.wide}
+      fullWidth={layoutMode.fullWidth}
       flush={layoutMode.flush}
       hideFooter={layoutMode.hideFooter}
       fillViewport={layoutMode.fillViewport}
