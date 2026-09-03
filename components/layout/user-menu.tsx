@@ -126,7 +126,11 @@ function UserMenuDropdown({
   return (
     <div
       role="menu"
-      className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-border bg-background shadow-xl"
+      className={cn(
+        "z-50 overflow-hidden rounded-2xl border border-border bg-background shadow-xl",
+        "fixed inset-x-4 top-[calc(4rem+0.5rem)] w-auto",
+        "sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-56",
+      )}
     >
       <div className="border-b border-border px-4 py-3">
         <div className="flex items-center gap-3">

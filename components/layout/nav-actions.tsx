@@ -117,25 +117,42 @@ export function NavActions() {
         </Button>
 
         {open ? (
-          <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-border bg-background shadow-xl">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <p className="text-sm font-semibold">{t("common.notifications")}</p>
-              <div className="flex items-center gap-3">
-                <Link href="/notifications" className="text-xs text-accent hover:underline" onClick={() => setOpen(false)}>
-                  {t("common.viewAll")}
-                </Link>
-                {unreadCount > 0 ? (
-                  <button
-                    type="button"
-                    className="text-xs text-accent hover:underline"
-                    onClick={markAllRead}
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 z-40 bg-black/25 sm:hidden"
+              aria-label="Close notifications"
+              onClick={() => setOpen(false)}
+            />
+            <div
+              className={cn(
+                "z-50 overflow-hidden rounded-2xl border border-border bg-background shadow-xl",
+                "fixed inset-x-4 top-[calc(4rem+0.5rem)] w-auto max-h-[min(24rem,calc(100dvh-5.5rem))]",
+                "sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[min(20rem,calc(100vw-2rem))] sm:max-h-80",
+              )}
+            >
+              <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+                <p className="shrink-0 text-sm font-semibold">{t("common.notifications")}</p>
+                <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                  <Link
+                    href="/notifications"
+                    className="whitespace-nowrap text-xs text-accent hover:underline"
+                    onClick={() => setOpen(false)}
                   >
-                    {t("common.markAllRead")}
-                  </button>
-                ) : null}
+                    {t("common.viewAll")}
+                  </Link>
+                  {unreadCount > 0 ? (
+                    <button
+                      type="button"
+                      className="whitespace-nowrap text-xs text-accent hover:underline"
+                      onClick={markAllRead}
+                    >
+                      {t("common.markAllRead")}
+                    </button>
+                  ) : null}
+                </div>
               </div>
-            </div>
-            <ul className="max-h-80 overflow-y-auto py-1">
+              <ul className="max-h-[min(18rem,calc(100dvh-9rem))] overflow-y-auto py-1 sm:max-h-80">
               {items.length ? (
                 items.map((item) => (
                   <li key={item.id}>
@@ -169,6 +186,7 @@ export function NavActions() {
               )}
             </ul>
           </div>
+          </>
         ) : null}
       </div>
 
