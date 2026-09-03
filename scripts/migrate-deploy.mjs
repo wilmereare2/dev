@@ -11,9 +11,9 @@ if (!envCheck.ok) {
   process.exit(0);
 }
 
-function runMigrate(label) {
+function runPrisma(args, label) {
   console.log(`[migrate] ${label}`);
-  const result = spawnSync("npx", ["prisma", "migrate", "deploy"], {
+  const result = spawnSync("npx", ["prisma", ...args], {
     encoding: "utf8",
     env: process.env,
     shell: false,
@@ -28,10 +28,23 @@ function runMigrate(label) {
   };
 }
 
+function runMigrate(label) {
+  return runPrisma(["migrate", "deploy"], label);
+}
+
 function isTransientConnectionFailure(output) {
   return /P1001|Can't reach database server|Connection terminated|ECONNREFUSED|ETIMEDOUT|Connection reset/i.test(
     output,
   );
+}
+
+function extractFailedMigrationName(output) {
+  const match = output.match(/The `([^`]+)` migration started at/i);
+  return match?.[1] ?? null;
+}
+
+function isFailedMigrationBlock(output) {
+  return /P3009|failed migrations in the target database/i.test(output);
 }
 
 function sleep(ms) {
@@ -42,6 +55,7 @@ const retryDelaysMs = process.env.VERCEL === "1" ? [0, 8000, 15000] : [0];
 
 let lastOutput = "";
 let lastStatus = 1;
+let resolvedFailedMigration = false;
 
 for (let attempt = 0; attempt < retryDelaysMs.length; attempt += 1) {
   if (retryDelaysMs[attempt] > 0) {
@@ -56,6 +70,26 @@ for (let attempt = 0; attempt < retryDelaysMs.length; attempt += 1) {
 
   if (result.status === 0) {
     process.exit(0);
+  }
+
+  if (isFailedMigrationBlock(result.output) && !resolvedFailedMigration) {
+    const migrationName = extractFailedMigrationName(result.output);
+    if (migrationName) {
+      console.warn(`[migrate] P3009: marking failed migration as rolled back: ${migrationName}`);
+      const resolveResult = runPrisma(
+        ["migrate", "resolve", "--rolled-back", migrationName],
+        `resolve rolled-back ${migrationName}`,
+      );
+      if (resolveResult.status === 0) {
+        resolvedFailedMigration = true;
+        const retryAfterResolve = runMigrate("deploy after resolve");
+        lastOutput = retryAfterResolve.output;
+        lastStatus = retryAfterResolve.status;
+        if (retryAfterResolve.status === 0) {
+          process.exit(0);
+        }
+      }
+    }
   }
 
   if (!isTransientConnectionFailure(result.output)) {

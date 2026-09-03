@@ -18,10 +18,19 @@ ALTER TABLE "ContentReport" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NO
 CREATE INDEX IF NOT EXISTS "ContentReport_status_priority_createdAt_idx" ON "ContentReport"("status", "priority", "createdAt");
 CREATE INDEX IF NOT EXISTS "ContentReport_assigneeId_status_idx" ON "ContentReport"("assigneeId", "status");
 
-ALTER TABLE "ContentReport" ADD CONSTRAINT "ContentReport_assigneeId_fkey"
-  FOREIGN KEY ("assigneeId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "ContentReport" ADD CONSTRAINT "ContentReport_resolvedById_fkey"
-  FOREIGN KEY ("resolvedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ContentReport_assigneeId_fkey') THEN
+    ALTER TABLE "ContentReport" ADD CONSTRAINT "ContentReport_assigneeId_fkey"
+      FOREIGN KEY ("assigneeId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ContentReport_resolvedById_fkey') THEN
+    ALTER TABLE "ContentReport" ADD CONSTRAINT "ContentReport_resolvedById_fkey"
+      FOREIGN KEY ("resolvedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- AuditLog expansion
 ALTER TABLE "AuditLog" ADD COLUMN IF NOT EXISTS "targetLabel" TEXT;
@@ -34,8 +43,12 @@ ALTER TABLE "AuditLog" ADD COLUMN IF NOT EXISTS "userAgent" TEXT;
 CREATE INDEX IF NOT EXISTS "AuditLog_entity_entityId_idx" ON "AuditLog"("entity", "entityId");
 CREATE INDEX IF NOT EXISTS "AuditLog_action_createdAt_idx" ON "AuditLog"("action", "createdAt");
 
-ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_actorId_fkey"
-  FOREIGN KEY ("actorId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'AuditLog_actorId_fkey') THEN
+    ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_actorId_fkey"
+      FOREIGN KEY ("actorId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- AdminNote
 CREATE TABLE IF NOT EXISTS "AdminNote" (
@@ -51,8 +64,12 @@ CREATE TABLE IF NOT EXISTS "AdminNote" (
 CREATE INDEX IF NOT EXISTS "AdminNote_targetType_targetId_createdAt_idx" ON "AdminNote"("targetType", "targetId", "createdAt");
 CREATE INDEX IF NOT EXISTS "AdminNote_authorId_idx" ON "AdminNote"("authorId");
 
-ALTER TABLE "AdminNote" ADD CONSTRAINT "AdminNote_authorId_fkey"
-  FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'AdminNote_authorId_fkey') THEN
+    ALTER TABLE "AdminNote" ADD CONSTRAINT "AdminNote_authorId_fkey"
+      FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- ReportEvent
 CREATE TABLE IF NOT EXISTS "ReportEvent" (
@@ -69,17 +86,26 @@ CREATE TABLE IF NOT EXISTS "ReportEvent" (
 
 CREATE INDEX IF NOT EXISTS "ReportEvent_reportId_createdAt_idx" ON "ReportEvent"("reportId", "createdAt");
 
-ALTER TABLE "ReportEvent" ADD CONSTRAINT "ReportEvent_reportId_fkey"
-  FOREIGN KEY ("reportId") REFERENCES "ContentReport"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "ReportEvent" ADD CONSTRAINT "ReportEvent_actorId_fkey"
-  FOREIGN KEY ("actorId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ReportEvent_reportId_fkey') THEN
+    ALTER TABLE "ReportEvent" ADD CONSTRAINT "ReportEvent_reportId_fkey"
+      FOREIGN KEY ("reportId") REFERENCES "ContentReport"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ReportEvent_actorId_fkey') THEN
+    ALTER TABLE "ReportEvent" ADD CONSTRAINT "ReportEvent_actorId_fkey"
+      FOREIGN KEY ("actorId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- PlatformSetting
 CREATE TABLE IF NOT EXISTS "PlatformSetting" (
     "key" TEXT NOT NULL,
     "value" TEXT NOT NULL,
     "updatedById" TEXT,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "PlatformSetting_pkey" PRIMARY KEY ("key")
 );
