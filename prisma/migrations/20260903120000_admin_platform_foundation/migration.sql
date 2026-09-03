@@ -18,6 +18,17 @@ ALTER TABLE "ContentReport" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NO
 CREATE INDEX IF NOT EXISTS "ContentReport_status_priority_createdAt_idx" ON "ContentReport"("status", "priority", "createdAt");
 CREATE INDEX IF NOT EXISTS "ContentReport_assigneeId_status_idx" ON "ContentReport"("assigneeId", "status");
 
+-- Clear orphaned user references before adding foreign keys
+UPDATE "ContentReport" AS cr
+SET "assigneeId" = NULL
+WHERE cr."assigneeId" IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM "User" u WHERE u."id" = cr."assigneeId");
+
+UPDATE "ContentReport" AS cr
+SET "resolvedById" = NULL
+WHERE cr."resolvedById" IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM "User" u WHERE u."id" = cr."resolvedById");
+
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ContentReport_assigneeId_fkey') THEN
     ALTER TABLE "ContentReport" ADD CONSTRAINT "ContentReport_assigneeId_fkey"
@@ -43,6 +54,11 @@ ALTER TABLE "AuditLog" ADD COLUMN IF NOT EXISTS "userAgent" TEXT;
 CREATE INDEX IF NOT EXISTS "AuditLog_entity_entityId_idx" ON "AuditLog"("entity", "entityId");
 CREATE INDEX IF NOT EXISTS "AuditLog_action_createdAt_idx" ON "AuditLog"("action", "createdAt");
 
+UPDATE "AuditLog" AS al
+SET "actorId" = NULL
+WHERE al."actorId" IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM "User" u WHERE u."id" = al."actorId");
+
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'AuditLog_actorId_fkey') THEN
     ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_actorId_fkey"
@@ -63,6 +79,9 @@ CREATE TABLE IF NOT EXISTS "AdminNote" (
 
 CREATE INDEX IF NOT EXISTS "AdminNote_targetType_targetId_createdAt_idx" ON "AdminNote"("targetType", "targetId", "createdAt");
 CREATE INDEX IF NOT EXISTS "AdminNote_authorId_idx" ON "AdminNote"("authorId");
+
+DELETE FROM "AdminNote" AS an
+WHERE NOT EXISTS (SELECT 1 FROM "User" u WHERE u."id" = an."authorId");
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'AdminNote_authorId_fkey') THEN
@@ -85,6 +104,14 @@ CREATE TABLE IF NOT EXISTS "ReportEvent" (
 );
 
 CREATE INDEX IF NOT EXISTS "ReportEvent_reportId_createdAt_idx" ON "ReportEvent"("reportId", "createdAt");
+
+DELETE FROM "ReportEvent" AS re
+WHERE NOT EXISTS (SELECT 1 FROM "ContentReport" cr WHERE cr."id" = re."reportId");
+
+UPDATE "ReportEvent" AS re
+SET "actorId" = NULL
+WHERE re."actorId" IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM "User" u WHERE u."id" = re."actorId");
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ReportEvent_reportId_fkey') THEN
@@ -109,3 +136,8 @@ CREATE TABLE IF NOT EXISTS "PlatformSetting" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "PlatformSetting_pkey" PRIMARY KEY ("key")
 );
+
+UPDATE "PlatformSetting" AS ps
+SET "updatedById" = NULL
+WHERE ps."updatedById" IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM "User" u WHERE u."id" = ps."updatedById");

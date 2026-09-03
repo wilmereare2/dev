@@ -39,12 +39,14 @@ function isTransientConnectionFailure(output) {
 }
 
 function extractFailedMigrationName(output) {
-  const match = output.match(/The `([^`]+)` migration started at/i);
-  return match?.[1] ?? null;
+  const started = output.match(/The `([^`]+)` migration started at/i);
+  if (started?.[1]) return started[1];
+  const named = output.match(/Migration name:\s*(\S+)/i);
+  return named?.[1] ?? null;
 }
 
-function isFailedMigrationBlock(output) {
-  return /P3009|failed migrations in the target database/i.test(output);
+function isMigrationBlocked(output) {
+  return /P3009|P3018|failed migrations in the target database|A migration failed to apply/i.test(output);
 }
 
 function sleep(ms) {
@@ -52,10 +54,10 @@ function sleep(ms) {
 }
 
 const retryDelaysMs = process.env.VERCEL === "1" ? [0, 8000, 15000] : [0];
+const maxResolveAttempts = 3;
 
 let lastOutput = "";
 let lastStatus = 1;
-let resolvedFailedMigration = false;
 
 for (let attempt = 0; attempt < retryDelaysMs.length; attempt += 1) {
   if (retryDelaysMs[attempt] > 0) {
@@ -63,36 +65,45 @@ for (let attempt = 0; attempt < retryDelaysMs.length; attempt += 1) {
     await sleep(retryDelaysMs[attempt]);
   }
 
-  const label = attempt === 0 ? "deploy" : `retry ${attempt}`;
-  const result = runMigrate(label);
-  lastOutput = result.output;
-  lastStatus = result.status;
+  for (let resolveAttempt = 0; resolveAttempt < maxResolveAttempts; resolveAttempt += 1) {
+    const deployLabel =
+      attempt === 0 && resolveAttempt === 0
+        ? "deploy"
+        : `deploy (attempt ${attempt + 1}, resolve ${resolveAttempt + 1})`;
+    const result = runMigrate(deployLabel);
+    lastOutput = result.output;
+    lastStatus = result.status;
 
-  if (result.status === 0) {
-    process.exit(0);
-  }
+    if (result.status === 0) {
+      process.exit(0);
+    }
 
-  if (isFailedMigrationBlock(result.output) && !resolvedFailedMigration) {
+    if (!isMigrationBlocked(result.output)) {
+      break;
+    }
+
     const migrationName = extractFailedMigrationName(result.output);
-    if (migrationName) {
-      console.warn(`[migrate] P3009: marking failed migration as rolled back: ${migrationName}`);
-      const resolveResult = runPrisma(
-        ["migrate", "resolve", "--rolled-back", migrationName],
-        `resolve rolled-back ${migrationName}`,
-      );
-      if (resolveResult.status === 0) {
-        resolvedFailedMigration = true;
-        const retryAfterResolve = runMigrate("deploy after resolve");
-        lastOutput = retryAfterResolve.output;
-        lastStatus = retryAfterResolve.status;
-        if (retryAfterResolve.status === 0) {
-          process.exit(0);
-        }
-      }
+    if (!migrationName || resolveAttempt >= maxResolveAttempts - 1) {
+      break;
+    }
+
+    console.warn(`[migrate] migration blocked (${migrationName}); marking rolled back and retrying…`);
+    const resolveResult = runPrisma(
+      ["migrate", "resolve", "--rolled-back", migrationName],
+      `resolve rolled-back ${migrationName}`,
+    );
+    if (resolveResult.status !== 0) {
+      lastOutput = resolveResult.output;
+      lastStatus = resolveResult.status;
+      break;
     }
   }
 
-  if (!isTransientConnectionFailure(result.output)) {
+  if (lastStatus === 0) {
+    process.exit(0);
+  }
+
+  if (!isTransientConnectionFailure(lastOutput)) {
     break;
   }
 }
