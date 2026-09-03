@@ -82,7 +82,10 @@ export async function PATCH(request: Request, { params }: Params) {
   });
 
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: result.status ?? 400 });
+    return NextResponse.json(
+      { error: result.error },
+      { status: "status" in result && result.status ? result.status : 400 },
+    );
   }
 
   return NextResponse.json({ advertisement: result.advertisement });

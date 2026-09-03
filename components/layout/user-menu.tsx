@@ -57,7 +57,11 @@ export function UserMenu() {
 
   const user = session.user;
   const label = user.name || user.email || "Account";
-  const isStaff = user.role === "ADMIN" || user.role === "MODERATOR";
+  const isStaff =
+    user.role === "ADMIN" ||
+    user.role === "MODERATOR" ||
+    user.role === "EDITOR" ||
+    user.role === "VIEWER";
 
   return (
     <div ref={rootRef} className="relative">
@@ -158,8 +162,8 @@ function UserMenuDropdown({
           {t("menu.subscriptions")}
         </MenuLink>
         {isStaff ? (
-          <MenuLink href="/admin/users" icon={Shield} onClick={onClose}>
-            {t("menu.adminCustomers")}
+          <MenuLink href="/admin" icon={Shield} onClick={onClose}>
+            Admin
           </MenuLink>
         ) : null}
       </div>
@@ -211,7 +215,11 @@ function MenuLink({
 export function MobileUserLinks({ onNavigate }: { onNavigate?: () => void }) {
   const { data: session } = useSession();
   const { t } = useI18n();
-  const isStaff = session?.user?.role === "ADMIN" || session?.user?.role === "MODERATOR";
+  const isStaff =
+    session?.user?.role === "ADMIN" ||
+    session?.user?.role === "MODERATOR" ||
+    session?.user?.role === "EDITOR" ||
+    session?.user?.role === "VIEWER";
 
   if (!session?.user) {
     return (
@@ -243,8 +251,8 @@ export function MobileUserLinks({ onNavigate }: { onNavigate?: () => void }) {
         {t("menu.subscriptions")}
       </Link>
       {isStaff ? (
-        <Link href="/admin/users" onClick={onNavigate} className="block rounded-lg px-3 py-2.5 text-sm">
-          {t("menu.adminCustomers")}
+        <Link href="/admin" onClick={onNavigate} className="block rounded-lg px-3 py-2.5 text-sm">
+          Admin
         </Link>
       ) : null}
       <button

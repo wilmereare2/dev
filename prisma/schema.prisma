@@ -28,6 +28,11 @@ model User {
   image         String?
   passwordHash  String?
   role          String         @default("USER")
+  accountStatus String         @default("active")
+  suspendedAt   DateTime?
+  bannedAt      DateTime?
+  banReason     String?
+  lastSeenAt    DateTime?
   accounts      Account[]
   sessions      Session[]
   settings      UserSettings?
@@ -70,10 +75,16 @@ model User {
   memberGroupMemberships  MemberGroupMember[]
   groupMessagesSent       GroupMessage[]
   advertisementsCreated   Advertisement[] @relation("AdsCreated")
+  adminNotesAuthored      AdminNote[]     @relation("AdminNotesAuthor")
+  auditLogs               AuditLog[]      @relation("AuditLogActor")
+  assignedReports         ContentReport[] @relation("ReportAssignee")
+  resolvedReports         ContentReport[] @relation("ReportResolver")
+  reportEvents            ReportEvent[]   @relation("ReportEventActor")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
   @@index([role])
+  @@index([accountStatus, createdAt])
 }
 
 model Account {
@@ -300,17 +311,28 @@ model Notification {
 }
 
 model ContentReport {
-  id          String   @id @default(cuid())
-  reporterId  String
-  contentId   String?
+  id           String   @id @default(cuid())
+  reporterId   String
+  contentId    String?
   targetUserId String?
-  reason      String
-  details     String?
-  status      String   @default("open")
-  createdAt   DateTime @default(now())
-  reporter    User     @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reason       String
+  details      String?
+  category     String   @default("other")
+  priority     String   @default("normal")
+  status       String   @default("open")
+  assigneeId   String?
+  resolvedAt   DateTime?
+  resolvedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  reporter     User     @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  assignee     User?    @relation("ReportAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  resolvedBy   User?    @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  events       ReportEvent[]
 
   @@index([status, createdAt])
+  @@index([status, priority, createdAt])
+  @@index([assigneeId, status])
 }
 
 model SupportTicket {
@@ -362,16 +384,61 @@ model Comment {
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  actorId   String?
-  action    String
-  entity    String?
-  entityId  String?
-  meta      String?
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  actorId       String?
+  action        String
+  entity        String?
+  entityId      String?
+  targetLabel   String?
+  previousValue String?
+  newValue      String?
+  reason        String?
+  ipAddress     String?
+  userAgent     String?
+  meta          String?
+  createdAt     DateTime @default(now())
+  actor         User?    @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([actorId])
+  @@index([entity, entityId])
+  @@index([action, createdAt])
+}
+
+model AdminNote {
+  id         String   @id @default(cuid())
+  targetType String
+  targetId   String
+  authorId   String
+  body       String
+  createdAt  DateTime @default(now())
+  author     User     @relation("AdminNotesAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([targetType, targetId, createdAt])
+  @@index([authorId])
+}
+
+model ReportEvent {
+  id             String        @id @default(cuid())
+  reportId       String
+  actorId        String?
+  action         String
+  note           String?
+  previousStatus String?
+  newStatus      String?
+  createdAt      DateTime      @default(now())
+  report         ContentReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  actor          User?         @relation("ReportEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([reportId, createdAt])
+}
+
+model PlatformSetting {
+  key         String   @id
+  value       String
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
 }
 
 model Referral {

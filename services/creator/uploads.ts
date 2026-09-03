@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { writeAuditLog } from "@/lib/admin/audit";
 import { deserializeTags, serializeTags } from "@/lib/creator/media";
 import { scanContentForModeration } from "@/lib/moderation/ai-scan";
 import { getSanityWriteClient } from "@/lib/sanity/write-client";
@@ -364,6 +365,17 @@ export async function moderateUpload(input: {
     }
 
     return record;
+  });
+
+  await writeAuditLog({
+    actorId: input.actorId,
+    action: `content.${input.action}`,
+    entity: "upload",
+    entityId: input.uploadId,
+    targetLabel: upload.title,
+    previousValue: upload.status,
+    newValue: status,
+    reason: input.reason,
   });
 
   return mapUpload(updated);

@@ -10,6 +10,7 @@ export type CustomerListItem = {
   name: string | null;
   email: string;
   role: string;
+  accountStatus: string;
   emailVerified: string | null;
   createdAt: string;
   subscriptionStatus: string | null;
@@ -31,6 +32,7 @@ export type CustomerSearchResult = {
 export async function searchCustomers(input: {
   q?: string;
   role?: string;
+  accountStatus?: string;
   page?: number;
   pageSize?: number;
 }): Promise<CustomerSearchResult> {
@@ -41,6 +43,7 @@ export async function searchCustomers(input: {
   const where: {
     OR?: Array<{ name?: { contains: string; mode: "insensitive" }; email?: { contains: string; mode: "insensitive" } }>;
     role?: string;
+    accountStatus?: string;
   } = {};
 
   const query = input.q?.trim();
@@ -55,6 +58,10 @@ export async function searchCustomers(input: {
     where.role = input.role;
   }
 
+  if (input.accountStatus && input.accountStatus !== "all") {
+    where.accountStatus = input.accountStatus;
+  }
+
   const [total, users] = await Promise.all([
     prisma.user.count({ where }),
     prisma.user.findMany({
@@ -67,8 +74,11 @@ export async function searchCustomers(input: {
         name: true,
         email: true,
         role: true,
+        accountStatus: true,
         emailVerified: true,
         createdAt: true,
+        suspendedAt: true,
+        bannedAt: true,
         subscriptions: {
           orderBy: { currentPeriodEnd: "desc" },
           take: 1,
@@ -98,6 +108,7 @@ export async function searchCustomers(input: {
       name: user.name,
       email: user.email,
       role: user.role,
+      accountStatus: user.accountStatus,
       emailVerified: user.emailVerified?.toISOString() ?? null,
       createdAt: user.createdAt.toISOString(),
       subscriptionStatus: user.subscriptions[0]?.status ?? null,
@@ -122,6 +133,11 @@ export async function getCustomerDetail(userId: string) {
       name: true,
       email: true,
       role: true,
+      accountStatus: true,
+      suspendedAt: true,
+      bannedAt: true,
+      banReason: true,
+      lastSeenAt: true,
       emailVerified: true,
       image: true,
       createdAt: true,

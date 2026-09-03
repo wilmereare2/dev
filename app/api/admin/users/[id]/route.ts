@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { requireApiRole } from "@/lib/auth/api-guards";
+import { requireAdminPermission } from "@/lib/admin/require-permission";
 import { getCustomerDetail, updateCustomer } from "@/services/admin/customers";
 import type { Role } from "@/types";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, context: RouteContext) {
-  const authResult = await requireApiRole(["ADMIN", "MODERATOR"]);
-  if ("error" in authResult) return authResult.error;
+  const auth = await requireAdminPermission("users.view");
+  if ("error" in auth) return auth.error;
 
   const { id } = await context.params;
   const customer = await getCustomerDetail(id);
@@ -20,8 +20,8 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const authResult = await requireApiRole(["ADMIN", "MODERATOR"]);
-  if ("error" in authResult) return authResult.error;
+  const auth = await requireAdminPermission("users.manage");
+  if ("error" in auth) return auth.error;
 
   const { id } = await context.params;
   const body = await request.json().catch(() => null);
@@ -40,7 +40,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const result = await updateCustomer(
     id,
     { role, suspend, suspensionReason },
-    authResult.role as Role,
+    auth.role as Role,
   );
 
   if (!result.ok) {
