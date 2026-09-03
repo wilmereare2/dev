@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { CatalogGridPage } from "@/components/catalog/catalog-grid-page";
-import { fetchPopularContent } from "@/services/sanity/catalog";
+import { fetchPopularContent, fetchCategoriesIndex } from "@/services/sanity/catalog";
 
 export const metadata: Metadata = {
   title: "Popular",
@@ -8,12 +8,14 @@ export const metadata: Metadata = {
 };
 
 export default async function PopularPage() {
-  const items = await fetchPopularContent();
+  const [items, categories] = await Promise.all([fetchPopularContent(), fetchCategoriesIndex()]);
   return (
     <CatalogGridPage
       title="Popular"
       description={`${items.length} popular titles`}
       items={items}
+      categories={categories}
+      activeTab="/popular"
     />
   );
 }

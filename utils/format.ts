@@ -49,3 +49,17 @@ export function estimateContentViews(id: string, publishedAt?: string) {
 
   return 2_400 + (hash % 48_000) + ageBoost;
 }
+
+/** Stable engagement metric when CMS has no like count yet. */
+export function estimateContentLikes(id: string, publishedAt?: string) {
+  let hash = 5381;
+  for (let i = 0; i < id.length; i += 1) {
+    hash = (hash * 33 + id.charCodeAt(i)) >>> 0;
+  }
+
+  const ageBoost = publishedAt
+    ? Math.min(800, Math.floor((Date.now() - new Date(publishedAt).getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
+  return 12 + (hash % 420) + ageBoost;
+}

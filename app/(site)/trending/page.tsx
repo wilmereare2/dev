@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { CatalogGridPage } from "@/components/catalog/catalog-grid-page";
-import { fetchTrendingContent } from "@/services/sanity/catalog";
+import { fetchTrendingContent, fetchCategoriesIndex } from "@/services/sanity/catalog";
 
 export const metadata: Metadata = {
   title: "Trending",
@@ -8,12 +8,14 @@ export const metadata: Metadata = {
 };
 
 export default async function TrendingPage() {
-  const items = await fetchTrendingContent();
+  const [items, categories] = await Promise.all([fetchTrendingContent(), fetchCategoriesIndex()]);
   return (
     <CatalogGridPage
       title="Trending"
       description={`${items.length} trending titles`}
       items={items}
+      categories={categories}
+      activeTab="/trending"
       emptyMessage="Trending picks appear as editors feature new releases."
     />
   );

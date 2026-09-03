@@ -1,6 +1,17 @@
 import type { SanityImageSource } from "@sanity/image-url";
 import type { SanitySeoFields } from "@/lib/sanity/seo-metadata";
 
+export type SanityCreatorRef = {
+  name: string;
+  slug?: string;
+  avatar?: SanityImageSource;
+};
+
+export type SanityCategoryRef = {
+  title: string;
+  slug: string;
+};
+
 export type SanityContentCard = {
   _id: string;
   title: string;
@@ -12,6 +23,8 @@ export type SanityContentCard = {
   thumbnail?: SanityImageSource;
   publishedAt?: string;
   creators?: string[];
+  creatorProfiles?: SanityCreatorRef[];
+  categories?: SanityCategoryRef[];
 };
 
 export type SanityCategoryCard = {

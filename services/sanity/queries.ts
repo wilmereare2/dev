@@ -12,7 +12,9 @@ const contentCardFields = `
   isPremium,
   thumbnail,
   publishedAt,
-  "creators": creators[]->name
+  "creators": creators[]->name,
+  "creatorProfiles": creators[]->{ name, "slug": slug.current, avatar },
+  "categories": categories[]->{ title, "slug": slug.current }
 `;
 
 export const HOME_PAGE_QUERY = `{
@@ -72,19 +74,19 @@ export const CONTENT_BY_SLUG_QUERY = `*[_type == "content" && slug.current == $s
   seo
 }`;
 
-export const EXPLORE_CONTENT_QUERY = `*[_type == "content" && ${notArchived}] | order(publishedAt desc)[0...48] {
+export const EXPLORE_CONTENT_QUERY = `*[_type == "content" && ${notArchived}] | order(publishedAt desc)[0...96] {
   ${contentCardFields}
 }`;
 
-export const NEWEST_CONTENT_QUERY = `*[_type == "content" && ${notArchived}] | order(publishedAt desc)[0...48] {
+export const NEWEST_CONTENT_QUERY = `*[_type == "content" && ${notArchived}] | order(publishedAt desc)[0...96] {
   ${contentCardFields}
 }`;
 
-export const POPULAR_CONTENT_QUERY = `*[_type == "content" && ${notArchived}] | order(featured desc, publishedAt desc)[0...48] {
+export const POPULAR_CONTENT_QUERY = `*[_type == "content" && ${notArchived}] | order(featured desc, publishedAt desc)[0...96] {
   ${contentCardFields}
 }`;
 
-export const TRENDING_CONTENT_QUERY = `*[_type == "content" && ${notArchived}] | order(featured desc, publishedAt desc)[0...24] {
+export const TRENDING_CONTENT_QUERY = `*[_type == "content" && ${notArchived}] | order(featured desc, publishedAt desc)[0...96] {
   ${contentCardFields}
 }`;
 
