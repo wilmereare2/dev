@@ -124,14 +124,20 @@ export function MemberPostAccessGate({
           </Button>
         ) : null}
 
-        {reason === "ppv" && signedIn && monetizationEnabled && ppvPriceCents != null && ppvPriceCents > 0 ? (
-          <Button type="button" variant="premium" disabled={pending === "purchase"} onClick={handlePurchase}>
-            {pending === "purchase" ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-            ) : (
-              `Unlock for $${(ppvPriceCents / 100).toFixed(2)}`
-            )}
-          </Button>
+        {reason === "ppv" && signedIn && ppvPriceCents != null && ppvPriceCents > 0 ? (
+          monetizationEnabled ? (
+            <Button type="button" variant="premium" disabled={pending === "purchase"} onClick={handlePurchase}>
+              {pending === "purchase" ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : (
+                `Unlock for $${(ppvPriceCents / 100).toFixed(2)}`
+              )}
+            </Button>
+          ) : (
+            <Button type="button" variant="premium" disabled>
+              Unlock for ${(ppvPriceCents / 100).toFixed(2)}
+            </Button>
+          )
         ) : null}
 
         {reason === "premium" && signedIn ? (
@@ -163,7 +169,11 @@ export function MemberPostAccessGate({
       </div>
 
       {!monetizationEnabled && (reason === "ppv" || reason === "subscribers" || reason === "premium") ? (
-        <p className="max-w-md text-xs leading-relaxed text-muted-foreground">{CREATOR_MONETIZATION_UNAVAILABLE}</p>
+        <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
+          {process.env.NODE_ENV === "development"
+            ? CREATOR_MONETIZATION_UNAVAILABLE
+            : "Checkout is not live yet. The site owner must enable billing before purchases can be completed."}
+        </p>
       ) : null}
 
       {message ? <p className="text-sm text-destructive">{message}</p> : null}
