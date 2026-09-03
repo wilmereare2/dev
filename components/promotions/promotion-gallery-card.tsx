@@ -15,7 +15,7 @@ import {
   estimateContentViews,
   formatCompactNumber,
   formatRelativeDate,
-} from "@/utils/format";
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type PromotionGalleryCardProps = {

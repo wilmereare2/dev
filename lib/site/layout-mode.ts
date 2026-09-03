@@ -32,6 +32,10 @@ export function resolveSiteLayoutMode(pathname: string): SiteLayoutMode {
     return { wide: true, flush: true, hideFooter: true, fillViewport: true };
   }
 
+  if (pathname === "/") {
+    return { fullWidth: true, flush: true };
+  }
+
   if (/^\/content\/[^/]+$/.test(pathname)) {
     return { flush: false, fillViewport: false };
   }

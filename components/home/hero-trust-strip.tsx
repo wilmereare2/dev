@@ -1,7 +1,7 @@
 import { Star } from "lucide-react";
 import { SanityImage } from "@/components/media/sanity-image";
 import { sanityImageUrl } from "@/lib/sanity/image";
-import { formatCompactNumber } from "@/utils/format";
+import { formatCompactNumber } from "@/lib/format";
 import type { SanityCreatorCard } from "@/types/sanity-content";
 
 type HeroTrustStripProps = {

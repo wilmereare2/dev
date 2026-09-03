@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ContentCard } from "@/components/content/content-card";
 import type { SanityContentCard } from "@/types/sanity-content";
 import { cn } from "@/lib/utils";
-import { formatDuration } from "@/utils/format";
+import { formatDuration } from "@/lib/format";
 
 type HistoryItem = { item: SanityContentCard; progressMs: number };
 

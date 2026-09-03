@@ -27,7 +27,7 @@ export function TrustBar({ className, compact = false }: TrustBarProps) {
         className,
       )}
     >
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-6 gap-y-2 px-4 sm:px-6 lg:px-8">
+      <div className="flex w-full flex-wrap items-center justify-center gap-x-6 gap-y-2">
         {TRUST_ITEMS.map(({ icon: Icon, key }) => (
           <span
             key={key}

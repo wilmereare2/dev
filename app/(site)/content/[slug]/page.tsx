@@ -14,7 +14,7 @@ import { fetchContentBySlug, fetchExploreContent } from "@/services/sanity/conte
 import { listWatchHistory } from "@/services/user/library";
 import { encodeRouteParam } from "@/lib/site/route-params";
 import { sanityImageUrl } from "@/lib/sanity/image";
-import { formatDuration } from "@/utils/format";
+import { formatDuration } from "@/lib/format";
 
 type PageProps = { params: Promise<{ slug: string }> };
 

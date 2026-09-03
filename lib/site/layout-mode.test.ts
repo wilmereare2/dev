@@ -12,6 +12,10 @@ describe("layout-mode", () => {
   });
 
   it("uses full-width gallery layout for discovery pages", () => {
+    expect(resolveSiteLayoutMode("/")).toEqual({
+      fullWidth: true,
+      flush: true,
+    });
     expect(resolveSiteLayoutMode("/promotions")).toEqual({
       fullWidth: true,
       flush: true,
@@ -23,7 +27,7 @@ describe("layout-mode", () => {
   });
 
   it("uses default layout for other routes", () => {
-    expect(resolveSiteLayoutMode("/")).toEqual({});
     expect(resolveSiteLayoutMode("/settings/profile")).toEqual({});
+    expect(resolveSiteLayoutMode("/pricing")).toEqual({});
   });
 });

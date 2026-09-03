@@ -10,7 +10,7 @@ import {
   formatCompactNumber,
   formatDuration,
   formatRelativeDate,
-} from "@/utils/format";
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type ShowcaseCardProps = {

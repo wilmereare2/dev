@@ -29,6 +29,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# package manager (pnpm is the source of truth)
+package-lock.json
+yarn.lock
+
 # env files
 .env
 .env*.local

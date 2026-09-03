@@ -8,7 +8,7 @@ import { CreatorSupportActions } from "@/features/creator/creator-support-action
 import { Button } from "@/components/ui/button";
 import { sanityImageUrl } from "@/lib/sanity/image";
 import type { CreatorPublicProfile } from "@/services/creator/public-profile";
-import { formatCompactNumber } from "@/utils/format";
+import { formatCompactNumber } from "@/lib/format";
 
 type CreatorProfileViewProps = {
   profile: CreatorPublicProfile;

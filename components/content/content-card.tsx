@@ -9,7 +9,7 @@ import {
   formatCompactNumber,
   formatDuration,
   formatRelativeDate,
-} from "@/utils/format";
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type ContentCardProps = {
@@ -37,7 +37,7 @@ export function ContentCard({ item, priority, className, size = "default" }: Con
       <div
         className={cn(
           "relative aspect-[16/10] w-full overflow-hidden bg-muted",
-          size === "large" && "aspect-[21/9] sm:aspect-[2.4/1]",
+          size === "large" && "aspect-[16/10] lg:aspect-[21/9]",
         )}
       >
         {imageUrl ? (
@@ -46,7 +46,11 @@ export function ContentCard({ item, priority, className, size = "default" }: Con
             alt={item.title}
             fill
             priority={priority}
-            sizes={size === "large" ? "100vw" : "(max-width:768px) 50vw, 25vw"}
+            sizes={
+              size === "large"
+                ? "(max-width:1024px) 100vw, 50vw"
+                : "(max-width:768px) 50vw, 25vw"
+            }
             className="object-cover transition duration-500 group-hover:scale-[1.05]"
           />
         ) : (

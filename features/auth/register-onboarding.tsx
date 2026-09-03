@@ -4,11 +4,11 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AUTH_INPUT_CLASS_NAME } from "@/features/auth/account-constants";
 import { usernameValidationMessage } from "@/lib/user/username";
 import { COUNTRY_OPTIONS, GENDER_OPTIONS, RACE_OPTIONS } from "@/lib/user/profile-options";
 
-export const registerInputClassName =
-  "mt-2 h-11 w-full rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground outline-none transition focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30 disabled:opacity-60";
+export const registerInputClassName = AUTH_INPUT_CLASS_NAME;
 
 export type RegisterFormValues = {
   username: string;
