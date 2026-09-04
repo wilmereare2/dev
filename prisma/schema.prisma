@@ -743,6 +743,13 @@ model Advertisement {
   advertiserName String
   destinationUrl String
   placement      String
+  /// direct = self-hosted banner we serve and count.
+  /// network = third-party tag (ExoClick, TrafficJunky, ...) rendered in a
+  /// sandboxed iframe so its script never touches the main document.
+  creativeType   String   @default("direct")
+  networkName    String?
+  embedCode      String?
+  iframeUrl      String?
   status         String   @default("draft")
   priority       Int      @default(0)
   startAt        DateTime?

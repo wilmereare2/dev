@@ -10,8 +10,12 @@ import {
 const createSchema = z.object({
   title: z.string().trim().min(1).max(200),
   advertiserName: z.string().trim().min(1).max(200),
-  destinationUrl: z.string().trim().min(1),
+  destinationUrl: z.string().trim().default(""),
   placement: z.string().trim().min(1),
+  creativeType: z.enum(["direct", "script", "iframe"]).optional(),
+  networkName: z.string().trim().max(80).nullable().optional(),
+  embedCode: z.string().max(20_000).nullable().optional(),
+  iframeUrl: z.string().trim().max(2000).nullable().optional(),
   status: z.enum(["draft", "active", "paused", "archived"]).optional(),
   priority: z.number().int().min(0).max(100).optional(),
   startAt: z.string().datetime().nullable().optional(),

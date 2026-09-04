@@ -110,7 +110,7 @@ export async function middleware(request: NextRequest) {
     return tooManyRequests(request, limit.resetAt);
   }
 
-  const response = applySecurityHeaders(NextResponse.next());
+  const response = applySecurityHeaders(NextResponse.next(), pathname);
 
   if (pathname.startsWith("/studio")) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");

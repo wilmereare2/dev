@@ -1,5 +1,11 @@
 import { prisma } from "@/lib/db/prisma";
 import {
+  parseAdCreativeType,
+  isNetworkCreative,
+  validateEmbedCode,
+  validateIframeUrl,
+} from "@/lib/ads/network";
+import {
   computeEffectiveAdStatus,
   formatCtr,
   parseAdPlacement,
@@ -24,6 +30,10 @@ export function mapAdminAdvertisement(record: AdminAdvertisementRecord) {
     advertiserName: record.advertiserName,
     destinationUrl: record.destinationUrl,
     placement: record.placement,
+    creativeType: record.creativeType,
+    networkName: record.networkName,
+    embedCode: record.embedCode,
+    iframeUrl: record.iframeUrl,
     status: record.status,
     effectiveStatus,
     priority: record.priority,
@@ -76,6 +86,10 @@ type AdWriteInput = {
   advertiserName: string;
   destinationUrl: string;
   placement: string;
+  creativeType?: string | null;
+  networkName?: string | null;
+  embedCode?: string | null;
+  iframeUrl?: string | null;
   status?: string;
   priority?: number;
   startAt?: string | null;
@@ -104,8 +118,36 @@ export function validateAdvertisementInput(input: AdWriteInput) {
   const placement = parseAdPlacement(input.placement);
   if (!placement) return { ok: false as const, error: "Select a valid placement." };
 
-  const destination = validateDestinationUrl(input.destinationUrl);
-  if (!destination.ok) return destination;
+  const creativeType = parseAdCreativeType(input.creativeType);
+  const network = isNetworkCreative(creativeType);
+
+  // A network tag carries its own click handling and creative, so it needs
+  // neither a destination URL nor an uploaded banner.
+  let destinationUrl = "";
+  if (!network) {
+    const destination = validateDestinationUrl(input.destinationUrl);
+    if (!destination.ok) return destination;
+    destinationUrl = destination.url;
+  }
+
+  let embedCode: string | null = null;
+  let iframeUrl: string | null = null;
+
+  if (creativeType === "script") {
+    const embed = validateEmbedCode(input.embedCode);
+    if (!embed.ok) return embed;
+    embedCode = embed.code;
+  }
+  if (creativeType === "iframe") {
+    const frame = validateIframeUrl(input.iframeUrl);
+    if (!frame.ok) return frame;
+    iframeUrl = frame.url;
+  }
+
+  const networkName = network ? sanitizeAdText(input.networkName ?? "", 80) || null : null;
+  if (network && !networkName) {
+    return { ok: false as const, error: "Select the ad network." };
+  }
 
   const imageUrl = validateImageUrl(input.imageUrl);
   if (!imageUrl.ok) return imageUrl;
@@ -127,7 +169,7 @@ export function validateAdvertisementInput(input: AdWriteInput) {
     return { ok: false as const, error: "End date must be after start date." };
   }
 
-  if (status === "active" && !imageUrl.url) {
+  if (status === "active" && !network && !imageUrl.url) {
     return { ok: false as const, error: "Active ads require a banner image." };
   }
 
@@ -136,8 +178,12 @@ export function validateAdvertisementInput(input: AdWriteInput) {
     data: {
       title,
       advertiserName,
-      destinationUrl: destination.url,
+      destinationUrl,
       placement,
+      creativeType,
+      networkName,
+      embedCode,
+      iframeUrl,
       status: status ?? "draft",
       priority,
       startAt,
@@ -198,7 +244,7 @@ export async function setAdvertisementStatus(id: string, status: string) {
   const existing = await prisma.advertisement.findUnique({ where: { id } });
   if (!existing) return { ok: false as const, error: "Not found.", status: 404 as const };
 
-  if (parsed === "active" && !existing.imageUrl) {
+  if (parsed === "active" && !isNetworkCreative(existing.creativeType) && !existing.imageUrl) {
     return { ok: false as const, error: "Upload a banner image before activating." };
   }
 

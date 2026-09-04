@@ -10,6 +10,7 @@ import {
   getPlacementSizeLabel,
 } from "@/lib/ads/placements";
 import { requestJson } from "@/lib/api/client";
+import { AD_NETWORKS, isNetworkCreative } from "@/lib/ads/network";
 import { prepareBannerFile } from "@/lib/ads/prepare-banner";
 
 const inputClass =
@@ -21,6 +22,10 @@ type AdvertisementRow = {
   advertiserName: string;
   destinationUrl: string;
   placement: string;
+  creativeType: string;
+  networkName: string | null;
+  embedCode: string | null;
+  iframeUrl: string | null;
   status: string;
   effectiveStatus: string;
   priority: number;
@@ -40,6 +45,10 @@ type FormState = {
   advertiserName: string;
   destinationUrl: string;
   placement: string;
+  creativeType: string;
+  networkName: string;
+  embedCode: string;
+  iframeUrl: string;
   status: string;
   priority: number;
   startAt: string;
@@ -55,6 +64,10 @@ const emptyForm = (): FormState => ({
   advertiserName: "",
   destinationUrl: "https://",
   placement: AD_PLACEMENT_KEYS[0],
+  creativeType: "direct",
+  networkName: "",
+  embedCode: "",
+  iframeUrl: "",
   status: "draft",
   priority: 0,
   startAt: "",
@@ -149,6 +162,10 @@ export function AdminAdvertisementsPanel() {
       advertiserName: row.advertiserName,
       destinationUrl: row.destinationUrl,
       placement: row.placement,
+      creativeType: row.creativeType ?? "direct",
+      networkName: row.networkName ?? "",
+      embedCode: row.embedCode ?? "",
+      iframeUrl: row.iframeUrl ?? "",
       status: row.status,
       priority: row.priority,
       startAt: toLocalInput(row.startAt),
@@ -353,7 +370,14 @@ export function AdminAdvertisementsPanel() {
                 <tr key={row.id} className="border-b border-border/60 last:border-0">
                   <td className="px-4 py-3">
                     <p className="font-medium">{row.title}</p>
-                    <p className="text-xs text-muted-foreground">{row.advertiserName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {row.advertiserName}
+                      {isNetworkCreative(row.creativeType) ? (
+                        <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide">
+                          {row.networkName ?? "network"}
+                        </span>
+                      ) : null}
+                    </p>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     <p>{getPlacementLabel(row.placement)}</p>
@@ -427,6 +451,42 @@ export function AdminAdvertisementsPanel() {
 
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
             <div className="grid gap-4 sm:grid-cols-2">
+              <fieldset className="sm:col-span-2">
+                <legend className="mb-2 text-sm text-muted-foreground">Ad source</legend>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      ["direct", "Own banner"],
+                      ["script", "Network tag"],
+                      ["iframe", "Network iframe"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <label
+                      key={value}
+                      className={`cursor-pointer rounded-xl border px-3 py-2 text-sm transition ${
+                        form.creativeType === value
+                          ? "border-accent/60 bg-accent/10 text-foreground"
+                          : "border-border text-muted-foreground hover:border-accent/40"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="creativeType"
+                        value={value}
+                        checked={form.creativeType === value}
+                        onChange={(e) => setForm({ ...form, creativeType: e.target.value })}
+                        className="sr-only"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Network tags run inside a sandboxed frame, loaded only when the slot scrolls into view, so
+                  they cannot reach the page around them or block it from rendering.
+                </p>
+              </fieldset>
+
               <label className="text-sm sm:col-span-2">
                 <span className="mb-1 block text-muted-foreground">Title</span>
                 <input
@@ -445,17 +505,65 @@ export function AdminAdvertisementsPanel() {
                   className={inputClass}
                 />
               </label>
-              <label className="text-sm sm:col-span-2">
-                <span className="mb-1 block text-muted-foreground">Destination URL</span>
-                <input
-                  required
-                  type="url"
-                  value={form.destinationUrl}
-                  onChange={(e) => setForm({ ...form, destinationUrl: e.target.value })}
-                  className={inputClass}
-                  placeholder="https://example.com"
-                />
-              </label>
+              {isNetworkCreative(form.creativeType) ? (
+                <>
+                  <label className="text-sm">
+                    <span className="mb-1 block text-muted-foreground">Ad network</span>
+                    <select
+                      value={form.networkName}
+                      onChange={(e) => setForm({ ...form, networkName: e.target.value })}
+                      className={inputClass}
+                    >
+                      <option value="">Select a network…</option>
+                      {AD_NETWORKS.map((network) => (
+                        <option key={network} value={network}>
+                          {network}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {form.creativeType === "script" ? (
+                    <label className="text-sm sm:col-span-2">
+                      <span className="mb-1 block text-muted-foreground">Ad tag (HTML from the network)</span>
+                      <textarea
+                        value={form.embedCode}
+                        onChange={(e) => setForm({ ...form, embedCode: e.target.value })}
+                        rows={6}
+                        spellCheck={false}
+                        placeholder={'<script async src="https://a.example-network.com/tag.js" data-zone="12345"></script>'}
+                        className="w-full rounded-xl border border-border bg-background p-3 font-mono text-xs outline-none focus-visible:border-accent/60"
+                      />
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        Paste the zone tag exactly as the network gives it. It is never injected into this page.
+                      </span>
+                    </label>
+                  ) : (
+                    <label className="text-sm sm:col-span-2">
+                      <span className="mb-1 block text-muted-foreground">Iframe URL</span>
+                      <input
+                        type="url"
+                        value={form.iframeUrl}
+                        onChange={(e) => setForm({ ...form, iframeUrl: e.target.value })}
+                        className={inputClass}
+                        placeholder="https://syndication.example-network.com/iframe?idzone=12345"
+                      />
+                    </label>
+                  )}
+                </>
+              ) : (
+                <label className="text-sm sm:col-span-2">
+                  <span className="mb-1 block text-muted-foreground">Destination URL</span>
+                  <input
+                    required
+                    type="url"
+                    value={form.destinationUrl}
+                    onChange={(e) => setForm({ ...form, destinationUrl: e.target.value })}
+                    className={inputClass}
+                    placeholder="https://example.com"
+                  />
+                </label>
+              )}
               <label className="text-sm">
                 <span className="mb-1 block text-muted-foreground">Placement</span>
                 <select
@@ -525,7 +633,11 @@ export function AdminAdvertisementsPanel() {
               </label>
             </div>
 
-            <div className="mt-4 space-y-3 rounded-xl border border-border/60 p-4">
+            <div
+              className={`mt-4 space-y-3 rounded-xl border border-border/60 p-4 ${
+                isNetworkCreative(form.creativeType) ? "hidden" : ""
+              }`}
+            >
               <p className="text-sm font-medium">Banner images</p>
               {(
                 [

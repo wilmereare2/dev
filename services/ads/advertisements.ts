@@ -8,6 +8,9 @@ export type PublicAdPayload = {
   advertiserName: string;
   destinationUrl: string;
   placement: string;
+  /** "direct" renders our banner; "script"/"iframe" render a sandboxed frame. */
+  creativeType: string;
+  networkName: string | null;
   imageUrl: string | null;
   imageUrlTablet: string | null;
   imageUrlMobile: string | null;
@@ -20,6 +23,8 @@ function mapPublicAd(record: {
   advertiserName: string;
   destinationUrl: string;
   placement: string;
+  creativeType?: string | null;
+  networkName?: string | null;
   imageUrl: string | null;
   imageUrlTablet: string | null;
   imageUrlMobile: string | null;
@@ -31,6 +36,8 @@ function mapPublicAd(record: {
     advertiserName: record.advertiserName,
     destinationUrl: record.destinationUrl,
     placement: record.placement,
+    creativeType: record.creativeType ?? "direct",
+    networkName: record.networkName ?? null,
     imageUrl: record.imageUrl,
     imageUrlTablet: record.imageUrlTablet,
     imageUrlMobile: record.imageUrlMobile,
@@ -44,6 +51,8 @@ type AdRow = {
   advertiserName: string;
   destinationUrl: string;
   placement: string;
+  creativeType: string;
+  networkName: string | null;
   imageUrl: string | null;
   imageUrlTablet: string | null;
   imageUrlMobile: string | null;
@@ -83,6 +92,8 @@ export async function selectAdvertisementsForPlacements(placements: AdPlacement[
            a."advertiserName",
            a."destinationUrl",
            a.placement,
+           a."creativeType",
+           a."networkName",
            a."imageUrl",
            a."imageUrlTablet",
            a."imageUrlMobile",

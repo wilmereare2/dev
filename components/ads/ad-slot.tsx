@@ -9,6 +9,8 @@ import {
   type AdPlacement,
 } from "@/lib/ads/placements";
 import { useAd } from "@/components/ads/ad-context";
+import { AdFrame } from "@/components/ads/ad-frame";
+import { isNetworkCreative } from "@/lib/ads/network";
 import type { PublicAdPayload } from "@/services/ads/advertisements";
 import { requestJson } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
@@ -107,8 +109,11 @@ export function AdSlot({ placement, className, collapseWhenEmpty }: AdSlotProps)
 
   if (!visible || !ad) return null;
 
-  const sources = resolveBannerSources(ad);
-  if (!sources) return null;
+  const network = isNetworkCreative(ad.creativeType);
+  const sources = network ? null : resolveBannerSources(ad);
+
+  // A direct-sold slot with no usable banner has nothing to show.
+  if (!network && !sources) return null;
 
   const placementMeta = AD_PLACEMENTS[placement];
   const alt = ad.altText || `${ad.advertiserName}: ${ad.title}`;
@@ -116,6 +121,37 @@ export function AdSlot({ placement, className, collapseWhenEmpty }: AdSlotProps)
   // Never render a creative wider than it was designed for: stretching a
   // 728x90 leaderboard across a 1200px column only upscales and blurs it.
   const compactLabel = placementMeta.height <= 100;
+
+  if (network) {
+    return (
+      <aside
+        ref={containerRef}
+        className={cn(
+          "group relative mx-auto w-full overflow-hidden rounded-2xl border border-border/50 bg-surface/40",
+          getPlacementDeviceClass(placement),
+          className,
+        )}
+        style={{ maxWidth: placementMeta.width }}
+        aria-label={`Advertisement from ${ad.networkName ?? ad.advertiserName}`}
+      >
+        <div
+          className="relative w-full overflow-hidden bg-muted/20"
+          style={{ aspectRatio: getPlacementAspectRatio(placement) }}
+        >
+          <AdFrame
+            adId={ad.id}
+            width={placementMeta.width}
+            height={placementMeta.height}
+            title={`Advertisement — ${ad.networkName ?? ad.advertiserName}`}
+          />
+        </div>
+        <span className="pointer-events-none absolute right-1.5 top-1.5 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/85">
+          Ad
+        </span>
+        <span className="sr-only">{placementMeta.label}</span>
+      </aside>
+    );
+  }
 
   return (
     <aside
@@ -140,11 +176,11 @@ export function AdSlot({ placement, className, collapseWhenEmpty }: AdSlotProps)
           style={{ aspectRatio: getPlacementAspectRatio(placement) }}
         >
           <picture>
-            {sources.mobile ? <source media="(max-width: 639px)" srcSet={sources.mobile} /> : null}
-            {sources.tablet ? <source media="(max-width: 1023px)" srcSet={sources.tablet} /> : null}
+            {sources?.mobile ? <source media="(max-width: 639px)" srcSet={sources.mobile} /> : null}
+            {sources?.tablet ? <source media="(max-width: 1023px)" srcSet={sources.tablet} /> : null}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={sources.base}
+              src={sources!.base}
               alt={alt}
               loading="lazy"
               decoding="async"

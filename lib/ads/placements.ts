@@ -49,6 +49,14 @@ export const AD_PLACEMENTS = {
     variant: "sidebar" as const,
     device: "desktop" as const,
   },
+  sidebar_vertical: {
+    label: "Sidebar — skyscraper",
+    description: "Narrow 160×600 vertical banner. Fits beside content where a 300px rail is too wide.",
+    width: 160,
+    height: 600,
+    variant: "sidebar" as const,
+    device: "desktop" as const,
+  },
   sidebar_1: {
     label: "Sidebar — medium rectangle 1",
     description: "Standard 300×250 rail unit.",
@@ -98,6 +106,44 @@ export const AD_PLACEMENTS = {
     height: 90,
     variant: "inline" as const,
     device: "all" as const,
+  },
+
+  // --- In-feed / native ---
+  in_feed: {
+    label: "In-feed native",
+    description: "Sits inside the content grid, styled like a thumbnail card. Highest click-through of any slot.",
+    width: 300,
+    height: 250,
+    variant: "native" as const,
+    device: "all" as const,
+  },
+
+  // --- Video player ---
+  video_overlay: {
+    label: "Video player overlay",
+    description: "Rectangle over the player frame, shown before playback and while paused.",
+    width: 300,
+    height: 250,
+    variant: "overlay" as const,
+    device: "all" as const,
+  },
+  video_bottom: {
+    label: "Video player bottom banner",
+    description: "Slim banner anchored inside the bottom of the player frame.",
+    width: 468,
+    height: 60,
+    variant: "overlay" as const,
+    device: "all" as const,
+  },
+
+  // --- Sticky footer ---
+  sticky_footer: {
+    label: "Sticky footer (desktop)",
+    description: "Anchored to the bottom of the viewport while scrolling. Dismissible.",
+    width: 970,
+    height: 90,
+    variant: "sticky" as const,
+    device: "desktop" as const,
   },
 
   // --- Mobile-specific ---

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AdSlot } from "@/components/ads/ad-slot";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SearchForm } from "@/features/search/search-form";
@@ -26,6 +27,16 @@ type ShowcaseGalleryProps = {
   activeTab?: string;
   initialSearchQuery?: string;
 };
+
+
+/**
+ * Preferred number of real cards before the in-feed native slot.
+ *
+ * Clamped to the feed length, so a short feed still gets the slot at its end
+ * instead of dropping it entirely — with a handful of titles a fixed offset
+ * meant the slot never rendered at all.
+ */
+const IN_FEED_AD_AFTER = 3;
 
 export function ShowcaseGallery({
   items,
@@ -152,9 +163,18 @@ export function ShowcaseGallery({
 
       <div className="mt-6 grid grid-cols-1 gap-4 @md:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-4">
         {filteredItems.length
-          ? filteredItems.map((item, index) => (
-              <ShowcaseCard key={item._id} item={item} priority={index < 4} />
-            ))
+          ? filteredItems.flatMap((item, index) => {
+              const card = <ShowcaseCard key={item._id} item={item} priority={index < 4} />;
+
+              // One native slot inside the browsing flow, after the first row
+              // where possible and at the end of a shorter feed.
+              const adAfter = Math.min(IN_FEED_AD_AFTER, filteredItems.length);
+              if (index !== adAfter - 1) return [card];
+              return [
+                card,
+                <AdSlot key="in-feed-ad" placement="in_feed" collapseWhenEmpty className="h-full" />,
+              ];
+            })
           : items.length
             ? (
                 <p className="col-span-full py-16 text-center text-sm text-muted-foreground">

@@ -6,6 +6,7 @@ import { AgeGateBanner } from "@/components/layout/age-gate-banner";
 import { CookieConsentBanner } from "@/components/layout/cookie-consent-banner";
 import { AdProvider } from "@/components/ads/ad-context";
 import { MobileStickyAd } from "@/components/ads/mobile-sticky-ad";
+import { StickyFooterAd } from "@/components/ads/sticky-footer-ad";
 import { AdSlot } from "@/components/ads/ad-slot";
 import { cn } from "@/lib/utils";
 import type { PageBackgroundVariant } from "@/lib/site/page-theme";
@@ -76,6 +77,7 @@ export function SiteShell({
       <CookieConsentBanner />
       {hideFooter ? null : <Footer compact={compactFooter} />}
       <MobileStickyAd />
+      <StickyFooterAd />
     </div>
     </AdProvider>
   );

@@ -1,5 +1,8 @@
 "use client";
 
+import { X } from "lucide-react";
+import { AdSlot } from "@/components/ads/ad-slot";
+
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -36,6 +39,8 @@ export function ContentPlayer({
   const [embedUrl, setEmbedUrl] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(Boolean(playbackUrl));
+  const [playing, setPlaying] = useState(false);
+  const [overlayDismissed, setOverlayDismissed] = useState(false);
 
   useEffect(() => {
     if (isPremium && !hasSubscription) {
@@ -154,14 +159,47 @@ export function ContentPlayer({
   }
 
   return (
-    <video
-      ref={videoRef}
-      className="h-full w-full object-contain"
-      controls
-      playsInline
-      poster={poster}
-      src={directUrl}
-      onError={() => setLoadError(true)}
-    />
+    <div className="relative h-full w-full">
+      <video
+        ref={videoRef}
+        className="h-full w-full object-contain"
+        controls
+        playsInline
+        poster={poster}
+        src={directUrl}
+        onError={() => setLoadError(true)}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+      />
+
+      {/*
+        Pause/overlay ads only. They appear before playback starts and whenever
+        the viewer pauses, never over a playing video, and never over the native
+        controls — the bottom banner clears them.
+      */}
+      {!playing && !overlayDismissed ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+          <div className="pointer-events-auto relative">
+            <button
+              type="button"
+              onClick={() => setOverlayDismissed(true)}
+              aria-label="Dismiss advertisement"
+              className="absolute -right-2 -top-2 z-10 inline-flex size-7 items-center justify-center rounded-full border border-white/20 bg-black/80 text-white/80 backdrop-blur hover:text-white"
+            >
+              <X className="size-3.5" aria-hidden />
+            </button>
+            <AdSlot placement="video_overlay" collapseWhenEmpty />
+          </div>
+        </div>
+      ) : null}
+
+      {!playing ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-16 flex justify-center px-4">
+          <div className="pointer-events-auto">
+            <AdSlot placement="video_bottom" collapseWhenEmpty />
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
