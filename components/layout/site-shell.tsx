@@ -39,6 +39,8 @@ export function SiteShell({
   hideFooter = false,
   fillViewport = false,
 }: SiteShellProps) {
+  const contentWidthClass = fullWidth ? null : wide ? "max-w-[1600px]" : "max-w-7xl";
+
   return (
     <AdProvider>
     <div className="relative flex min-h-dvh flex-col">
@@ -59,20 +61,38 @@ export function SiteShell({
         <AdSlot placement="mobile_top" collapseWhenEmpty className="mt-3" />
       </div>
 
+      {/*
+        The sidebar sits outside the page's width constraint so it lands in the
+        same place on every route. Previously the constraint wrapped both, so a
+        constrained page (max-w-7xl, centred) pushed the sidebar ~245px inward
+        while a full-width gallery route left it flush against the gutter.
+        Only the main column's max width varies per page now.
+      */}
       <div
         className={cn(
-          "relative mx-auto flex w-full flex-1 items-stretch",
-          fullWidth ? "max-w-none" : wide ? "max-w-[1600px]" : "max-w-7xl",
-          fullWidth
-            ? "gap-4 px-4 sm:gap-6 sm:px-6 lg:gap-8 lg:px-8 xl:px-10"
-            : flush
-              ? "gap-0 px-0"
-              : "gap-0 px-4 sm:px-6 lg:gap-8 lg:px-8",
+          "relative flex w-full flex-1 items-stretch",
+          flush && !showSidebar
+            ? "gap-0 px-0"
+            : "gap-4 px-4 sm:gap-6 sm:px-6 lg:gap-8 lg:px-8 xl:px-10",
           fillViewport && "min-h-0",
         )}
       >
         {showSidebar ? <AppSidebar /> : null}
-        <main className={cn("min-w-0 flex-1", fillViewport && "flex min-h-0 flex-col")}>{children}</main>
+        <main className={cn("min-w-0 flex-1", fillViewport && "flex min-h-0 flex-col")}>
+          {contentWidthClass ? (
+            <div
+              className={cn(
+                "mx-auto w-full",
+                contentWidthClass,
+                fillViewport && "flex min-h-0 flex-1 flex-col",
+              )}
+            >
+              {children}
+            </div>
+          ) : (
+            children
+          )}
+        </main>
       </div>
       <CookieConsentBanner />
       {hideFooter ? null : <Footer compact={compactFooter} />}
