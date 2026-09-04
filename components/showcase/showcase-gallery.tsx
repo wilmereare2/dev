@@ -77,7 +77,13 @@ export function ShowcaseGallery({
   return (
     <div className="w-full py-8">
       <header className="border-b border-border/60 pb-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        {/*
+          Container-based, not viewport-based: with the ad rail present the
+          content column can be ~600px wide at a 1280px viewport, and a
+          viewport `lg:flex-row` put the title and a 448px search box in a row
+          that did not fit.
+        */}
+        <div className="flex flex-col gap-4 @2xl:flex-row @2xl:items-end @2xl:justify-between">
           <div className="min-w-0">
             <p className="font-display text-xs font-semibold uppercase tracking-[0.22em] text-accent">Discover</p>
             <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
@@ -87,7 +93,7 @@ export function ShowcaseGallery({
               <p className="mt-2 text-sm text-muted-foreground">{items.length} titles to browse</p>
             ) : null}
           </div>
-          <div className="w-full max-w-md shrink-0">
+          <div className="w-full min-w-0 max-w-md">
             <SearchForm initialQuery={initialSearchQuery} />
           </div>
         </div>

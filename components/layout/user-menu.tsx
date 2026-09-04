@@ -100,7 +100,7 @@ export function UserMenu() {
           imageFocusX={user.avatarFocusX ?? 0}
           imageFocusY={user.avatarFocusY ?? 0}
         />
-        <span className="hidden max-w-[7rem] truncate text-sm font-medium md:inline">{label}</span>
+        <span className="hidden max-w-[7rem] truncate text-sm font-medium xl:inline">{label}</span>
       </button>
 
       {open ? (

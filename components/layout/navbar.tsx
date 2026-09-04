@@ -16,7 +16,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { navMessageKey } from "@/lib/i18n";
-import { resolveSiteLayoutMode } from "@/lib/site/layout-mode";
 import type { NavItem } from "@/types";
 
 type NavbarProps = {
@@ -28,7 +27,6 @@ export function Navbar({ navItems }: NavbarProps) {
   const { open: paletteOpen, setOpen: setPaletteOpen } = useSearchCommandPalette();
   const pathname = usePathname();
   const { t } = useI18n();
-  const layoutMode = resolveSiteLayoutMode(pathname);
 
   function navLabel(item: NavItem) {
     const key = navMessageKey(item.href);
@@ -49,12 +47,13 @@ export function Navbar({ navItems }: NavbarProps) {
   return (
     <>
       <header className="sticky top-0 z-50 overflow-visible border-b border-border/60 bg-background shadow-sm supports-[backdrop-filter]:bg-background/95 supports-[backdrop-filter]:backdrop-blur-xl">
-        <div
-          className={cn(
-            "mx-auto flex h-16 w-full items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8 xl:px-10",
-            layoutMode.fullWidth ? "max-w-none" : "max-w-7xl",
-          )}
-        >
+        {/*
+          The header keeps one width on every route. It used to inherit the
+          page's layout mode, so the logo jumped ~190px sideways between a
+          gallery route (full width) and a constrained one, and the last nav
+          item was clipped on the narrower variant.
+        */}
+        <div className="mx-auto flex h-16 w-full max-w-none items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-6 lg:gap-8">
             <Link
               href="/"
@@ -65,7 +64,14 @@ export function Navbar({ navItems }: NavbarProps) {
             </Link>
 
             <nav
-              className="hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto md:flex [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className={cn(
+                "hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto md:flex",
+                "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                // The scrollbar is hidden, so a clipped item would otherwise
+                // look broken rather than scrollable. The fade sits over the
+                // trailing edge and is only visible once items reach it.
+                "[mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)]",
+              )}
               aria-label="Primary"
             >
               {navItems.map((item) => {
