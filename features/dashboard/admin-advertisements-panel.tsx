@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AD_PLACEMENT_KEYS, getPlacementLabel } from "@/lib/ads/placements";
+import {
+  AD_PLACEMENT_KEYS,
+  AD_PLACEMENTS,
+  getPlacementLabel,
+  getPlacementSizeLabel,
+} from "@/lib/ads/placements";
 import { requestJson } from "@/lib/api/client";
 import { prepareBannerFile } from "@/lib/ads/prepare-banner";
 
@@ -350,7 +355,10 @@ export function AdminAdvertisementsPanel() {
                     <p className="font-medium">{row.title}</p>
                     <p className="text-xs text-muted-foreground">{row.advertiserName}</p>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{getPlacementLabel(row.placement)}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    <p>{getPlacementLabel(row.placement)}</p>
+                    <p className="text-xs opacity-70">{getPlacementSizeLabel(row.placement)}</p>
+                  </td>
                   <td className="px-4 py-3">{statusBadge(row.effectiveStatus)}</td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {row.startAt ? new Date(row.startAt).toLocaleDateString() : "—"}
@@ -457,10 +465,13 @@ export function AdminAdvertisementsPanel() {
                 >
                   {AD_PLACEMENT_KEYS.map((key) => (
                     <option key={key} value={key}>
-                      {getPlacementLabel(key)}
+                      {getPlacementLabel(key)} — {getPlacementSizeLabel(key)}
                     </option>
                   ))}
                 </select>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  {AD_PLACEMENTS[form.placement as keyof typeof AD_PLACEMENTS]?.description}
+                </span>
               </label>
               <label className="text-sm">
                 <span className="mb-1 block text-muted-foreground">Status</span>
@@ -547,7 +558,10 @@ export function AdminAdvertisementsPanel() {
                 </div>
               ))}
               <p className="text-xs text-muted-foreground">
-                JPG, PNG, WebP, or GIF up to 5 MB. Mobile/tablet variants override the default on smaller screens.
+                Recommended size for this placement:{" "}
+                <span className="font-medium text-foreground">{getPlacementSizeLabel(form.placement)}</span>. JPG,
+                PNG, WebP, or GIF up to 5 MB — larger images are downscaled before upload. Mobile/tablet variants
+                override the default on smaller screens.
               </p>
             </div>
 
