@@ -15,28 +15,27 @@ type AdSlotProps = {
   className?: string;
 };
 
-function pickResponsiveImage(ad: PublicAdPayload, viewport: "mobile" | "tablet" | "desktop") {
-  if (viewport === "mobile" && ad.imageUrlMobile) return ad.imageUrlMobile;
-  if (viewport === "tablet" && ad.imageUrlTablet) return ad.imageUrlTablet;
-  return ad.imageUrl ?? ad.imageUrlTablet ?? ad.imageUrlMobile;
-}
+/**
+ * Resolves the banner sources for a `<picture>` element.
+ *
+ * The variant is chosen by the browser from media queries rather than by
+ * measuring `window.innerWidth` in an effect. Reading the viewport in JS meant
+ * the first paint always assumed desktop, so phones downloaded the desktop
+ * banner and then swapped it — two requests and a visible flash.
+ */
+function resolveBannerSources(ad: PublicAdPayload) {
+  const base = ad.imageUrl ?? ad.imageUrlTablet ?? ad.imageUrlMobile ?? null;
+  if (!base) return null;
 
-function useAdViewport() {
-  const [viewport, setViewport] = useState<"mobile" | "tablet" | "desktop">("desktop");
+  const mobile = ad.imageUrlMobile ?? base;
+  const tablet = ad.imageUrlTablet ?? base;
 
-  useEffect(() => {
-    const sync = () => {
-      const width = window.innerWidth;
-      if (width < 640) setViewport("mobile");
-      else if (width < 1024) setViewport("tablet");
-      else setViewport("desktop");
-    };
-    sync();
-    window.addEventListener("resize", sync);
-    return () => window.removeEventListener("resize", sync);
-  }, []);
-
-  return viewport;
+  return {
+    base,
+    // Only emit a <source> when it would actually load something different.
+    mobile: mobile === base ? null : mobile,
+    tablet: tablet === base ? null : tablet,
+  };
 }
 
 export function AdSlot({ placement, className }: AdSlotProps) {
@@ -46,7 +45,6 @@ export function AdSlot({ placement, className }: AdSlotProps) {
   const [error, setError] = useState(false);
   const impressionSent = useRef(false);
   const containerRef = useRef<HTMLElement>(null);
-  const viewport = useAdViewport();
 
   const dedupeKey = `${placement}-${reactId}`;
 
@@ -134,8 +132,8 @@ export function AdSlot({ placement, className }: AdSlotProps) {
 
   if (error || !ad) return null;
 
-  const imageSrc = pickResponsiveImage(ad, viewport);
-  if (!imageSrc) return null;
+  const sources = resolveBannerSources(ad);
+  if (!sources) return null;
 
   const placementMeta = AD_PLACEMENTS[placement];
   const alt = ad.altText || `${ad.advertiserName}: ${ad.title}`;
@@ -157,8 +155,17 @@ export function AdSlot({ placement, className }: AdSlotProps) {
           className="relative w-full overflow-hidden bg-muted/20"
           style={{ aspectRatio: getPlacementAspectRatio(placement) }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageSrc} alt={alt} className="h-full w-full object-cover transition group-hover:scale-[1.01]" />
+          <picture>
+            {sources.mobile ? <source media="(max-width: 639px)" srcSet={sources.mobile} /> : null}
+            {sources.tablet ? <source media="(max-width: 1023px)" srcSet={sources.tablet} /> : null}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={sources.base}
+              alt={alt}
+              decoding="async"
+              className="h-full w-full object-cover transition group-hover:scale-[1.01]"
+            />
+          </picture>
         </div>
         <div className="flex items-center justify-between gap-2 border-t border-border/40 px-3 py-2 text-xs text-muted-foreground">
           <span className="truncate">

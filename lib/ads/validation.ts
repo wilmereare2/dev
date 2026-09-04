@@ -1,4 +1,5 @@
 import { AD_PLACEMENT_KEYS, AD_STATUSES, isAdPlacement, type AdStatus } from "@/lib/ads/placements";
+import { isAdCreativePath, parseAdCreativeId } from "@/lib/ads/creative-path";
 
 const BLOCKED_URL_PROTOCOLS = /^(javascript|data|vbscript|file):/i;
 
@@ -33,12 +34,22 @@ export function validateDestinationUrl(raw: string) {
 export function validateImageUrl(raw?: string | null) {
   if (!raw?.trim()) return { ok: true as const, url: null as string | null };
   const url = raw.trim();
+
+  // Banners uploaded through the admin panel are stored as creatives and
+  // referenced by this internal path, so the payload stays a few bytes.
+  if (isAdCreativePath(url)) {
+    const id = parseAdCreativeId(url)!;
+    return { ok: true as const, url: `/api/ads/creative/${id}` as string | null };
+  }
+
+  // Legacy inline banners saved before creative storage existed.
   if (url.startsWith("data:image/")) {
     if (url.length > 2_800_000) {
-      return { ok: false as const, error: "Uploaded image is too large." };
+      return { ok: false as const, error: "Uploaded image is too large. Re-upload it to store it as a file." };
     }
     return { ok: true as const, url };
   }
+
   return validateDestinationUrl(url);
 }
 

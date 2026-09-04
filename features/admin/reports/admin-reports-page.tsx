@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { Button } from "@/components/ui/button";
+import { requestJson } from "@/lib/api/client";
+import { ErrorState } from "@/components/ui/error-state";
 
 type ReportRow = {
   id: string;
@@ -20,6 +22,7 @@ const inputClass = "h-10 rounded-xl border border-border bg-background px-3 text
 export function AdminReportsPage() {
   const [items, setItems] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState("open");
   const [priority, setPriority] = useState("all");
   const [q, setQ] = useState("");
@@ -30,13 +33,22 @@ export function AdminReportsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ page: String(page), pageSize: "25", status });
     if (priority !== "all") params.set("priority", priority);
     if (q.trim()) params.set("q", q.trim());
-    const response = await fetch(`/api/admin/reports?${params}`);
-    const payload = await response.json();
-    setItems(payload.items ?? []);
-    setTotalPages(payload.totalPages ?? 1);
+
+    const result = await requestJson<{ items?: ReportRow[]; totalPages?: number }>(
+      `/api/admin/reports?${params}`,
+    );
+    if (!result.ok) {
+      setItems([]);
+      setError(result.error);
+      setLoading(false);
+      return;
+    }
+    setItems(result.data.items ?? []);
+    setTotalPages(result.data.totalPages ?? 1);
     setLoading(false);
   }, [page, priority, q, status]);
 
@@ -94,6 +106,10 @@ export function AdminReportsPage() {
         </label>
         <Button type="submit" size="sm">Filter</Button>
       </form>
+
+      {error ? (
+        <ErrorState message={error} onRetry={() => void load()} className="mt-2" />
+      ) : null}
 
       <div className="overflow-x-auto rounded-2xl border border-border">
         <table className="min-w-full text-left text-sm">

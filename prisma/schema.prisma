@@ -75,6 +75,7 @@ model User {
   memberGroupMemberships  MemberGroupMember[]
   groupMessagesSent       GroupMessage[]
   advertisementsCreated   Advertisement[] @relation("AdsCreated")
+  adCreativesUploaded     AdCreative[]    @relation("AdCreativeUploader")
   adminNotesAuthored      AdminNote[]     @relation("AdminNotesAuthor")
   auditLogs               AuditLog[]      @relation("AuditLogActor")
   assignedReports         ContentReport[] @relation("ReportAssignee")
@@ -762,6 +763,21 @@ model Advertisement {
 
   @@index([placement, status, priority])
   @@index([status, startAt, endAt])
+  @@index([createdAt])
+}
+
+/// Binary ad banner storage. Keeps base64 payloads out of JSON request bodies
+/// and lets browsers cache creatives instead of re-downloading data URLs.
+model AdCreative {
+  id          String   @id @default(cuid())
+  mimeType    String
+  byteSize    Int
+  checksum    String   @unique
+  data        Bytes
+  createdById String?
+  createdBy   User?    @relation("AdCreativeUploader", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
   @@index([createdAt])
 }
 

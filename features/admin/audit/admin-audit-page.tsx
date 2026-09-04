@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { Button } from "@/components/ui/button";
+import { requestJson } from "@/lib/api/client";
+import { ErrorState } from "@/components/ui/error-state";
 
 type AuditRow = {
   id: string;
@@ -22,6 +24,7 @@ const inputClass = "h-10 rounded-xl border border-border bg-background px-3 text
 export function AdminAuditPage() {
   const [items, setItems] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [action, setAction] = useState("");
   const [page, setPage] = useState(1);
@@ -29,13 +32,22 @@ export function AdminAuditPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ page: String(page) });
     if (q.trim()) params.set("q", q.trim());
     if (action.trim()) params.set("action", action.trim());
-    const response = await fetch(`/api/admin/audit?${params}`);
-    const payload = await response.json();
-    setItems(payload.items ?? []);
-    setTotalPages(payload.totalPages ?? 1);
+
+    const result = await requestJson<{ items?: AuditRow[]; totalPages?: number }>(
+      `/api/admin/audit?${params}`,
+    );
+    if (!result.ok) {
+      setItems([]);
+      setError(result.error);
+      setLoading(false);
+      return;
+    }
+    setItems(result.data.items ?? []);
+    setTotalPages(result.data.totalPages ?? 1);
     setLoading(false);
   }, [action, page, q]);
 
@@ -65,6 +77,10 @@ export function AdminAuditPage() {
         </label>
         <Button type="submit" size="sm">Search</Button>
       </form>
+
+      {error ? (
+        <ErrorState message={error} onRetry={() => void load()} className="mt-2" />
+      ) : null}
 
       <div className="overflow-x-auto rounded-2xl border border-border">
         <table className="min-w-full text-left text-sm">

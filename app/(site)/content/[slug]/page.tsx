@@ -11,7 +11,7 @@ import { SanityImage } from "@/components/media/sanity-image";
 import { auth } from "@/lib/auth/auth";
 import { userHasActiveSubscription } from "@/lib/auth/entitlements";
 import { fetchContentBySlug, fetchExploreContent } from "@/services/sanity/content";
-import { listWatchHistory } from "@/services/user/library";
+import { getWatchProgressMs } from "@/services/user/library";
 import { encodeRouteParam } from "@/lib/site/route-params";
 import { sanityImageUrl } from "@/lib/sanity/image";
 import { formatDuration } from "@/lib/format";
@@ -30,21 +30,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ContentDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const item = await fetchContentBySlug(slug);
+
+  // The item, the viewer's session, and the related rail are independent —
+  // fetch them together instead of chaining four round trips.
+  const [item, session, exploreContent] = await Promise.all([
+    fetchContentBySlug(slug),
+    auth(),
+    fetchExploreContent(),
+  ]);
   if (!item) notFound();
 
-  const session = await auth();
   const userId = session?.user?.id;
-  const hasSubscription = userId ? await userHasActiveSubscription(userId) : false;
-  let initialProgressMs = 0;
-  if (userId) {
-    const history = await listWatchHistory(userId, 100);
-    initialProgressMs = history.find((entry) => entry.contentId === item._id)?.progressMs ?? 0;
-  }
+
+  const [hasSubscription, initialProgressMs] = userId
+    ? await Promise.all([userHasActiveSubscription(userId), getWatchProgressMs(userId, item._id)])
+    : [false, 0];
 
   const thumb = sanityImageUrl(item.thumbnail, 1400);
   const duration = formatDuration(item.durationSeconds);
-  const related = (await fetchExploreContent()).filter((c) => c.slug !== slug).slice(0, 4);
+  const related = exploreContent.filter((c) => c.slug !== slug).slice(0, 4);
 
   return (
     <div className="pb-8 sm:pb-16">

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { Button } from "@/components/ui/button";
+import { requestJson } from "@/lib/api/client";
+import { ErrorState } from "@/components/ui/error-state";
 
 type Settings = Record<string, unknown>;
 
@@ -19,13 +21,20 @@ const LABELS: Record<string, string> = {
 export function AdminSettingsPage() {
   const [settings, setSettings] = useState<Settings>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const response = await fetch("/api/admin/platform");
-    const payload = await response.json();
-    setSettings(payload.settings ?? {});
+    setError(null);
+
+    const result = await requestJson<{ settings?: Settings }>("/api/admin/platform");
+    if (!result.ok) {
+      setError(result.error);
+      setLoading(false);
+      return;
+    }
+    setSettings(result.data.settings ?? {});
     setLoading(false);
   }, []);
 
@@ -54,6 +63,10 @@ export function AdminSettingsPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader title="Site configuration" description="Platform-wide settings. Changes are audit-logged." />
+
+      {error ? (
+        <ErrorState message={error} onRetry={() => void load()} className="mt-2" />
+      ) : null}
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
 
       <div className="space-y-4">

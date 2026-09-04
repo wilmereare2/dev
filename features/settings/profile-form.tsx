@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { requestJson } from "@/lib/api/client";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from "@/lib/i18n";
 import { AccountSyncNotice } from "@/features/settings/account-sync-notice";
@@ -44,29 +45,32 @@ export function ProfileForm({
     setError(null);
     setMessage(null);
 
-    const response = await fetch("/api/user/settings/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, bio }),
-    });
+    try {
+      const result = await requestJson("/api/user/settings/profile", {
+        method: "PATCH",
+        body: { name, bio },
+      });
 
-    const payload = await response.json().catch(() => ({}));
-    setPending(false);
+      if (!result.ok) {
+        setError(result.error || t("settings.profileSaveError"));
+        return;
+      }
 
-    if (!response.ok) {
-      setError(payload.error ?? t("settings.profileSaveError"));
-      return;
+      await update({ name: name.trim() || null });
+      setMessage(t("settings.profileUpdated"));
+    } finally {
+      setPending(false);
     }
-
-    await update({ name: name.trim() || null });
-    setMessage(t("settings.profileUpdated"));
   }
 
   async function onLocaleChange(next: Locale) {
     if (next === locale) return;
     setLocalePending(true);
-    await setLocale(next);
-    setLocalePending(false);
+    try {
+      await setLocale(next);
+    } finally {
+      setLocalePending(false);
+    }
   }
 
   return (

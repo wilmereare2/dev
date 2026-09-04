@@ -50,6 +50,19 @@ export async function listWatchHistory(userId: string, limit = 50) {
   });
 }
 
+/**
+ * Resumes playback for a single item. Avoids pulling the whole history list
+ * just to read one progress value.
+ */
+export async function getWatchProgressMs(userId: string, contentId: string) {
+  const entry = await prisma.watchHistory.findFirst({
+    where: { userId, contentId },
+    orderBy: { watchedAt: "desc" },
+    select: { progressMs: true },
+  });
+  return entry?.progressMs ?? 0;
+}
+
 export async function upsertWatchProgress(userId: string, contentId: string, progressMs: number) {
   const existing = await prisma.watchHistory.findFirst({
     where: { userId, contentId },

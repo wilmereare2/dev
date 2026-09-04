@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { requestJson } from "@/lib/api/client";
 
 type ReportContentFormProps = {
   contentId?: string;
@@ -26,22 +27,23 @@ export function ReportContentForm({ contentId, targetUserId, signedIn }: ReportC
     setError(null);
     setMessage(null);
 
-    const response = await fetch("/api/content/reports", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contentId, targetUserId, reason, details }),
-    });
-    const payload = await response.json().catch(() => ({}));
-    setPending(false);
+    try {
+      const result = await requestJson("/api/content/reports", {
+        method: "POST",
+        body: { contentId, targetUserId, reason, details },
+      });
 
-    if (!response.ok) {
-      setError(payload.error ?? "Could not submit report.");
-      return;
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setMessage("Report submitted. Our moderation team will review it.");
+      setReason("");
+      setDetails("");
+    } finally {
+      setPending(false);
     }
-
-    setMessage("Report submitted. Our moderation team will review it.");
-    setReason("");
-    setDetails("");
   }
 
   return (

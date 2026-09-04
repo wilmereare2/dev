@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { Button } from "@/components/ui/button";
+import { requestJson } from "@/lib/api/client";
+import { ErrorState } from "@/components/ui/error-state";
 
 type QueueData = {
   uploads: Array<{ id: string; title: string; status: string; mediaType: string; creator?: { name: string | null; email: string } }>;
@@ -14,11 +16,19 @@ type QueueData = {
 export function AdminModerationPage() {
   const [queue, setQueue] = useState<QueueData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const response = await fetch("/api/admin/moderation/queue");
-    setQueue(await response.json());
+    setError(null);
+
+    const result = await requestJson<QueueData>("/api/admin/moderation/queue");
+    if (!result.ok) {
+      setError(result.error);
+      setLoading(false);
+      return;
+    }
+    setQueue(result.data);
     setLoading(false);
   }, []);
 
@@ -41,6 +51,10 @@ export function AdminModerationPage() {
           </Link>
         }
       />
+
+      {error ? (
+        <ErrorState message={error} onRetry={() => void load()} className="mt-2" />
+      ) : null}
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold">Pending uploads ({queue.uploads.length})</h2>

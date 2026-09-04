@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { requestJson } from "@/lib/api/client";
 
 type ContactFormProps = {
   defaultEmail?: string;
@@ -21,22 +22,23 @@ export function ContactForm({ defaultEmail = "" }: ContactFormProps) {
     setError(null);
     setNotice(null);
 
-    const response = await fetch("/api/support/tickets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, subject, message }),
-    });
-    const payload = await response.json().catch(() => ({}));
-    setPending(false);
+    try {
+      const result = await requestJson("/api/support/tickets", {
+        method: "POST",
+        body: { email, subject, message },
+      });
 
-    if (!response.ok) {
-      setError(payload.error ?? "Could not send message.");
-      return;
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setNotice("Support ticket submitted. We will reply by email.");
+      setSubject("");
+      setMessage("");
+    } finally {
+      setPending(false);
     }
-
-    setNotice("Support ticket submitted. We will reply by email.");
-    setSubject("");
-    setMessage("");
   }
 
   return (

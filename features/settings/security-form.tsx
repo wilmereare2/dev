@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signOut } from "next-auth/react";
 import { clearAgeVerificationCookie } from "@/features/compliance/verify-age-form";
 import { Button } from "@/components/ui/button";
+import { requestJson } from "@/lib/api/client";
 
 type SecurityFormProps = {
   twoFactorEnabled: boolean;
@@ -22,75 +23,97 @@ export function SecurityForm({ twoFactorEnabled }: SecurityFormProps) {
   async function setupTwoFactor() {
     setPending(true);
     setError(null);
-    const response = await fetch("/api/user/2fa", { method: "POST" });
-    const payload = await response.json().catch(() => ({}));
-    setPending(false);
+    try {
+      const result = await requestJson<{ secret?: string; otpauth?: string }>("/api/user/2fa", {
+        method: "POST",
+      });
 
-    if (!response.ok) {
-      setError(payload.error ?? "Could not start 2FA setup.");
-      return;
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setSecret(result.data.secret ?? null);
+      setOtpauth(result.data.otpauth ?? null);
+      setMessage("Scan the secret in your authenticator app, then confirm with a code.");
+    } finally {
+      setPending(false);
     }
-
-    setSecret(payload.secret);
-    setOtpauth(payload.otpauth);
-    setMessage("Scan the secret in your authenticator app, then confirm with a code.");
   }
 
   async function confirmTwoFactor(action: "enable" | "disable") {
     setPending(true);
     setError(null);
 
-    const response = await fetch("/api/user/2fa", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, action }),
-    });
-    const payload = await response.json().catch(() => ({}));
-    setPending(false);
+    try {
+      const result = await requestJson("/api/user/2fa", {
+        method: "PATCH",
+        body: { token, action },
+      });
 
-    if (!response.ok) {
-      setError(payload.error ?? "Invalid code.");
-      return;
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setEnabled(action === "enable");
+      setSecret(null);
+      setOtpauth(null);
+      setToken("");
+      setMessage(
+        action === "enable"
+          ? "Two-factor authentication enabled."
+          : "Two-factor authentication disabled.",
+      );
+    } finally {
+      setPending(false);
     }
-
-    setEnabled(action === "enable");
-    setSecret(null);
-    setOtpauth(null);
-    setToken("");
-    setMessage(action === "enable" ? "Two-factor authentication enabled." : "Two-factor authentication disabled.");
   }
 
   async function exportData() {
-    const response = await fetch("/api/user/account");
-    if (!response.ok) return;
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "manuelax-export.json";
-    anchor.click();
-    URL.revokeObjectURL(url);
+    setError(null);
+    let url: string | null = null;
+    try {
+      const response = await fetch("/api/user/account");
+      if (!response.ok) {
+        setError("Could not export your data. Try again.");
+        return;
+      }
+
+      const blob = await response.blob();
+      url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "manuelax-export.json";
+      anchor.click();
+    } catch {
+      setError("Could not export your data. Try again.");
+    } finally {
+      if (url) URL.revokeObjectURL(url);
+    }
   }
 
   async function deleteAccount() {
     if (!window.confirm("Delete your account permanently? This cannot be undone.")) return;
 
     setPending(true);
-    const response = await fetch("/api/user/account", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: password || undefined }),
-    });
-    setPending(false);
+    setError(null);
+    try {
+      const result = await requestJson("/api/user/account", {
+        method: "DELETE",
+        body: { password: password || undefined },
+      });
 
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
-      setError(payload.error ?? "Could not delete account.");
-      return;
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      await clearAgeVerificationCookie();
+      await signOut({ callbackUrl: "/" });
+    } finally {
+      setPending(false);
     }
-
-    await clearAgeVerificationCookie();
-    await signOut({ callbackUrl: "/" });
   }
 
   return (

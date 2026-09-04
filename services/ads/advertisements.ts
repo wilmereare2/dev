@@ -38,43 +38,57 @@ function mapPublicAd(record: {
   };
 }
 
-/** Fair rotation: highest priority tier first, then least recently served. */
+/**
+ * Fair rotation: highest priority tier first, then least recently served.
+ *
+ * Picks the winner and stamps `lastServedAt` in a single statement. Doing this
+ * as a select-then-update cost two database round trips on every ad request —
+ * the dominant cost of serving a page — and let two concurrent requests pick
+ * the same ad before either had marked it as served.
+ */
 export async function selectAdvertisementForPlacement(placement: AdPlacement) {
-  const now = new Date();
-  const candidates = await prisma.advertisement.findMany({
-    where: {
-      placement,
-      status: "active",
-      archivedAt: null,
-      AND: [
-        { OR: [{ startAt: null }, { startAt: { lte: now } }] },
-        { OR: [{ endAt: null }, { endAt: { gte: now } }] },
-      ],
-    },
-    orderBy: [{ priority: "desc" }, { lastServedAt: "asc" }, { createdAt: "asc" }],
-    take: 20,
-  });
+  const rows = await prisma.$queryRaw<
+    {
+      id: string;
+      title: string;
+      advertiserName: string;
+      destinationUrl: string;
+      placement: string;
+      imageUrl: string | null;
+      imageUrlTablet: string | null;
+      imageUrlMobile: string | null;
+      altText: string | null;
+    }[]
+  >`
+    UPDATE "Advertisement" AS a
+       SET "lastServedAt" = NOW()
+     WHERE a.id = (
+             SELECT c.id
+               FROM "Advertisement" AS c
+              WHERE c.placement = ${placement}
+                AND c.status = 'active'
+                AND c."archivedAt" IS NULL
+                AND (c."startAt" IS NULL OR c."startAt" <= NOW())
+                AND (c."endAt" IS NULL OR c."endAt" >= NOW())
+              ORDER BY c.priority DESC,
+                       c."lastServedAt" ASC NULLS FIRST,
+                       c."createdAt" ASC
+              LIMIT 1
+             FOR UPDATE SKIP LOCKED
+           )
+ RETURNING a.id,
+           a.title,
+           a."advertiserName",
+           a."destinationUrl",
+           a.placement,
+           a."imageUrl",
+           a."imageUrlTablet",
+           a."imageUrlMobile",
+           a."altText"
+  `;
 
-  const eligible = candidates.filter((ad) =>
-    isAdEligibleForServe({
-      status: ad.status,
-      startAt: ad.startAt,
-      endAt: ad.endAt,
-      archivedAt: ad.archivedAt,
-      now,
-    }),
-  );
-
-  if (!eligible.length) return null;
-
-  const topPriority = eligible[0].priority;
-  const tier = eligible.filter((ad) => ad.priority === topPriority);
-  const pick = tier[0];
-
-  await prisma.advertisement.update({
-    where: { id: pick.id },
-    data: { lastServedAt: now },
-  });
+  const pick = rows[0];
+  if (!pick) return null;
 
   return mapPublicAd(pick);
 }

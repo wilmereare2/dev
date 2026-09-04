@@ -71,7 +71,7 @@ export function AuthMarketingPanel({
         </p>
 
         {!compact && !isVerify ? (
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {ACCOUNT_STATS.map((entry) => {
               const Icon = entry.icon;
               return (
@@ -97,13 +97,13 @@ export function AuthMarketingPanel({
         </ul>
 
         {!isVerify ? (
-          <div className="mt-8 flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="inline-flex text-amber-400" aria-hidden>
+          <div className="mt-8 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+            <span className="inline-flex shrink-0 text-amber-400" aria-hidden>
               {Array.from({ length: 5 }).map((_, index) => (
                 <Star key={index} className="size-4 fill-current" />
               ))}
             </span>
-            Trusted by early members and verified creators
+            <span className="min-w-0">Trusted by early members and verified creators</span>
           </div>
         ) : null}
       </div>

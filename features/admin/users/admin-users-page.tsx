@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { Button } from "@/components/ui/button";
+import { requestJson } from "@/lib/api/client";
+import { ErrorState } from "@/components/ui/error-state";
 
 const inputClass =
   "h-10 rounded-xl border border-border bg-background px-3 text-sm outline-none focus-visible:border-accent/60";
@@ -22,6 +24,7 @@ type CustomerRow = {
 export function AdminUsersPage() {
   const [items, setItems] = useState<CustomerRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [role, setRole] = useState("all");
   const [accountStatus, setAccountStatus] = useState("all");
@@ -30,14 +33,23 @@ export function AdminUsersPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ page: String(page), pageSize: "25" });
     if (query.trim()) params.set("q", query.trim());
     if (role !== "all") params.set("role", role);
     if (accountStatus !== "all") params.set("accountStatus", accountStatus);
-    const response = await fetch(`/api/admin/users?${params}`);
-    const payload = await response.json();
-    setItems(payload.customers ?? []);
-    setTotalPages(payload.totalPages ?? 1);
+
+    const result = await requestJson<{ customers?: CustomerRow[]; totalPages?: number }>(
+      `/api/admin/users?${params}`,
+    );
+    if (!result.ok) {
+      setItems([]);
+      setError(result.error);
+      setLoading(false);
+      return;
+    }
+    setItems(result.data.customers ?? []);
+    setTotalPages(result.data.totalPages ?? 1);
     setLoading(false);
   }, [page, query, role, accountStatus]);
 
@@ -82,6 +94,10 @@ export function AdminUsersPage() {
         </label>
         <Button type="submit" size="sm">Search</Button>
       </form>
+
+      {error ? (
+        <ErrorState message={error} onRetry={() => void load()} className="mt-2" />
+      ) : null}
 
       <div className="overflow-x-auto rounded-2xl border border-border">
         <table className="min-w-full text-left text-sm">

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { Button } from "@/components/ui/button";
+import { requestJson } from "@/lib/api/client";
+import { ErrorState } from "@/components/ui/error-state";
 
 type CommentRow = {
   id: string;
@@ -15,13 +17,23 @@ type CommentRow = {
 export function AdminCommentsPage() {
   const [items, setItems] = useState<CommentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const response = await fetch(`/api/admin/platform?section=comments&page=${page}`);
-    const payload = await response.json();
-    setItems(payload.items ?? []);
+    setError(null);
+
+    const result = await requestJson<{ items?: CommentRow[] }>(
+      `/api/admin/platform?section=comments&page=${page}`,
+    );
+    if (!result.ok) {
+      setItems([]);
+      setError(result.error);
+      setLoading(false);
+      return;
+    }
+    setItems(result.data.items ?? []);
     setLoading(false);
   }, [page]);
 
@@ -42,6 +54,10 @@ export function AdminCommentsPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader title="Comments" description="Approve or remove user comments awaiting moderation." />
+
+      {error ? (
+        <ErrorState message={error} onRetry={() => void load()} className="mt-2" />
+      ) : null}
 
       <ul className="space-y-3">
         {loading ? (

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { requestJson } from "@/lib/api/client";
 
 type NotificationsFormProps = {
   initial: {
@@ -23,14 +24,15 @@ export function NotificationsForm({ initial }: NotificationsFormProps) {
     setPending(true);
     setMessage(null);
 
-    const response = await fetch("/api/user/settings/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
-    });
-
-    setPending(false);
-    setMessage(response.ok ? "Notification settings saved." : "Could not save settings.");
+    try {
+      const result = await requestJson("/api/user/settings/notifications", {
+        method: "PATCH",
+        body: values,
+      });
+      setMessage(result.ok ? "Notification settings saved." : result.error);
+    } finally {
+      setPending(false);
+    }
   }
 
   const toggles: { key: keyof typeof values; label: string }[] = [

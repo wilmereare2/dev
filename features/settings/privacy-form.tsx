@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { requestJson } from "@/lib/api/client";
 
 type PrivacyFormProps = {
   initial: {
@@ -20,14 +21,15 @@ export function PrivacyForm({ initial }: PrivacyFormProps) {
     setPending(true);
     setMessage(null);
 
-    const response = await fetch("/api/user/settings/privacy", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
-    });
-
-    setPending(false);
-    setMessage(response.ok ? "Privacy settings saved." : "Could not save settings.");
+    try {
+      const result = await requestJson("/api/user/settings/privacy", {
+        method: "PATCH",
+        body: values,
+      });
+      setMessage(result.ok ? "Privacy settings saved." : result.error);
+    } finally {
+      setPending(false);
+    }
   }
 
   const toggles: { key: keyof typeof values; label: string; description: string }[] = [

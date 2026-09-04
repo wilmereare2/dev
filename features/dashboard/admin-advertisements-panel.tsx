@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AD_PLACEMENT_KEYS, getPlacementLabel } from "@/lib/ads/placements";
+import { requestJson } from "@/lib/api/client";
+import { prepareBannerFile } from "@/lib/ads/prepare-banner";
 
 const inputClass =
   "h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus-visible:border-accent/60";
@@ -100,6 +102,7 @@ export function AdminAdvertisementsPanel() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -109,9 +112,17 @@ export function AdminAdvertisementsPanel() {
     if (filterPlacement !== "all") params.set("placement", filterPlacement);
     if (query.trim()) params.set("q", query.trim());
 
-    const response = await fetch(`/api/admin/advertisements?${params.toString()}`);
-    const payload = (await response.json()) as { items?: AdvertisementRow[] };
-    setItems(payload.items ?? []);
+    const result = await requestJson<{ items?: AdvertisementRow[] }>(
+      `/api/admin/advertisements?${params.toString()}`,
+    );
+
+    if (result.ok) {
+      setItems(result.data.items ?? []);
+      setError(null);
+    } else {
+      setItems([]);
+      setError(result.error);
+    }
     setLoading(false);
   }, [filterPlacement, filterStatus, query]);
 
@@ -150,28 +161,32 @@ export function AdminAdvertisementsPanel() {
     setUploading(variant);
     setError(null);
     try {
+      const prepared = await prepareBannerFile(file);
+
       const formData = new FormData();
-      formData.append("image", file);
+      formData.append("image", prepared);
       formData.append("variant", variant);
-      const response = await fetch("/api/admin/advertisements/upload", {
+
+      const result = await requestJson<{ url?: string }>("/api/admin/advertisements/upload", {
         method: "POST",
         body: formData,
+        timeoutMs: 60_000,
       });
-      const payload = (await response.json()) as { url?: string; error?: string };
-      if (!response.ok || !payload.url) {
-        setError(payload.error ?? "Upload failed.");
+
+      if (!result.ok || !result.data.url) {
+        setError(result.ok ? "Upload failed." : result.error);
         return;
       }
+
+      const url = result.data.url;
       setForm((current) => ({
         ...current,
         ...(variant === "default"
-          ? { imageUrl: payload.url! }
+          ? { imageUrl: url }
           : variant === "tablet"
-            ? { imageUrlTablet: payload.url! }
-            : { imageUrlMobile: payload.url! }),
+            ? { imageUrlTablet: url }
+            : { imageUrlMobile: url }),
       }));
-    } catch {
-      setError("Upload failed.");
     } finally {
       setUploading(null);
     }
@@ -179,51 +194,73 @@ export function AdminAdvertisementsPanel() {
 
   async function saveForm(event: React.FormEvent) {
     event.preventDefault();
+    if (saving) return;
+
     setSaving(true);
     setError(null);
 
-    const payload = {
-      ...form,
-      priority: Number(form.priority) || 0,
-      startAt: fromLocalInput(form.startAt),
-      endAt: fromLocalInput(form.endAt),
-      altText: form.altText || null,
-    };
+    try {
+      const payload = {
+        ...form,
+        priority: Number(form.priority) || 0,
+        startAt: fromLocalInput(form.startAt),
+        endAt: fromLocalInput(form.endAt),
+        altText: form.altText || null,
+      };
 
-    const response = await fetch(
-      editingId ? `/api/admin/advertisements/${editingId}` : "/api/admin/advertisements",
-      {
-        method: editingId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      },
-    );
+      const result = await requestJson(
+        editingId ? `/api/admin/advertisements/${editingId}` : "/api/admin/advertisements",
+        {
+          method: editingId ? "PATCH" : "POST",
+          body: payload,
+        },
+      );
 
-    const result = (await response.json()) as { error?: string };
-    if (!response.ok) {
-      setError(result.error ?? "Could not save advertisement.");
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setFormOpen(false);
+      void load();
+    } finally {
       setSaving(false);
-      return;
     }
-
-    setFormOpen(false);
-    setSaving(false);
-    void load();
   }
 
   async function quickAction(id: string, action: "activate" | "pause" | "archive" | "draft") {
-    await fetch(`/api/admin/advertisements/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
-    });
-    void load();
+    setPendingId(id);
+    setError(null);
+    try {
+      const result = await requestJson(`/api/admin/advertisements/${id}`, {
+        method: "PATCH",
+        body: { action },
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      void load();
+    } finally {
+      setPendingId(null);
+    }
   }
 
   async function remove(id: string) {
     if (!window.confirm("Delete this advertisement permanently?")) return;
-    await fetch(`/api/admin/advertisements/${id}`, { method: "DELETE" });
-    void load();
+
+    setPendingId(id);
+    setError(null);
+    try {
+      const result = await requestJson(`/api/admin/advertisements/${id}`, { method: "DELETE" });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      void load();
+    } finally {
+      setPendingId(null);
+    }
   }
 
   return (
@@ -330,15 +367,33 @@ export function AdminAdvertisementsPanel() {
                         <Pencil className="size-3.5" />
                       </Button>
                       {row.status !== "active" ? (
-                        <Button type="button" size="sm" variant="secondary" onClick={() => void quickAction(row.id, "activate")}>
-                          Activate
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          disabled={pendingId === row.id}
+                          onClick={() => void quickAction(row.id, "activate")}
+                        >
+                          {pendingId === row.id ? "…" : "Activate"}
                         </Button>
                       ) : (
-                        <Button type="button" size="sm" variant="secondary" onClick={() => void quickAction(row.id, "pause")}>
-                          Pause
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          disabled={pendingId === row.id}
+                          onClick={() => void quickAction(row.id, "pause")}
+                        >
+                          {pendingId === row.id ? "…" : "Pause"}
                         </Button>
                       )}
-                      <Button type="button" size="sm" variant="ghost" onClick={() => void remove(row.id)}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={pendingId === row.id}
+                        onClick={() => void remove(row.id)}
+                      >
                         <Trash2 className="size-3.5" />
                       </Button>
                     </div>
@@ -351,14 +406,19 @@ export function AdminAdvertisementsPanel() {
       )}
 
       {formOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center sm:p-4">
           <form
             onSubmit={saveForm}
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl"
+            className="flex max-h-[100dvh] w-full max-w-2xl flex-col rounded-t-2xl border border-border bg-background shadow-2xl sm:max-h-[90vh] sm:rounded-2xl"
           >
-            <h3 className="text-lg font-semibold">{editingId ? "Edit advertisement" : "New advertisement"}</h3>
+            {/* Header and actions stay pinned so Save is reachable without
+                scrolling to the bottom of a long form. */}
+            <div className="shrink-0 border-b border-border/60 px-5 py-4 sm:px-6">
+              <h3 className="text-lg font-semibold">{editingId ? "Edit advertisement" : "New advertisement"}</h3>
+            </div>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+            <div className="grid gap-4 sm:grid-cols-2">
               <label className="text-sm sm:col-span-2">
                 <span className="mb-1 block text-muted-foreground">Title</span>
                 <input
@@ -463,17 +523,20 @@ export function AdminAdvertisementsPanel() {
                   ["mobile", "Mobile (optional)", form.imageUrlMobile],
                 ] as const
               ).map(([variant, label, preview]) => (
+                // Native file inputs render the filename inline, so the row is
+                // width-constrained to stop it pushing past the dialog edge.
                 <div key={variant} className="flex flex-wrap items-center gap-3">
-                  <label className="text-sm">
+                  <label className="min-w-0 flex-1 text-sm">
                     <span className="mb-1 block text-muted-foreground">{label}</span>
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/gif"
+                      disabled={uploading !== null}
                       onChange={(event) => {
                         const file = event.target.files?.[0];
                         if (file) void uploadImage(file, variant);
                       }}
-                      className="text-xs"
+                      className="block w-full max-w-full text-xs"
                     />
                   </label>
                   {uploading === variant ? <Loader2 className="size-4 animate-spin" /> : null}
@@ -488,15 +551,22 @@ export function AdminAdvertisementsPanel() {
               </p>
             </div>
 
-            {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
+            {error ? (
+              <p className="mt-3 text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            ) : null}
+            </div>
 
-            <div className="mt-6 flex flex-wrap justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={() => setFormOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? "Saving…" : editingId ? "Save changes" : "Create advertisement"}
-              </Button>
+            <div className="shrink-0 border-t border-border/60 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="secondary" onClick={() => setFormOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={saving || uploading !== null}>
+                  {saving ? "Saving…" : editingId ? "Save changes" : "Create advertisement"}
+                </Button>
+              </div>
             </div>
           </form>
         </div>

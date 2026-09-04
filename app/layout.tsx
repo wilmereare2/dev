@@ -5,8 +5,7 @@ import { I18nProvider } from "@/components/providers/i18n-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { PwaRegister } from "@/components/providers/pwa-register";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
-import { resolveRootSessionContext } from "@/lib/auth/safe-session-context";
-import { resolveAppLocale } from "@/lib/i18n/resolve-app-locale";
+import { resolveRootBootstrap } from "@/lib/auth/safe-session-context";
 import { resolveMetadataBaseUrl } from "@/lib/site/app-url";
 import "./globals.css";
 
@@ -66,8 +65,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { userId } = await resolveRootSessionContext();
-  const locale = await resolveAppLocale(userId);
+  const { locale } = await resolveRootBootstrap();
 
   return (
     <html lang={locale} suppressHydrationWarning>
