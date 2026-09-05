@@ -21,6 +21,7 @@ import { ChatMessageList } from "@/features/chat/chat-message-list";
 import { ConversationActionsMenu } from "@/features/chat/conversation-actions-menu";
 import { CreateGroupDialog } from "@/features/chat/create-group-dialog";
 import { GroupActionsMenu } from "@/features/chat/group-actions-menu";
+import { GroupMembersDialog } from "@/features/chat/group-members-dialog";
 import { NewMessageDialog } from "@/features/chat/new-message-dialog";
 import { ChatHeader } from "@/features/chat/messages/chat-header";
 import { ConversationItem } from "@/features/chat/messages/conversation-item";
@@ -107,6 +108,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
   const [mobileShowThread, setMobileShowThread] = useState(false);
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>("all");
   const [searchOpen, setSearchOpen] = useState(false);
   const [messageSearch, setMessageSearch] = useState("");
@@ -984,9 +986,15 @@ export function MessagesHub({ session }: MessagesHubProps) {
         size="sm"
       />
     ) : activeThread.kind === "group" ? (
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+      <button
+        type="button"
+        onClick={() => setShowGroupInfo((value) => !value)}
+        aria-label="Group info and members"
+        aria-expanded={showGroupInfo}
+        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent transition hover:bg-accent/25"
+      >
         <Users className="size-4" aria-hidden />
-      </div>
+      </button>
     ) : (
       <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
         <Users className="size-4" aria-hidden />
@@ -1269,6 +1277,11 @@ export function MessagesHub({ session }: MessagesHubProps) {
               onSearchToggle={handleSearchToggle}
               onSearchChange={setMessageSearch}
               onSearchClear={() => setMessageSearch("")}
+              onTitleClick={
+                activeThread.kind === "group" && selectedGroup
+                  ? () => setShowGroupInfo((value) => !value)
+                  : undefined
+              }
             />
 
             <div className="flex min-h-0 flex-1 flex-col">
@@ -1362,6 +1375,25 @@ export function MessagesHub({ session }: MessagesHubProps) {
               )}
             </div>
           </div>
+
+          {/*
+            Group info docked beside the conversation, the way Telegram and
+            Discord show it. Below xl the same component renders as a modal so
+            the conversation keeps its width.
+          */}
+          {activeThread.kind === "group" && selectedGroup && showGroupInfo ? (
+            <GroupMembersDialog
+              open
+              variant="panel"
+              groupId={selectedGroup.id}
+              groupName={selectedGroup.name}
+              myRole={selectedGroup.myRole}
+              visibility={selectedGroup.visibility}
+              archived={Boolean(selectedGroup.archivedAt)}
+              onClose={() => setShowGroupInfo(false)}
+              onChanged={() => void refreshGroups()}
+            />
+          ) : null}
         </div>
       </section>
 

@@ -15,6 +15,14 @@ type GroupMembersDialogProps = {
   myRole: GroupMemberRole;
   onClose: () => void;
   onChanged: () => void;
+  /**
+   * "panel" docks the profile beside the conversation, the way Telegram and
+   * Discord show group info. "dialog" keeps the original centred modal, which
+   * is what narrow screens fall back to.
+   */
+  variant?: "dialog" | "panel";
+  visibility?: string;
+  archived?: boolean;
 };
 
 function roleLabel(role: GroupMemberRole) {
@@ -36,6 +44,9 @@ export function GroupMembersDialog({
   myRole,
   onClose,
   onChanged,
+  variant = "dialog",
+  visibility,
+  archived,
 }: GroupMembersDialogProps) {
   const [members, setMembers] = useState<GroupMemberPayload[]>([]);
   const [loading, setLoading] = useState(false);
@@ -200,44 +211,56 @@ export function GroupMembersDialog({
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
-      <button
-        type="button"
-        aria-label="Close dialog"
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
+  const isPanel = variant === "panel";
 
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="group-members-title"
-        className="relative z-10 flex max-h-[min(85dvh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl"
-      >
-        <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
-          <div>
-            <h2 id="group-members-title" className="text-base font-semibold">
-              {groupName} members
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Element-style roles · creator, admins, and members
-            </p>
-          </div>
-          <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close dialog">
-            <X className="size-4" />
+  const profileHeader = (
+    <div className="shrink-0 border-b border-border/60 px-4 py-4 text-center">
+      <div className="flex justify-end">
+        <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close group info">
+          <X className="size-4" />
+        </Button>
+      </div>
+      <UserAvatar name={groupName} email={null} image={null} size="lg" className="mx-auto" />
+      <h2 id="group-members-title" className="mt-3 truncate text-base font-semibold">
+        {groupName}
+      </h2>
+      <p className="text-xs text-muted-foreground">
+        {formatMemberCount(members.length)}
+        {visibility ? ` · ${visibility === "public" ? "Public" : "Private"}` : null}
+        {archived ? " · Archived" : null}
+      </p>
+    </div>
+  );
+
+  const compactHeader = (
+    <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+      <div>
+        <h2 id="group-members-title" className="text-base font-semibold">
+          {groupName} members
+        </h2>
+        <p className="text-xs text-muted-foreground">Creator, admins, and members</p>
+      </div>
+      <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close dialog">
+        <X className="size-4" />
+      </Button>
+    </div>
+  );
+
+  const body = (
+    <>
+      {isPanel ? profileHeader : compactHeader}
+
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 px-4 py-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {formatMemberCount(members.length)}
+        </p>
+        {canInvite ? (
+          <Button type="button" size="sm" variant="secondary" onClick={() => setShowInvite((value) => !value)}>
+            <UserPlus className="size-4" aria-hidden />
+            Invite
           </Button>
-        </div>
-
-        <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-2">
-          <p className="text-xs text-muted-foreground">{formatMemberCount(members.length)}</p>
-          {canInvite ? (
-            <Button type="button" size="sm" variant="secondary" onClick={() => setShowInvite((value) => !value)}>
-              <UserPlus className="size-4" aria-hidden />
-              Invite
-            </Button>
-          ) : null}
-        </div>
+        ) : null}
+      </div>
 
         {error ? <p className="px-4 py-2 text-sm text-red-400">{error}</p> : null}
 
@@ -334,10 +357,10 @@ export function GroupMembersDialog({
                 return (
                   <li
                     key={member.userId}
-                    className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition hover:bg-muted/30"
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-2 py-2.5 transition hover:bg-muted/30"
                   >
                     <UserAvatar name={member.name} email={null} image={member.image} size="sm" />
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 basis-[9rem]">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate text-sm font-medium">{member.name ?? "Member"}</p>
                         <span
@@ -362,7 +385,7 @@ export function GroupMembersDialog({
                       </p>
                     </div>
 
-                    <div className="flex shrink-0 flex-wrap items-center gap-1">
+                    <div className="ml-auto flex shrink-0 flex-wrap items-center gap-1">
                       {canManageRoles && member.groupRole === "member" ? (
                         <Button
                           type="button"
@@ -411,6 +434,52 @@ export function GroupMembersDialog({
             </ul>
           )}
         </div>
+    </>
+  );
+
+  // One instance, two presentations. Rendering a docked copy and a modal copy
+  // would fetch the member list twice, so the chrome flips with CSS instead.
+  if (isPanel) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center xl:static xl:z-auto xl:block xl:p-0">
+        <button
+          type="button"
+          aria-label="Close group info"
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm xl:hidden"
+          onClick={onClose}
+        />
+
+        <aside
+          aria-labelledby="group-members-title"
+          className={cn(
+            "relative z-10 flex max-h-[min(85dvh,720px)] w-full max-w-lg flex-col overflow-hidden",
+            "rounded-2xl border border-border bg-background shadow-2xl",
+            "xl:z-auto xl:h-full xl:max-h-none xl:w-[320px] xl:max-w-none xl:shrink-0",
+            "xl:rounded-none xl:border-0 xl:border-l xl:border-border/60 xl:bg-background/60 xl:shadow-none",
+          )}
+        >
+          {body}
+        </aside>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+      <button
+        type="button"
+        aria-label="Close dialog"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="group-members-title"
+        className="relative z-10 flex max-h-[min(85dvh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl"
+      >
+        {body}
       </div>
     </div>
   );

@@ -16,6 +16,8 @@ type ChatHeaderProps = {
   onSearchToggle: () => void;
   onSearchChange: (value: string) => void;
   onSearchClear: () => void;
+  /** Opens the conversation's info panel, as clicking a Telegram header does. */
+  onTitleClick?: () => void;
 };
 
 export function ChatHeader({
@@ -29,6 +31,7 @@ export function ChatHeader({
   onSearchToggle,
   onSearchChange,
   onSearchClear,
+  onTitleClick,
 }: ChatHeaderProps) {
   return (
     <header className="shrink-0 border-b border-border/60 bg-background/50 backdrop-blur-sm">
@@ -41,10 +44,22 @@ export function ChatHeader({
 
         {avatar}
 
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold leading-tight">{title}</p>
-          <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
-        </div>
+        {onTitleClick ? (
+          <button
+            type="button"
+            onClick={onTitleClick}
+            className="min-w-0 flex-1 rounded-lg px-1 py-1 text-left transition hover:bg-muted/40"
+            aria-label={`${title} — group info`}
+          >
+            <p className="truncate text-sm font-semibold leading-tight">{title}</p>
+            <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+          </button>
+        ) : (
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold leading-tight">{title}</p>
+            <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+          </div>
+        )}
 
         <div className="flex shrink-0 items-center gap-0.5">
           <Button
