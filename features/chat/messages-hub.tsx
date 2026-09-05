@@ -38,6 +38,7 @@ import type {
   MemberGroupPayload,
 } from "@/lib/chat/constants";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/providers/i18n-provider";
 
 type MessagesHubProps = {
   session: Session;
@@ -107,6 +108,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
   const [activeThread, setActiveThread] = useState<ActiveThread>({ kind: "community" });
   const [mobileShowThread, setMobileShowThread] = useState(false);
   const [showNewMessage, setShowNewMessage] = useState(false);
+  const { t } = useI18n();
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>("all");
@@ -402,14 +404,14 @@ export function MessagesHub({ session }: MessagesHubProps) {
         const response = await fetch("/api/chat/messages");
         const payload = (await response.json()) as { messages?: ChatMessagePayload[]; error?: string };
         if (!response.ok) {
-          setCommunityLoadError(payload.error ?? "Could not load community chat.");
+          setCommunityLoadError(payload.error ?? t("chat.errorLoadCommunity"));
           return;
         }
         if (cancelled) return;
         replaceCommunityMessages(payload.messages ?? []);
         window.requestAnimationFrame(() => scrollCommunityToBottom(false));
       } catch {
-        if (!cancelled) setCommunityLoadError("Could not load community chat.");
+        if (!cancelled) setCommunityLoadError(t("chat.errorLoadCommunity"));
       } finally {
         if (!cancelled) setCommunityLoading(false);
       }
@@ -537,7 +539,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         window.requestAnimationFrame(() => scrollDirectToBottom(false));
       })
       .catch(() => {
-        if (!cancelled) setDirectLoadError("Could not load private messages.");
+        if (!cancelled) setDirectLoadError(t("chat.errorLoadPrivate"));
       })
       .finally(() => {
         if (!cancelled) setDirectLoading(false);
@@ -592,7 +594,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         window.requestAnimationFrame(() => scrollGroupToBottom(false));
       })
       .catch(() => {
-        if (!cancelled) setGroupLoadError("Could not load group messages.");
+        if (!cancelled) setGroupLoadError(t("chat.errorLoadGroup"));
       })
       .finally(() => {
         if (!cancelled) setGroupLoading(false);
@@ -698,7 +700,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
       const payload = (await response.json()) as { message?: GroupMessagePayload; error?: string };
 
       if (!response.ok) {
-        setGroupError(payload.error ?? "Could not send message.");
+        setGroupError(payload.error ?? t("chat.errorSend"));
         return;
       }
 
@@ -721,7 +723,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         );
       }
     } catch {
-      setGroupError("Could not send message.");
+      setGroupError(t("chat.errorSend"));
     } finally {
       setGroupPending(false);
     }
@@ -744,7 +746,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
       const payload = (await response.json()) as { message?: ChatMessagePayload; error?: string };
 
       if (!response.ok) {
-        setCommunityError(payload.error ?? "Could not send message.");
+        setCommunityError(payload.error ?? t("chat.errorSend"));
         return;
       }
 
@@ -754,7 +756,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         window.requestAnimationFrame(() => scrollCommunityToBottom(true));
       }
     } catch {
-      setCommunityError("Could not send message.");
+      setCommunityError(t("chat.errorSend"));
     } finally {
       setCommunityPending(false);
     }
@@ -799,7 +801,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
       const payload = (await response.json()) as { message?: DirectMessagePayload; error?: string };
 
       if (!response.ok) {
-        setDirectError(payload.error ?? "Could not send message.");
+        setDirectError(payload.error ?? t("chat.errorSend"));
         return;
       }
 
@@ -822,7 +824,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
         );
       }
     } catch {
-      setDirectError("Could not send message.");
+      setDirectError(t("chat.errorSend"));
     } finally {
       setDirectPending(false);
     }
@@ -862,7 +864,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
       };
 
       if (!response.ok || !payload.conversation) {
-        setDirectError(payload.error ?? "Could not start conversation.");
+        setDirectError(payload.error ?? t("chat.errorStartConversation"));
         return;
       }
 
@@ -872,27 +874,27 @@ export function MessagesHub({ session }: MessagesHubProps) {
       });
       openDirect(payload.conversation.id);
     } catch {
-      setDirectError("Could not start conversation.");
+      setDirectError(t("chat.errorStartConversation"));
     }
   }
 
   const threadTitle =
     activeThread.kind === "community"
-      ? "Community lounge"
+      ? t("chat.communityLounge")
       : activeThread.kind === "group"
-        ? (selectedGroup?.name ?? "Group chat")
+        ? (selectedGroup?.name ?? t("chat.groupChat"))
         : (selectedConversation?.peer.name ?? "Private message");
 
   const threadSubtitle =
     activeThread.kind === "community"
       ? communityLive
         ? `${onlineLabel} · Public`
-        : "Reconnecting…"
+        : t("chat.reconnecting")
       : activeThread.kind === "group"
         ? selectedGroup
           ? `${formatMemberCount(selectedGroup.memberCount)} · ${selectedGroup.visibility === "public" ? "Public" : "Private"}${selectedGroup.archivedAt ? " · Archived" : ""}`
           : "Group chat"
-        : "Private message";
+        : t("chat.privateMessage");
 
   const reloadCommunity = useCallback(async () => {
     setCommunityLoading(true);
@@ -901,12 +903,12 @@ export function MessagesHub({ session }: MessagesHubProps) {
       const response = await fetch("/api/chat/messages");
       const payload = (await response.json()) as { messages?: ChatMessagePayload[]; error?: string };
       if (!response.ok) {
-        setCommunityLoadError(payload.error ?? "Could not load community chat.");
+        setCommunityLoadError(payload.error ?? t("chat.errorLoadCommunity"));
         return;
       }
       replaceCommunityMessages(payload.messages ?? []);
     } catch {
-      setCommunityLoadError("Could not load community chat.");
+      setCommunityLoadError(t("chat.errorLoadCommunity"));
     } finally {
       setCommunityLoading(false);
     }
@@ -952,7 +954,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
       }
       setGroupMessages(payload.messages ?? []);
     } catch {
-      setGroupLoadError("Could not load group messages.");
+      setGroupLoadError(t("chat.errorLoadGroup"));
     } finally {
       setGroupLoading(false);
     }
@@ -971,7 +973,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
       }
       setDirectMessages(payload.messages ?? []);
     } catch {
-      setDirectLoadError("Could not load private messages.");
+      setDirectLoadError(t("chat.errorLoadPrivate"));
     } finally {
       setDirectLoading(false);
     }
@@ -989,7 +991,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
       <button
         type="button"
         onClick={() => setShowGroupInfo((value) => !value)}
-        aria-label="Group info and members"
+        aria-label={t("chat.groupInfo")}
         aria-expanded={showGroupInfo}
         className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent transition hover:bg-accent/25"
       >
@@ -1036,11 +1038,11 @@ export function MessagesHub({ session }: MessagesHubProps) {
         onClick={() => setShowCreateGroup(true)}
       >
         <UserPlus className="size-4" aria-hidden />
-        Create group
+        {t("chat.createGroup")}
       </Button>
       <Button type="button" size="sm" variant="premium" className="w-full justify-start" onClick={() => setShowNewMessage(true)}>
         <MessageSquarePlus className="size-4" aria-hidden />
-        New message
+        {t("chat.newMessage")}
       </Button>
     </div>
   );
@@ -1068,8 +1070,8 @@ export function MessagesHub({ session }: MessagesHubProps) {
             {!inboxIconOnly ? (
               <div className="flex h-14 w-full shrink-0 items-center border-b border-border/60 px-4">
                 <div className="min-w-0 flex-1">
-                  <h1 className="truncate font-display text-base font-semibold tracking-tight">Conversations</h1>
-                  <p className="truncate text-xs text-muted-foreground">Recent chats</p>
+                  <h1 className="truncate font-display text-base font-semibold tracking-tight">{t("chat.conversations")}</h1>
+                  <p className="truncate text-xs text-muted-foreground">{t("chat.recentChats")}</p>
                 </div>
                 <div className="ml-2 flex shrink-0 gap-1 lg:hidden">
                   <Button
@@ -1078,7 +1080,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
                     variant="secondary"
                     className="size-9 shrink-0"
                     onClick={() => setShowCreateGroup(true)}
-                    aria-label="Create group"
+                    aria-label={t("chat.createGroup")}
                   >
                     <UserPlus className="size-4" aria-hidden />
                   </Button>
@@ -1088,7 +1090,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
                     variant="premium"
                     className="size-9 shrink-0"
                     onClick={() => setShowNewMessage(true)}
-                    aria-label="New message"
+                    aria-label={t("chat.newMessage")}
                   >
                     <Plus className="size-4" aria-hidden />
                   </Button>
@@ -1127,8 +1129,8 @@ export function MessagesHub({ session }: MessagesHubProps) {
                         <MessagesSquare className="size-5" aria-hidden />
                       </div>
                     }
-                    title="Community lounge"
-                    preview={communityMessages[communityMessages.length - 1]?.body ?? "Public member channel"}
+                    title={t("chat.communityLounge")}
+                    preview={communityMessages[communityMessages.length - 1]?.body ?? t("chat.publicMemberChannel")}
                     meta={
                       <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                         {communityLive ? <Wifi className="size-3 text-accent" /> : <WifiOff className="size-3" />}
@@ -1294,8 +1296,8 @@ export function MessagesHub({ session }: MessagesHubProps) {
                     loading={communityLoading}
                     error={communityListError}
                     onRetry={() => void reloadCommunity()}
-                    emptyTitle="No messages yet"
-                    emptyDescription="Say hello to the community."
+                    emptyTitle={t("chat.noMessages")}
+                    emptyDescription={t("chat.sayHello")}
                     showSenderNames
                     canDelete={staff}
                     deletingId={deletingCommunityId}
@@ -1310,7 +1312,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
                     onSubmit={handleCommunitySubmit}
                     pending={communityPending}
                     error={communityComposerError}
-                    placeholder="Message the community…"
+                    placeholder={t("chat.messageCommunity")}
                   />
                 </>
               ) : activeThread.kind === "group" && selectedGroup ? (
@@ -1322,7 +1324,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
                     loading={groupLoading}
                     error={groupListError}
                     onRetry={() => void reloadGroupMessages()}
-                    emptyTitle="No messages yet"
+                    emptyTitle={t("chat.noMessages")}
                     emptyDescription={`Say hello to ${selectedGroup.name}.`}
                     showSenderNames
                     searchQuery={messageSearch}
@@ -1347,7 +1349,7 @@ export function MessagesHub({ session }: MessagesHubProps) {
                     loading={directLoading}
                     error={directListError}
                     onRetry={() => void reloadDirectMessages()}
-                    emptyTitle="No messages yet"
+                    emptyTitle={t("chat.noMessages")}
                     emptyDescription={`Send the first message to ${selectedConversation.peer.name ?? "this member"}.`}
                     showReadStatus
                     canDelete={staff}
@@ -1368,8 +1370,8 @@ export function MessagesHub({ session }: MessagesHubProps) {
                 </>
               ) : (
                 <EmptyState
-                  title="Select a conversation"
-                  description="Choose a chat from your list, or start a new message."
+                  title={t("chat.selectConversation")}
+                  description={t("chat.selectConversationBody")}
                   className="flex-1"
                 />
               )}

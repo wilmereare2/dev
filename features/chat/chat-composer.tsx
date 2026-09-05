@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/providers/i18n-provider";
 
 type ChatComposerProps = {
   id: string;
@@ -26,6 +27,7 @@ export function ChatComposer({
   error,
   placeholder,
 }: ChatComposerProps) {
+  const { t } = useI18n();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canSend = value.trim().length > 0 && !pending;
 
@@ -82,7 +84,7 @@ export function ChatComposer({
           </Button>
         </div>
         <p className="mt-2 hidden text-[11px] text-muted-foreground sm:block">
-          Enter to send · Shift+Enter for a new line
+          {t("chat.enterToSend")}
         </p>
       </form>
     </div>

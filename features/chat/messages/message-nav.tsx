@@ -3,13 +3,15 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Lock, MessageSquare, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/providers/i18n-provider";
+import type { MessageKey } from "@/lib/i18n";
 
 export type InboxFilter = "all" | "groups" | "private";
 
-const FILTERS: { id: InboxFilter; label: string; icon: typeof MessageSquare }[] = [
-  { id: "all", label: "All Messages", icon: MessageSquare },
-  { id: "groups", label: "Groups", icon: Users },
-  { id: "private", label: "Private", icon: Lock },
+const FILTERS: { id: InboxFilter; labelKey: MessageKey; icon: typeof MessageSquare }[] = [
+  { id: "all", labelKey: "chat.allMessages", icon: MessageSquare },
+  { id: "groups", labelKey: "chat.groups", icon: Users },
+  { id: "private", labelKey: "chat.private", icon: Lock },
 ];
 
 type MessageNavProps = {
@@ -22,16 +24,17 @@ type MessageNavProps = {
 };
 
 export function MessageNav({ filter, onFilterChange, layout = "sidebar", className, style, actions }: MessageNavProps) {
+  const { t } = useI18n();
   if (layout === "tabs") {
     return (
       <nav
-        aria-label="Message filters"
+        aria-label={t("chat.allMessages")}
         className={cn(
           "flex gap-1 overflow-x-auto border-b border-border/60 px-2 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           className,
         )}
       >
-        {FILTERS.map(({ id, label }) => (
+        {FILTERS.map(({ id, labelKey }) => (
           <button
             key={id}
             type="button"
@@ -43,7 +46,7 @@ export function MessageNav({ filter, onFilterChange, layout = "sidebar", classNa
                 : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
             )}
           >
-            {label}
+            {t(labelKey)}
           </button>
         ))}
       </nav>
@@ -52,17 +55,17 @@ export function MessageNav({ filter, onFilterChange, layout = "sidebar", classNa
 
   return (
     <nav
-      aria-label="Messages"
+      aria-label={t("nav.messages")}
       style={style}
       className={cn("flex h-full shrink-0 flex-col border-r border-border/60 bg-background/30", className)}
     >
       <div className="border-b border-border/60 px-4 py-4">
         <p className="font-display text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Messages
+          {t("nav.messages")}
         </p>
       </div>
       <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2">
-        {FILTERS.map(({ id, label, icon: Icon }) => (
+        {FILTERS.map(({ id, labelKey, icon: Icon }) => (
           <li key={id}>
             <button
               type="button"
@@ -75,7 +78,7 @@ export function MessageNav({ filter, onFilterChange, layout = "sidebar", classNa
               )}
             >
               <Icon className="size-4 shrink-0" aria-hidden />
-              {label}
+              {t(labelKey)}
             </button>
           </li>
         ))}

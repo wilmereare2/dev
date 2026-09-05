@@ -6,6 +6,7 @@ import { UserAvatar } from "@/components/user/user-avatar";
 import { Button } from "@/components/ui/button";
 import type { GroupVisibility, MemberSummaryPayload } from "@/lib/chat/constants";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/providers/i18n-provider";
 
 type CreateGroupDialogProps = {
   open: boolean;
@@ -22,6 +23,7 @@ const EMPTY_FORM = {
 };
 
 export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialogProps) {
+  const { t } = useI18n();
   const [name, setName] = useState(EMPTY_FORM.name);
   const [description, setDescription] = useState(EMPTY_FORM.description);
   const [query, setQuery] = useState(EMPTY_FORM.query);
@@ -111,7 +113,7 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
       const payload = (await response.json()) as { group?: { id: string }; error?: string };
 
       if (!response.ok || !payload.group) {
-        setError(payload.error ?? "Could not create group.");
+        setError(payload.error ?? t("chat.errorCreateGroup"));
         return;
       }
 
@@ -235,7 +237,7 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
 
           <div className="border-b border-border/60 px-4 py-3">
             <label htmlFor="group-member-search" className="text-sm font-medium">
-              Add members
+              {t("chat.addMembers")}
             </label>
             <p className="mt-1 text-xs text-muted-foreground">
               Search by name or @username. Only members with a verified email address can be added,
@@ -247,7 +249,7 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
                 id="group-member-search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search by name…"
+                placeholder={t("chat.searchByName")}
                 className="h-11 w-full rounded-xl border border-border bg-surface/50 pl-10 pr-3 text-sm outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/20"
               />
             </div>

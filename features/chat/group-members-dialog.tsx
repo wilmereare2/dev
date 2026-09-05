@@ -5,8 +5,10 @@ import { Crown, Loader2, Search, Shield, UserMinus, UserPlus, X } from "lucide-r
 import { UserAvatar } from "@/components/user/user-avatar";
 import { Button } from "@/components/ui/button";
 import type { GroupMemberPayload, GroupMemberRole, MemberSummaryPayload } from "@/lib/chat/constants";
+import type { MessageKey } from "@/lib/i18n";
 import { formatMemberCount } from "@/features/chat/chat-format";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/providers/i18n-provider";
 
 type GroupMembersDialogProps = {
   open: boolean;
@@ -25,11 +27,11 @@ type GroupMembersDialogProps = {
   archived?: boolean;
 };
 
-function roleLabel(role: GroupMemberRole) {
-  if (role === "creator") return "Creator";
-  if (role === "admin") return "Admin";
-  return "Member";
-}
+const ROLE_LABEL_KEYS = {
+  creator: "chat.roleCreator",
+  admin: "chat.roleAdmin",
+  member: "chat.roleMember",
+} as const satisfies Record<GroupMemberRole, MessageKey>;
 
 function roleBadgeClass(role: GroupMemberRole) {
   if (role === "creator") return "border-amber-500/40 bg-amber-500/15 text-amber-400";
@@ -48,6 +50,7 @@ export function GroupMembersDialog({
   visibility,
   archived,
 }: GroupMembersDialogProps) {
+  const { t } = useI18n();
   const [members, setMembers] = useState<GroupMemberPayload[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,12 +74,12 @@ export function GroupMembersDialog({
       const response = await fetch(`/api/chat/groups/${groupId}/members`);
       const payload = (await response.json()) as { members?: GroupMemberPayload[]; error?: string };
       if (!response.ok) {
-        setError(payload.error ?? "Could not load members.");
+        setError(payload.error ?? t("chat.errorLoadMembers"));
         return;
       }
       setMembers(payload.members ?? []);
     } catch {
-      setError("Could not load members.");
+      setError(t("chat.errorLoadMembers"));
     } finally {
       setLoading(false);
     }
@@ -140,7 +143,7 @@ export function GroupMembersDialog({
       const payload = (await response.json()) as { error?: string; added?: number };
 
       if (!response.ok) {
-        setError(payload.error ?? "Could not invite members.");
+        setError(payload.error ?? t("chat.errorInvite"));
         return;
       }
 
@@ -150,7 +153,7 @@ export function GroupMembersDialog({
       await loadMembers();
       onChanged();
     } catch {
-      setError("Could not invite members.");
+      setError(t("chat.errorInvite"));
     } finally {
       setInvitePending(false);
     }
@@ -168,13 +171,13 @@ export function GroupMembersDialog({
       });
       const payload = (await response.json()) as { error?: string };
       if (!response.ok) {
-        setError(payload.error ?? "Could not update role.");
+        setError(payload.error ?? t("chat.errorUpdateRole"));
         return;
       }
       await loadMembers();
       onChanged();
     } catch {
-      setError("Could not update role.");
+      setError(t("chat.errorUpdateRole"));
     } finally {
       setActionPendingId(null);
     }
@@ -190,13 +193,13 @@ export function GroupMembersDialog({
       });
       const payload = (await response.json()) as { error?: string };
       if (!response.ok) {
-        setError(payload.error ?? "Could not remove member.");
+        setError(payload.error ?? t("chat.errorRemoveMember"));
         return;
       }
       await loadMembers();
       onChanged();
     } catch {
-      setError("Could not remove member.");
+      setError(t("chat.errorRemoveMember"));
     } finally {
       setActionPendingId(null);
     }
@@ -216,7 +219,7 @@ export function GroupMembersDialog({
   const profileHeader = (
     <div className="shrink-0 border-b border-border/60 px-4 py-4 text-center">
       <div className="flex justify-end">
-        <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close group info">
+        <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label={t("common.close")}>
           <X className="size-4" />
         </Button>
       </div>
@@ -240,7 +243,7 @@ export function GroupMembersDialog({
         </h2>
         <p className="text-xs text-muted-foreground">Creator, admins, and members</p>
       </div>
-      <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close dialog">
+      <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label={t("common.close")}>
         <X className="size-4" />
       </Button>
     </div>
@@ -267,7 +270,7 @@ export function GroupMembersDialog({
         {showInvite && canInvite ? (
           <div className="border-b border-border/60 px-4 py-3">
             <label htmlFor="invite-member-search" className="text-sm font-medium">
-              Invite people
+              {t("chat.invitePeople")}
             </label>
             <p className="mt-1 text-xs text-muted-foreground">
               Search by name or @username. Only members with a verified email address can be
@@ -279,7 +282,7 @@ export function GroupMembersDialog({
                 id="invite-member-search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search by name…"
+                placeholder={t("chat.searchByName")}
                 className="h-10 w-full rounded-xl border border-border bg-surface/50 pl-10 pr-3 text-sm outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/20"
               />
             </div>
@@ -374,7 +377,7 @@ export function GroupMembersDialog({
                           ) : member.groupRole === "admin" ? (
                             <Shield className="size-3" aria-hidden />
                           ) : null}
-                          {roleLabel(member.groupRole)}
+                          {t(ROLE_LABEL_KEYS[member.groupRole])}
                         </span>
                       </div>
                       {/* Public handle and join date — the Telegram/Discord member-row shape. */}
@@ -395,7 +398,7 @@ export function GroupMembersDialog({
                           onClick={() => void updateRole(member.userId, "admin")}
                           className="h-8 px-2 text-xs"
                         >
-                          Make admin
+                          {t("chat.makeAdmin")}
                         </Button>
                       ) : null}
                       {canManageRoles && member.groupRole === "admin" ? (
@@ -407,7 +410,7 @@ export function GroupMembersDialog({
                           onClick={() => void updateRole(member.userId, "member")}
                           className="h-8 px-2 text-xs"
                         >
-                          Remove admin
+                          {t("chat.removeAdmin")}
                         </Button>
                       ) : null}
                       {showRemove ? (
@@ -444,7 +447,7 @@ export function GroupMembersDialog({
       <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center xl:static xl:z-auto xl:block xl:p-0">
         <button
           type="button"
-          aria-label="Close group info"
+          aria-label={t("common.close")}
           className="absolute inset-0 bg-black/60 backdrop-blur-sm xl:hidden"
           onClick={onClose}
         />
@@ -468,7 +471,7 @@ export function GroupMembersDialog({
     <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
       <button
         type="button"
-        aria-label="Close dialog"
+        aria-label={t("common.close")}
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />

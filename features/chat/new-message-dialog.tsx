@@ -5,6 +5,7 @@ import { Loader2, Search, X } from "lucide-react";
 import { UserAvatar } from "@/components/user/user-avatar";
 import { Button } from "@/components/ui/button";
 import type { MemberSummaryPayload } from "@/lib/chat/constants";
+import { useI18n } from "@/components/providers/i18n-provider";
 
 type NewMessageDialogProps = {
   open: boolean;
@@ -13,6 +14,7 @@ type NewMessageDialogProps = {
 };
 
 export function NewMessageDialog({ open, onClose, onSelectMember }: NewMessageDialogProps) {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [knownMembers, setKnownMembers] = useState<MemberSummaryPayload[]>([]);
   const [memberResults, setMemberResults] = useState<MemberSummaryPayload[]>([]);
@@ -104,7 +106,7 @@ export function NewMessageDialog({ open, onClose, onSelectMember }: NewMessageDi
               autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search by @username or name…"
+                placeholder={t("chat.searchByUsername")}
               className="h-11 w-full rounded-xl border border-border bg-surface/50 pl-10 pr-3 text-sm outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/20"
             />
           </div>

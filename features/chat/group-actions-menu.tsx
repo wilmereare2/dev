@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { GroupMembersDialog } from "@/features/chat/group-members-dialog";
 import type { GroupMemberRole } from "@/lib/chat/constants";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/providers/i18n-provider";
 
 type GroupActionsMenuProps = {
   groupId: string;
@@ -24,6 +25,7 @@ export function GroupActionsMenu({
   onArchivedChange,
   onMembersChange,
 }: GroupActionsMenuProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [pending, setPending] = useState(false);
@@ -62,7 +64,7 @@ export function GroupActionsMenu({
           type="button"
           variant="ghost"
           size="icon"
-          aria-label="Group actions"
+          aria-label={t("chat.groupActions")}
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
         >
@@ -88,7 +90,7 @@ export function GroupActionsMenu({
                 className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm transition hover:bg-muted/40"
               >
                 <Users className="size-4 text-accent" aria-hidden />
-                Members & invites
+                {t("chat.membersAndInvites")}
               </button>
               {isCreator ? (
                 <>

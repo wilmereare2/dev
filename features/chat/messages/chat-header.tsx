@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ChevronLeft, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/providers/i18n-provider";
 
 type ChatHeaderProps = {
   title: string;
@@ -33,11 +34,13 @@ export function ChatHeader({
   onSearchClear,
   onTitleClick,
 }: ChatHeaderProps) {
+  const { t } = useI18n();
+
   return (
     <header className="shrink-0 border-b border-border/60 bg-background/50 backdrop-blur-sm">
       <div className="flex h-14 items-center gap-3 px-3 sm:px-4">
         {onBack ? (
-          <Button type="button" variant="ghost" size="icon" className="md:hidden" onClick={onBack} aria-label="Back to conversations">
+          <Button type="button" variant="ghost" size="icon" className="md:hidden" onClick={onBack} aria-label={t("chat.backToConversations")}>
             <ChevronLeft className="size-5" />
           </Button>
         ) : null}
@@ -66,7 +69,7 @@ export function ChatHeader({
             type="button"
             variant="ghost"
             size="icon"
-            aria-label={searchOpen ? "Close message search" : "Search messages"}
+            aria-label={searchOpen ? t("chat.closeSearch") : t("chat.searchMessages")}
             aria-pressed={searchOpen}
             onClick={onSearchToggle}
           >
@@ -79,14 +82,14 @@ export function ChatHeader({
       {searchOpen ? (
         <div className="border-t border-border/40 px-3 pb-3 pt-2 sm:px-4">
           <label htmlFor="message-search" className="sr-only">
-            Search in conversation
+            {t("chat.searchMessages")}
           </label>
           <input
             id="message-search"
             type="search"
             value={searchQuery}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search in this conversation…"
+            placeholder={t("chat.searchConversation")}
             className="h-9 w-full rounded-lg border border-border bg-background/80 px-3 text-sm outline-none focus-visible:border-accent/50 focus-visible:ring-2 focus-visible:ring-accent/20"
           />
         </div>
