@@ -66,7 +66,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const valid = await verifyPassword(parsed.data.password, user.passwordHash);
           if (!valid) return null;
 
-          if (!user.emailVerified) return null;
+          // An unverified email no longer blocks sign-in. Verification is
+          // optional and instead gates specific features — notifications and
+          // member-promoted posts — checked at the point of use.
           if (isPhoneVerificationRequired() && user.phone && !user.phoneVerified) return null;
 
           return {

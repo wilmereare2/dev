@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiUser } from "@/lib/api/require-user";
+import { requireVerifiedEmail } from "@/lib/auth/email-verification";
 import {
   countNotifications,
   countUnreadNotifications,
@@ -13,6 +14,15 @@ import {
 export async function GET(request: Request) {
   const authResult = await requireApiUser();
   if ("error" in authResult) return authResult.error;
+
+  // The notification channel requires a verified email address.
+  const verified = await requireVerifiedEmail(authResult.userId, "notifications");
+  if (!verified.allowed) {
+    return NextResponse.json(
+      { error: verified.message, code: verified.reason, items: [], unreadCount: 0, totalCount: 0 },
+      { status: 403 },
+    );
+  }
 
   const { searchParams } = new URL(request.url);
   const limit = Math.min(Math.max(Number(searchParams.get("limit") ?? 20), 1), 100);

@@ -4,48 +4,71 @@ import { parseDateOfBirth } from "@/lib/compliance/age-rules";
 import { COUNTRY_SET, GENDER_SET, RACE_SET } from "@/lib/user/profile-options";
 import { normalizePhoneNumber } from "@/lib/auth/verification-codes";
 
+/** Optional free-text field: "" and undefined both mean "not provided". */
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => value?.trim() || undefined);
+
+/** Optional value from a fixed option list. */
+const optionalChoice = (set: Set<string>, message: string) =>
+  z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => value?.trim() || undefined)
+    .refine((value) => value === undefined || set.has(value), message);
+
+/**
+ * Sign-up input.
+ *
+ * Only a username, email and password are required. Age is established by the
+ * age gate before any page renders, and the profile details below are collected
+ * later from settings rather than blocking account creation.
+ */
 export const registerProfileSchema = z.object({
   username: z
     .string()
     .trim()
     .transform(normalizeUsername)
     .refine(isValidUsername, "Username can only use letters and numbers (3–20 characters)."),
-  name: z.string().trim().min(1, "Name is required.").max(120),
+  email: z.string().trim().email("Enter a valid email address."),
+  password: z.string().min(8, "Password must be at least 8 characters."),
+
+  // --- Everything below is optional and may be filled in later. ---
+  name: optionalText(120),
   dateOfBirth: z
     .string()
     .trim()
-    .refine((value) => parseDateOfBirth(value).ok, "Enter a valid date of birth."),
-  gender: z
-    .string()
-    .trim()
-    .min(1, "Gender is required.")
-    .refine((value) => GENDER_SET.has(value), "Select a valid gender."),
-  country: z
-    .string()
-    .trim()
-    .min(1, "Country is required.")
-    .refine((value) => COUNTRY_SET.has(value), "Select a valid country."),
-  race: z
-    .string()
-    .trim()
-    .min(1, "Race is required.")
-    .refine((value) => RACE_SET.has(value), "Select a valid race or ethnicity."),
-  hobbies: z.string().trim().min(1, "Hobbies are required.").max(500),
-  email: z.string().email("Enter a valid email address."),
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => value?.trim() || undefined)
+    .refine(
+      (value) => value === undefined || parseDateOfBirth(value).ok,
+      "Enter a valid date of birth.",
+    ),
+  gender: optionalChoice(GENDER_SET, "Select a valid gender."),
+  country: optionalChoice(COUNTRY_SET, "Select a valid country."),
+  race: optionalChoice(RACE_SET, "Select a valid race or ethnicity."),
+  hobbies: optionalText(500),
   phone: z
     .string()
     .trim()
     .optional()
     .or(z.literal(""))
-    .transform((value) => value ?? "")
+    .transform((value) => value?.trim() || "")
     .refine(
       (value) => value === "" || normalizePhoneNumber(value) !== null,
       "Enter a valid phone number with country code.",
     ),
-  password: z.string().min(8, "Password must be at least 8 characters."),
-  telegram: z.string().trim().max(80).optional().or(z.literal("")),
-  whatsApp: z.string().trim().max(80).optional().or(z.literal("")),
-  zangi: z.string().trim().max(80).optional().or(z.literal("")),
+  telegram: optionalText(80),
+  whatsApp: optionalText(80),
+  zangi: optionalText(80),
   wantsToCreate: z.boolean().optional(),
 });
 

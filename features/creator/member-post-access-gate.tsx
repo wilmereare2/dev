@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Crown, Loader2, Lock } from "lucide-react";
+import { Crown, Loader2, Lock, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreatorFollowButton } from "@/features/creator/creator-follow-button";
 import { applyMonetizationResponse } from "@/lib/billing/monetization-client";
@@ -25,6 +25,11 @@ const COPY: Record<MemberPostAccessDenialReason, { title: string; description: s
   sign_in: {
     title: "Sign in to view this post",
     description: "Create a free account or sign in to access member content.",
+  },
+  email_verification: {
+    title: "Verify your email to view this post",
+    description:
+      "Posts promoted by other members need a verified email address. Content published by manuelaX stays free to browse.",
   },
   ppv: {
     title: "Pay-per-view content",
@@ -110,7 +115,13 @@ export function MemberPostAccessGate({
   return (
     <div className="flex flex-col items-center gap-4 px-6 py-10 text-center">
       <div className="flex size-14 items-center justify-center rounded-full border border-accent/30 bg-accent/10 text-accent">
-        {reason === "premium" ? <Crown className="size-6" aria-hidden /> : <Lock className="size-6" aria-hidden />}
+        {reason === "premium" ? (
+          <Crown className="size-6" aria-hidden />
+        ) : reason === "email_verification" ? (
+          <MailCheck className="size-6" aria-hidden />
+        ) : (
+          <Lock className="size-6" aria-hidden />
+        )}
       </div>
       <div>
         <p className="font-display text-lg font-semibold">{copy.title}</p>
@@ -122,6 +133,19 @@ export function MemberPostAccessGate({
           <Button asChild variant="premium">
             <Link href={signInHref}>Sign in</Link>
           </Button>
+        ) : null}
+
+        {reason === "email_verification" && signedIn ? (
+          <>
+            <Button asChild variant="premium">
+              <Link href={`/account?verify=1&redirect=${encodeURIComponent(redirectPath)}`}>
+                Verify my email
+              </Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href="/explore">Browse free content</Link>
+            </Button>
+          </>
         ) : null}
 
         {reason === "ppv" && signedIn && ppvPriceCents != null && ppvPriceCents > 0 ? (

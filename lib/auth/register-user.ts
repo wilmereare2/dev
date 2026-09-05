@@ -10,14 +10,21 @@ import { databaseUnavailableMessage, withDbRetry } from "@/lib/db/connection-err
 import type { RegisterProfileInput } from "@/lib/user/register-schema";
 import { normalizeUsername } from "@/lib/user/username";
 
+/**
+ * Only the username is guaranteed at sign-up. Profile details are optional and
+ * stay null until the member fills them in from settings, so `undefined` here
+ * means "not provided yet" rather than "cleared".
+ */
 function buildProfileFields(input: RegisterProfileInput, phone: string | null) {
+  const username = normalizeUsername(input.username);
   return {
-    username: normalizeUsername(input.username),
-    name: input.name.trim(),
-    gender: input.gender.trim(),
-    country: input.country.trim(),
-    race: input.race.trim(),
-    hobbies: input.hobbies.trim(),
+    username,
+    // Display name falls back to the username so the UI always has a label.
+    name: input.name?.trim() || username,
+    gender: input.gender?.trim() || null,
+    country: input.country?.trim() || null,
+    race: input.race?.trim() || null,
+    hobbies: input.hobbies?.trim() || null,
     phone,
     telegram: input.telegram?.trim() || null,
     whatsApp: input.whatsApp?.trim() || null,
@@ -50,9 +57,15 @@ async function registerUserInternal(input: RegisterProfileInput, appUrl?: string
     return { ok: false as const, code: "INVALID_PHONE" as const, error: "Enter a valid phone number with country code." };
   }
 
-  const dobResult = parseDateOfBirth(input.dateOfBirth);
-  if (!dobResult.ok) {
-    return { ok: false as const, code: "INVALID_DOB" as const, error: dobResult.error };
+  // Age eligibility is enforced by the age gate before any page renders, so a
+  // date of birth at sign-up is optional. When given it is still validated.
+  let dateOfBirth: Date | null = null;
+  if (input.dateOfBirth) {
+    const dobResult = parseDateOfBirth(input.dateOfBirth);
+    if (!dobResult.ok) {
+      return { ok: false as const, code: "INVALID_DOB" as const, error: dobResult.error };
+    }
+    dateOfBirth = dobResult.date;
   }
 
   const [existingEmail, existingUsername, existingPhone] = await withDbRetry(async () => {
@@ -62,54 +75,29 @@ async function registerUserInternal(input: RegisterProfileInput, appUrl?: string
     return [byEmail, byUsername, byPhone] as const;
   });
 
-  if (existingUsername && existingUsername.email !== email) {
+  if (existingUsername) {
     return { ok: false as const, code: "USERNAME_TAKEN" as const, error: "That username is already taken." };
   }
 
-  if (existingPhone && existingPhone.email !== email) {
+  if (existingPhone) {
     return { ok: false as const, code: "PHONE_TAKEN" as const, error: "That phone number is already linked to another account." };
   }
 
   const profileFields = buildProfileFields(input, phone);
   const passwordHash = await hashPassword(input.password);
 
+  // Any account on this email is now final. Sign-in no longer requires a
+  // verified email, so silently overwriting an existing unverified account's
+  // password here would let anyone claim someone else's registered address and
+  // sign in as them. Unfinished sign-ups recover via sign-in or password reset.
   if (existingEmail) {
-    if (existingEmail.emailVerified) {
-      return {
-        ok: false as const,
-        code: "ALREADY_REGISTERED" as const,
-        error: "This email is already registered. Sign in to continue.",
-      };
-    }
-
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: existingEmail.id },
-        data: { ...profileFields, passwordHash, phoneVerified: null },
-      }),
-      prisma.userSettings.upsert({
-        where: { userId: existingEmail.id },
-        create: { userId: existingEmail.id, dateOfBirth: dobResult.date },
-        update: { dateOfBirth: dobResult.date },
-      }),
-    ]);
-
-    const sendResult = await sendVerificationEmailForUser(email, appUrl).catch((error) => {
-      console.error("[register] verification email failed:", error);
-      return { ok: false as const, error: "Could not send verification email." };
-    });
     return {
-      ok: true as const,
-      email,
-      username,
-      devAutoVerified: false,
-      userId: existingEmail.id,
-      verifyUrl: sendResult.ok ? sendResult.verifyUrl : undefined,
-      emailSent: sendResult.ok ? sendResult.sent : false,
-      deliveryError: sendResult.ok ? sendResult.deliveryError : sendResult.error,
-      resumed: true as const,
+      ok: false as const,
+      code: "ALREADY_REGISTERED" as const,
+      error: "This email is already registered. Sign in to continue.",
     };
   }
+
 
   const devAutoVerified = process.env.NODE_ENV === "development";
   const assignAdmin = isDesignatedAdminEmail(email);
@@ -122,7 +110,7 @@ async function registerUserInternal(input: RegisterProfileInput, appUrl?: string
       role: assignAdmin ? "ADMIN" : "USER",
       emailVerified: devAutoVerified || assignAdmin ? new Date() : null,
       phoneVerified: (devAutoVerified || assignAdmin) && phone ? new Date() : null,
-      settings: { create: { dateOfBirth: dobResult.date } },
+      settings: { create: { dateOfBirth } },
     },
   });
 

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { hasVerifiedEmail } from "@/lib/auth/email-verification";
 import { userHasActiveSubscription } from "@/lib/auth/entitlements";
 import { isDevBillingEnabled } from "@/services/billing/dev-checkout";
 
@@ -78,6 +79,7 @@ export async function canAccessCreatorContent(
 
 export type MemberPostAccessDenialReason =
   | "sign_in"
+  | "email_verification"
   | "ppv"
   | "premium"
   | "followers"
@@ -97,24 +99,25 @@ export async function resolveMemberPostAccess(
     id: string;
   },
 ): Promise<MemberPostAccess> {
-  if (await canAccessCreatorContent(userId, upload)) {
+  // A creator always sees their own post.
+  if (userId && userId === upload.creatorUserId) {
     return { canAccess: true };
   }
 
+  // Posts promoted by other members require a signed-in, email-verified viewer.
+  // This runs BEFORE the entitlement check on purpose: a free public member
+  // post would otherwise pass straight through and skip the rule entirely.
+  // Content the platform publishes itself is unaffected — it does not go
+  // through this path at all.
   if (!userId) {
-    if (upload.ppvPriceCents && upload.ppvPriceCents > 0) {
-      return { canAccess: false, reason: "ppv" };
-    }
-    if (upload.isPremium) {
-      return { canAccess: false, reason: "premium" };
-    }
-    if (upload.visibility === "followers") {
-      return { canAccess: false, reason: "followers" };
-    }
-    if (upload.visibility === "subscribers") {
-      return { canAccess: false, reason: "subscribers" };
-    }
     return { canAccess: false, reason: "sign_in" };
+  }
+  if (!(await hasVerifiedEmail(userId))) {
+    return { canAccess: false, reason: "email_verification" };
+  }
+
+  if (await canAccessCreatorContent(userId, upload)) {
+    return { canAccess: true };
   }
 
   if (upload.ppvPriceCents && upload.ppvPriceCents > 0) {

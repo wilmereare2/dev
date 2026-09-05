@@ -195,18 +195,8 @@ export function useAccountAuth() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: registerValues.username,
-          name: registerValues.name.trim(),
-          dateOfBirth: registerValues.dateOfBirth,
-          gender: registerValues.gender,
-          country: registerValues.country,
-          race: registerValues.race,
-          hobbies: registerValues.hobbies,
           email: registerValues.email.trim().toLowerCase(),
-          phone: registerValues.phone,
           password: registerValues.password,
-          telegram: registerValues.telegram,
-          whatsApp: registerValues.whatsApp,
-          zangi: registerValues.zangi,
           wantsToCreate: registerValues.wantsToCreate,
         }),
       });
@@ -234,20 +224,11 @@ export function useAccountAuth() {
       }
 
       const registeredEmail = payload.email ?? registerValues.email.trim().toLowerCase();
-      if (payload.devAutoVerified) {
-        await completeRegistrationSignIn(registeredEmail, registerValues.password);
-        return;
-      }
 
-      setPendingVerificationEmail(registeredEmail);
-      setPendingPhone(registerValues.phone.trim() || null);
-      setVerificationUrl(payload.verifyUrl ?? null);
-      setVerificationEmailSent(payload.emailSent ?? null);
-      if (payload.deliveryError) {
-        setError(payload.deliveryError);
-      } else if (payload.message) {
-        setNotice(payload.message);
-      }
+      // A verified email is no longer needed to sign in, so the account is
+      // usable straight away. The verification email is still sent, and the
+      // features that need it prompt for verification at the point of use.
+      await completeRegistrationSignIn(registeredEmail, registerValues.password);
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

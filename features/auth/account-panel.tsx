@@ -68,7 +68,7 @@ function AccountPanelContent({
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
           {auth.mode === "signin"
             ? "Sign in with your email and password."
-            : "Set up your account in three quick steps. Other members reach you by @username in chat only."}
+            : "Pick a username and you are in. Other members reach you by @username in chat only."}
         </p>
 
         {auth.notice ? (

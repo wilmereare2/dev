@@ -8,16 +8,6 @@ export const EMPTY_REGISTER_VALUES: RegisterFormValues = {
   email: "",
   password: "",
   confirmPassword: "",
-  name: "",
-  dateOfBirth: "",
-  gender: "",
-  country: "",
-  race: "",
-  hobbies: "",
-  phone: "",
-  telegram: "",
-  whatsApp: "",
-  zangi: "",
   wantsToCreate: false,
 };
 

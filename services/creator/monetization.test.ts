@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   findFollow: vi.fn(),
   findCreatorSub: vi.fn(),
   platformSub: vi.fn(),
+  findUser: vi.fn(),
 }));
 
 vi.mock("@/lib/db/prisma", () => ({
@@ -12,6 +13,7 @@ vi.mock("@/lib/db/prisma", () => ({
     contentPurchase: { findFirst: mocks.findPurchase },
     creatorFollow: { findUnique: mocks.findFollow },
     creatorSubscription: { findFirst: mocks.findCreatorSub },
+    user: { findUnique: mocks.findUser },
   },
 }));
 
@@ -35,6 +37,8 @@ describe("content access", () => {
     mocks.findFollow.mockResolvedValue(null);
     mocks.findCreatorSub.mockResolvedValue(null);
     mocks.platformSub.mockResolvedValue(false);
+    // Verified by default; individual tests opt into the unverified case.
+    mocks.findUser.mockResolvedValue({ emailVerified: new Date() });
   });
 
   it("allows anonymous access to free public content", async () => {
@@ -106,10 +110,57 @@ describe("content access", () => {
   });
 
   it("returns denial reasons for locked posts", async () => {
-    const result = await resolveMemberPostAccess(undefined, {
+    // Member posts now require a signed-in, verified viewer, so a signed-out
+    // visitor is asked to sign in before any paywall reason is revealed.
+    const result = await resolveMemberPostAccess("viewer-1", {
       ...upload,
       ppvPriceCents: 500,
     });
     expect(result).toEqual({ canAccess: false, reason: "ppv" });
+  });
+});
+
+describe("email verification gate on member posts", () => {
+  beforeEach(() => {
+    mocks.findPurchase.mockResolvedValue(null);
+    mocks.findFollow.mockResolvedValue(null);
+    mocks.findCreatorSub.mockResolvedValue(null);
+    mocks.platformSub.mockResolvedValue(false);
+  });
+
+  it("blocks an unverified member from another member's post", async () => {
+    mocks.findUser.mockResolvedValue({ emailVerified: null });
+
+    const result = await resolveMemberPostAccess("viewer-1", upload);
+    expect(result).toEqual({ canAccess: false, reason: "email_verification" });
+  });
+
+  it("allows a verified member through to the normal checks", async () => {
+    mocks.findUser.mockResolvedValue({ emailVerified: new Date() });
+
+    const result = await resolveMemberPostAccess("viewer-1", upload);
+    expect(result).toEqual({ canAccess: true });
+  });
+
+  it("never blocks the creator from their own post", async () => {
+    mocks.findUser.mockResolvedValue({ emailVerified: null });
+
+    const result = await resolveMemberPostAccess("creator-1", upload);
+    expect(result).toEqual({ canAccess: true });
+  });
+
+  it("still reports the paywall reason for a verified member", async () => {
+    mocks.findUser.mockResolvedValue({ emailVerified: new Date() });
+
+    const result = await resolveMemberPostAccess("viewer-1", {
+      ...upload,
+      ppvPriceCents: 500,
+    });
+    expect(result).toEqual({ canAccess: false, reason: "ppv" });
+  });
+
+  it("asks a signed-out visitor to sign in rather than to verify", async () => {
+    const result = await resolveMemberPostAccess(undefined, upload);
+    expect(result).toEqual({ canAccess: false, reason: "sign_in" });
   });
 });
