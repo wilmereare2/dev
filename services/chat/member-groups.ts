@@ -181,6 +181,28 @@ export async function listDiscoverablePublicGroups(userId: string): Promise<Memb
   return groups.map((group) => mapGroup(group, "member"));
 }
 
+/**
+ * Group invitations are limited to members with a verified email address.
+ *
+ * The member picker already filters to verified members, but the ids arrive
+ * from the client, so this is the actual enforcement. Returns the ids that are
+ * invitable and the ones rejected, so callers can explain what was skipped.
+ */
+async function partitionInvitableMembers(memberIds: string[]) {
+  if (!memberIds.length) return { invitable: [] as string[], rejected: [] as string[] };
+
+  const eligible = await prisma.user.findMany({
+    where: { id: { in: memberIds }, emailVerified: { not: null } },
+    select: { id: true },
+  });
+
+  const eligibleIds = new Set(eligible.map((user) => user.id));
+  return {
+    invitable: memberIds.filter((id) => eligibleIds.has(id)),
+    rejected: memberIds.filter((id) => !eligibleIds.has(id)),
+  };
+}
+
 export async function createMemberGroup(
   creatorId: string,
   input: {
@@ -214,12 +236,13 @@ export async function createMemberGroup(
     }
   }
 
-  const existingUsers = await prisma.user.findMany({
-    where: { id: { in: uniqueMemberIds } },
-    select: { id: true },
-  });
-  if (existingUsers.length !== uniqueMemberIds.length) {
-    return { ok: false, error: "One or more selected members were not found." };
+  const { rejected } = await partitionInvitableMembers(uniqueMemberIds);
+  if (rejected.length) {
+    return {
+      ok: false,
+      error:
+        "Only members with a verified email address can be added to a group. Remove the unverified selections and try again.",
+    };
   }
 
   const group = await prisma.memberGroup.create({
@@ -300,7 +323,9 @@ export async function listGroupMembers(
     members: members
       .map((member) => ({
         userId: member.userId,
+        username: member.user.username,
         name: member.user.name,
+        displayName: chatDisplayName(member.user),
         image: member.user.image,
         siteRole: member.user.role,
         groupRole: parseGroupRole(member.role),
@@ -347,6 +372,15 @@ export async function inviteGroupMembers(
 
   if (group._count.members + toInvite.length > MAX_GROUP_MEMBERS) {
     return { ok: false, error: `Groups can have up to ${MAX_GROUP_MEMBERS} members.` };
+  }
+
+  const { rejected } = await partitionInvitableMembers(toInvite);
+  if (rejected.length) {
+    return {
+      ok: false,
+      error:
+        "Only members with a verified email address can be invited to a group. Remove the unverified selections and try again.",
+    };
   }
 
   for (const memberId of toInvite) {

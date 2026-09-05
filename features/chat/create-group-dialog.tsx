@@ -66,7 +66,7 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
     let cancelled = false;
     setSearchPending(true);
 
-    fetch(`/api/chat/members?q=${encodeURIComponent(query)}`)
+    fetch(`/api/chat/members?q=${encodeURIComponent(query)}&verified=1`)
       .then((response) => response.json())
       .then((payload: { members?: MemberSummaryPayload[] }) => {
         if (cancelled) return;
@@ -237,6 +237,10 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
             <label htmlFor="group-member-search" className="text-sm font-medium">
               Add members
             </label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Search by name or @username. Only members with a verified email address can be added,
+              and email addresses are never shown.
+            </p>
             <div className="relative mt-2">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <input

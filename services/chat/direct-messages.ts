@@ -393,10 +393,20 @@ export async function listKnownMembers(userId: string): Promise<MemberSummaryPay
   }));
 }
 
+/**
+ * Finds members by name or @username.
+ *
+ * Never matches on email: an address is private and must not be discoverable,
+ * and the returned shape (CHAT_USER_SELECT) does not carry one either.
+ *
+ * `verifiedOnly` narrows the results to members with a verified email, which is
+ * the eligibility rule for group invitations.
+ */
 export async function searchMembers(
   userId: string,
   query: string,
   limit = 20,
+  options?: { verifiedOnly?: boolean },
 ): Promise<MemberSummaryPayload[]> {
   const take = Math.min(Math.max(limit, 1), 50);
   const trimmed = query.trim();
@@ -405,6 +415,7 @@ export async function searchMembers(
   const members = await prisma.user.findMany({
     where: {
       id: { not: userId },
+      ...(options?.verifiedOnly ? { emailVerified: { not: null } } : {}),
       ...(trimmed
         ? {
             OR: [

@@ -55,7 +55,11 @@ export type GroupMessagePayload = {
 
 export type GroupMemberPayload = {
   userId: string;
+  /** Public handle. Members identify each other by this, never by email. */
+  username: string | null;
   name: string | null;
+  /** "@handle" when set, otherwise the display name. */
+  displayName: string;
   image: string | null;
   siteRole: string;
   groupRole: GroupMemberRole;
