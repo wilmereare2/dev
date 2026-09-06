@@ -511,6 +511,11 @@ export function MessagesHub({ session }: MessagesHubProps) {
   }, [refreshGroups]);
 
   const activeConversationId = activeThread.kind === "direct" ? activeThread.conversationId : null;
+  const closeGroupInfo = useCallback(() => setShowGroupInfo(false), []);
+  const handleGroupMembersChanged = useCallback(() => {
+    void refreshGroups();
+  }, [refreshGroups]);
+
   const activeGroupId = activeThread.kind === "group" ? activeThread.groupId : null;
 
   useEffect(() => {
@@ -1392,8 +1397,8 @@ export function MessagesHub({ session }: MessagesHubProps) {
               myRole={selectedGroup.myRole}
               visibility={selectedGroup.visibility}
               archived={Boolean(selectedGroup.archivedAt)}
-              onClose={() => setShowGroupInfo(false)}
-              onChanged={() => void refreshGroups()}
+              onClose={closeGroupInfo}
+              onChanged={handleGroupMembersChanged}
             />
           ) : null}
         </div>

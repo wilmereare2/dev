@@ -83,18 +83,33 @@ export function GroupMembersDialog({
     } finally {
       setLoading(false);
     }
-  }, [groupId]);
+  }, [groupId, t]);
 
+  /**
+   * Load once per open, and once per group change.
+   *
+   * Deliberately independent of the callback props. The conversation view
+   * re-renders on every message poll, which gave `onClose` a fresh identity
+   * each time; with it in this effect's dependency list every poll re-ran the
+   * fetch and flashed the list back to "Loading members…".
+   */
   useEffect(() => {
-    if (!open) {
-      setShowInvite(false);
-      setQuery("");
-      setSelectedIds([]);
-      setError(null);
-      return;
-    }
-
+    if (!open) return;
     void loadMembers();
+  }, [open, loadMembers]);
+
+  /** Reset transient UI when the panel closes. */
+  useEffect(() => {
+    if (open) return;
+    setShowInvite(false);
+    setQuery("");
+    setSelectedIds([]);
+    setError(null);
+  }, [open]);
+
+  /** Escape closes. Rebinding this on prop identity is harmless. */
+  useEffect(() => {
+    if (!open) return;
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -102,7 +117,7 @@ export function GroupMembersDialog({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [loadMembers, onClose, open]);
+  }, [open, onClose]);
 
   useEffect(() => {
     if (!open || !showInvite) return;
