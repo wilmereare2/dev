@@ -3,25 +3,18 @@ import { cn } from "@/lib/utils";
 
 type AuthSplitLayoutProps = {
   children: React.ReactNode;
-  variant?: "account" | "verify" | "register";
+  variant?: "account" | "verify";
   className?: string;
 };
 
+/**
+ * Two-column auth layout: marketing on the left, the form on the right.
+ *
+ * Sign-in and registration share it. Registration used to render a stacked
+ * single-column variant, which left the left half of a desktop viewport empty
+ * once sign-up was reduced to one step.
+ */
 export function AuthSplitLayout({ children, variant = "account", className }: AuthSplitLayoutProps) {
-  if (variant === "register") {
-    return (
-      <section
-        className={cn(
-          "relative mx-auto w-full max-w-xl px-4 py-8 sm:px-6 lg:py-10",
-          className,
-        )}
-      >
-        <AuthMarketingPanel variant="account" compact className="mb-6" />
-        {children}
-      </section>
-    );
-  }
-
   return (
     <section
       className={cn(

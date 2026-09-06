@@ -56,7 +56,7 @@ function AccountPanelContent({
   }
 
   return (
-    <AuthSplitLayout variant={auth.mode === "register" ? "register" : "account"}>
+    <AuthSplitLayout>
       <div className="rounded-2xl border border-border/60 bg-surface/70 p-6 shadow-xl backdrop-blur-md sm:p-8">
         <div className="flex items-center gap-2 text-accent">
           <Shield className="size-4" aria-hidden />
